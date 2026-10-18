@@ -1,185 +1,72 @@
 #!/bin/bash
 # ==============================================================
-# DISI 论坛 — 一键更新脚本（应用所有改进）
-# 功能：头像上传、获赞统计、评论重设计、移动端适配、收藏移除
-#      登录优化、用户名改 disi、文件上传修复、响应式布局
+# DISI 论坛 — 服务器一键更新脚本
+# 环境：Ubuntu + SQLite + Node 22 + Cloudflare Tunnel
 # 用法：sudo bash update.sh
 # ==============================================================
+set -e
 
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; BLUE='\033[0;34m'; NC='\033[0m'
 log_info()  { echo -e "${GREEN}[INFO]${NC}  $1"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step()  { echo -e "\n${BLUE}==== $1 ====${NC}"; }
 
-PROJECT_DIR="/home/disi/final_demo"
-DEPLOY_DIR="/opt/disi-forum"
-WWW_DIR="/var/www/disi-forum"
+SRC_DIR="/opt/disi-forum-src"      # git 源码目录
+DEPLOY_DIR="/opt/disi-forum"        # 运行目录
+WWW_DIR="/var/www/disi-forum"       # nginx 静态目录
+VENV="$DEPLOY_DIR/venv"
 
-# ==============================================================
-# Step 1: 更新后端代码
-# ==============================================================
-update_backend() {
-    log_step "Step 1/5: 更新后端代码"
+[ "$EUID" -ne 0 ] && { log_error "请用 sudo 运行"; exit 1; }
 
-    cp "${PROJECT_DIR}/backend/main.py"     "${DEPLOY_DIR}/backend/"
-    cp "${PROJECT_DIR}/backend/models.py"   "${DEPLOY_DIR}/backend/"
-    cp "${PROJECT_DIR}/backend/database.py" "${DEPLOY_DIR}/backend/"
-    cp "${PROJECT_DIR}/backend/schemas.py"  "${DEPLOY_DIR}/backend/"
-    cp "${PROJECT_DIR}/backend/auth.py"     "${DEPLOY_DIR}/backend/"
+# --------------------------------------------------------------
+# Step 1: 拉取最新代码
+# --------------------------------------------------------------
+log_step "Step 1/5: 拉取最新代码"
+cd "$SRC_DIR"
+git pull
+log_info "代码已更新到 $(git rev-parse --short HEAD)"
 
-    chown -R disi:disi "${DEPLOY_DIR}/backend"
-    log_info "后端代码已更新"
-}
+# --------------------------------------------------------------
+# Step 2: 同步后端代码（保留数据库和上传文件）
+# --------------------------------------------------------------
+log_step "Step 2/5: 同步后端代码（保留数据库和上传文件）"
+rsync -a --exclude='venv' --exclude='*.db' --exclude='uploads' --exclude='__pycache__' \
+      "$SRC_DIR/backend/" "$DEPLOY_DIR/backend/"
+chown -R disi:disi "$DEPLOY_DIR/backend"
+log_info "后端代码已同步"
 
-# ==============================================================
-# Step 2: 数据库迁移
-# ==============================================================
-update_database() {
-    log_step "Step 2/5: 数据库迁移"
+# --------------------------------------------------------------
+# Step 3: 安装后端依赖
+# --------------------------------------------------------------
+log_step "Step 3/5: 安装后端依赖"
+"$VENV/bin/pip" install -q -r "$DEPLOY_DIR/backend/requirements.txt"
+log_info "依赖已安装"
 
-    # 尝试多种 root 密码连接（按部署时间先后）
-    MYSQL_PASS=""
-    for PASS in "DisiMysql@2024" "DisiMysql2024" ""; do
-        if [ -z "$PASS" ]; then
-            if mysql -u root -e "SELECT 1;" &>/dev/null 2>&1; then
-                MYSQL_PASS=""
-                break
-            fi
-        elif mysql -u root -p"${PASS}" -e "SELECT 1;" &>/dev/null 2>&1; then
-            MYSQL_PASS="$PASS"
-            break
-        fi
-    done
+# --------------------------------------------------------------
+# Step 4: 构建前端
+# --------------------------------------------------------------
+log_step "Step 4/5: 构建前端"
+cd "$SRC_DIR/disi_vue_project"
+rm -rf node_modules package-lock.json
+npm install --silent
+npm run build
+rm -rf "${WWW_DIR:?}"/*
+cp -r dist/. "$WWW_DIR/"
+chown -R www-data:www-data "$WWW_DIR"
+log_info "前端已构建并部署"
 
-    if [ -n "${MYSQL_PASS}" ]; then
-        MYSQL_CMD="mysql -u root -p${MYSQL_PASS}"
-    else
-        MYSQL_CMD="mysql -u root"
-    fi
-
-    # 1) 添加 avatar_url 列（如果不存在）
-    ${MYSQL_CMD} disi_forum -e "
-        SELECT IF(COUNT(*)=0, 'ADD', 'SKIP') FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA='disi_forum' AND TABLE_NAME='users' AND COLUMN_NAME='avatar_url';
-    " 2>/dev/null | grep -q "ADD" && {
-        ${MYSQL_CMD} disi_forum -e "ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500) NULL AFTER role;" 2>/dev/null
-        log_info "avatar_url 列已添加"
-    } || log_info "avatar_url 列已存在"
-
-    # 2) 添加 login_version 列（单设备登录）
-    ${MYSQL_CMD} disi_forum -e "
-        SELECT IF(COUNT(*)=0, 'ADD', 'SKIP') FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA='disi_forum' AND TABLE_NAME='users' AND COLUMN_NAME='login_version';
-    " 2>/dev/null | grep -q "ADD" && {
-        ${MYSQL_CMD} disi_forum -e "ALTER TABLE users ADD COLUMN login_version VARCHAR(12) DEFAULT '1' AFTER avatar_url;" 2>/dev/null
-        log_info "login_version 列已添加"
-    } || log_info "login_version 列已存在"
-
-    # 3) 重命名 admin → disi
-    ${MYSQL_CMD} disi_forum -e "UPDATE users SET username='disi' WHERE username='admin';" 2>/dev/null || true
-    log_info "用户名迁移: admin → disi"
-}
-
-# ==============================================================
-# Step 3: 重新构建前端
-# ==============================================================
-rebuild_frontend() {
-    log_step "Step 3/5: 重新构建前端"
-
-    # 安装 Node.js（如果未安装）
-    if ! command -v node &>/dev/null; then
-        log_info "安装 Node.js 18..."
-        curl -fsSL https://rpm.nodesource.com/setup_18.x | bash - 2>/dev/null || true
-        dnf install -y nodejs
-    fi
-
-    cd "${PROJECT_DIR}/disi_vue_project"
-    log_info "安装依赖..."
-    npm install --silent 2>/dev/null || npm install
-    log_info "构建生产包..."
-    npm run build
-
-    log_info "部署到 ${WWW_DIR}/"
-    rm -rf "${WWW_DIR:?}"/*
-    cp -r dist/* "${WWW_DIR}/"
-    chown -R nginx:nginx "${WWW_DIR}" 2>/dev/null || true
-
-    cd /
-    log_info "前端构建完成"
-}
-
-# ==============================================================
-# Step 4: SELinux 上下文修正
-# ==============================================================
-fix_selinux() {
-    log_step "Step 4/5: 修正 SELinux 上下文"
-
-    if command -v restorecon &>/dev/null; then
-        restorecon -R "${WWW_DIR}" 2>/dev/null || true
-    fi
-    if command -v setsebool &>/dev/null; then
-        setsebool -P httpd_can_network_connect 1 2>/dev/null || true
-    fi
-    log_info "SELinux 已配置"
-}
-
-# ==============================================================
+# --------------------------------------------------------------
 # Step 5: 重启服务
-# ==============================================================
-restart_services() {
-    log_step "Step 5/5: 重启服务"
+# --------------------------------------------------------------
+log_step "Step 5/5: 重启服务"
+systemctl restart disi-forum
+systemctl reload nginx
+sleep 2
+systemctl is-active --quiet disi-forum && log_info "disi-forum ✅ 运行中" || { log_error "disi-forum 启动失败"; journalctl -u disi-forum -n 20 --no-pager; exit 1; }
+systemctl is-active --quiet nginx && log_info "nginx ✅ 运行中" || log_error "nginx 异常"
 
-    systemctl restart disi-forum
-    sleep 2
-    systemctl reload nginx
-
-    echo ""
-    log_info "后端状态:"
-    systemctl is-active disi-forum && echo "  disi-forum: ✅ 运行中" || echo "  disi-forum: ❌ 异常"
-    systemctl is-active nginx && echo "  nginx: ✅ 运行中" || echo "  nginx: ❌ 异常"
-
-    echo ""
-    echo "============================================================"
-    echo -e "  ${GREEN}更新完成！${NC}"
-    echo "============================================================"
-    echo ""
-    echo "  改进内容:"
-    echo "  ✅ 头像上传（点击头像即可更换）"
-    echo "  ✅ 获赞统计（个人主页可见）"
-    echo "  ✅ 评论样式重设计"
-    echo "  ✅ 手机端适配（登录按钮、响应式布局）"
-    echo "  ✅ 收藏按钮已移除"
-    echo "  ✅ 登录验证（未登录无法访问论坛）"
-    echo "  ✅ 文件上传修复（媒体正确关联到帖子）"
-    echo "  ✅ 用户名 admin → disi"
-    echo ""
-    echo "  访问: https://你的域名"
-    echo "  登录: 密码 disi0001"
-    echo "============================================================"
-}
-
-# ==============================================================
-# 主流程
-# ==============================================================
-main() {
-    if [[ $EUID -ne 0 ]]; then
-        echo "请使用 sudo 运行此脚本"
-        exit 1
-    fi
-
-    echo ""
-    echo "============================================================"
-    echo "  DISI 论坛 — 一键更新脚本"
-    echo "============================================================"
-
-    update_backend
-    update_database
-    rebuild_frontend
-    fix_selinux
-    restart_services
-}
-
-main "$@"
+echo ""
+echo "============================================================"
+log_info "更新完成！访问 https://disi-al.com"
+echo "============================================================"
