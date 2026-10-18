@@ -1,0 +1,51 @@
+# ===== 前端 =====
+disi_vue_project/node_modules/
+disi_vue_project/dist/
+disi_vue_project/.vite/
+disi_vue_project/npm-debug.log*
+disi_vue_project/yarn-debug.log*
+disi_vue_project/yarn-error.log*
+
+# ===== 后端 =====
+backend/venv/
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ===== 数据库 =====
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ===== 用户上传文件（保留目录结构，忽略内容）=====
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# ===== 环境变量 / 密钥 =====
+.env
+.env.*
+*.pem
+*.key
+
+# ===== 日志 =====
+*.log
+logs/
+
+# ===== 系统 / 编辑器 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*~
+
+# ===== 备份 =====
+*.bak
+backup_*.db
