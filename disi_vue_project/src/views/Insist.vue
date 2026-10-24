@@ -1,13 +1,13 @@
 <script setup>
 /**
  * INSIST · 主页（P1 静态版）
- * 成就滑墙 → 最近状况（14 天折线）→ 近期目标 → 今日打卡 → 进行中
+ * 成就滑墙 → 近期目标（主位）+ 14 天小折线 → 爆满提醒 → 今日打卡 → 进行中
  */
 import { ref, computed } from 'vue'
 import InsistNav from '../components/InsistNav.vue'
 import {
   skills, habits, cards, achievements, dailyXp,
-  levelName, progressOf, forgetClass, tierOf, stars,
+  progressOf, forgetClass, tierOf, stars,
 } from '../insist/mock.js'
 
 /* 近期目标：固定 C++ */
@@ -35,10 +35,10 @@ const activeCards = computed(() => cards.filter((c) => c.status === 'active').sl
 const chart = computed(() => {
   const values = dailyXp
   const max = Math.max(...values, 1)
-  const w = 300
-  const h = 40
+  const w = 220
+  const h = 44
   const step = w / (values.length - 1)
-  const points = values.map((v, i) => `${(i * step).toFixed(1)},${(h - (v / max) * (h - 4) - 2).toFixed(1)}`)
+  const points = values.map((v, i) => `${(i * step).toFixed(1)},${(h - (v / max) * (h - 6) - 3).toFixed(1)}`)
   return { points: 'M' + points.join(' L'), w, h }
 })
 
@@ -63,59 +63,65 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
     <InsistNav active="home" />
 
     <main class="insist-main">
-      <!-- 成就滑墙 -->
+      <!-- 成就滑墙（固定在顶部，持续滚动） -->
       <section class="marquee-wrap" aria-label="成就墙">
-        <div class="marquee">
-          <div class="marquee-track">
-            <span v-for="(a, i) in [...achievements, ...achievements]" :key="a.id + '-' + i" class="mq-ach" :class="'tier-' + a.tier">
-              <span class="mq-star">✦</span>{{ a.name }}
-            </span>
-          </div>
+        <div class="marquee-track">
+          <span
+            v-for="(a, i) in [...achievements, ...achievements]"
+            :key="a.id + '-' + i"
+            class="mq-ach"
+            :class="'tier-' + a.tier"
+          >
+            <span class="mq-star">✦</span>{{ a.name }}
+          </span>
         </div>
       </section>
 
-      <!-- 最近状况 -->
-      <section class="recent">
-        <div class="recent-head">
-          <span class="recent-title">最近 14 天</span>
-          <span class="recent-range">每日获得 XP</span>
-        </div>
-        <div class="recent-body">
-          <div class="chart-wrap">
-            <svg class="spark" :viewBox="`0 0 ${chart.w} ${chart.h}`" preserveAspectRatio="none" aria-hidden="true">
-              <path :d="chart.points" />
-            </svg>
-            <div class="chart-axis">
-              <span>14 天前</span>
-              <span>今天</span>
-            </div>
+      <!-- 近期目标（主位） + 14 天小折线 -->
+      <section class="hero-row">
+        <div class="focus">
+          <div class="focus-head">
+            <span class="focus-label">近期目标</span>
+            <span class="focus-meta">{{ focus.daysAgo }} 天前记录</span>
           </div>
-          <div class="recent-stats">
-            <div class="rs"><b class="mono">+{{ weekXp }}</b><span>本周 XP</span></div>
-            <div class="rs"><b class="mono">{{ checkDays }}/7</b><span>打卡天数</span></div>
-            <div class="rs"><b class="mono">{{ streakDays }}</b><span>连续天数</span></div>
-          </div>
-        </div>
-      </section>
 
-      <!-- 近期目标 -->
-      <section class="focus">
-        <div class="focus-head">
-          <span class="focus-label">近期目标</span>
-          <span class="focus-meta">{{ focus.daysAgo }} 天前记录 · 遗忘 {{ focus.forget }}%</span>
+          <div class="focus-body">
+            <span class="focus-name">{{ focus.name }}</span>
+            <span class="focus-stars">{{ stars(focus.importance) }}</span>
+            <span class="focus-tier">{{ tierOf(focus) }}</span>
+          </div>
+
+          <div class="insist-bar big" :class="{ full: focus.overflow > 0 }">
+            <i :style="{ width: focusPct + '%' }"></i>
+          </div>
+
+          <div class="focus-foot">
+            <span class="mono">{{ focus.xp }} / 700</span>
+            <span>本周 +{{ weekXp }} · 连续 {{ streakDays }} 天</span>
+          </div>
+
+          <div class="focus-tags">
+            <span class="tag">遗忘 <b :class="forgetClass(focus.forget)">{{ focus.forget }}%</b></span>
+            <span class="tag">记录 {{ focus.records }} 条</span>
+            <span class="tag">难度 {{ tierOf(focus) }}</span>
+          </div>
         </div>
-        <div class="focus-body">
-          <span class="focus-name">{{ focus.name }}</span>
-          <span class="focus-stars">{{ stars(focus.importance) }}</span>
-          <span class="focus-tier">{{ tierOf(focus) }}</span>
-        </div>
-        <div class="insist-bar" :class="{ full: focus.overflow > 0 }">
-          <i :style="{ width: focusPct + '%' }"></i>
-        </div>
-        <div class="focus-foot">
-          <span class="mono">{{ focus.xp }} / 700</span>
-          <span>本周 +{{ weekXp }} · 连续 {{ streakDays }} 天</span>
-        </div>
+
+        <aside class="mini">
+          <div class="mini-head">
+            <span>最近 14 天</span>
+            <span class="mini-unit">每日 XP</span>
+          </div>
+          <svg class="mini-chart" :viewBox="`0 0 ${chart.w} ${chart.h}`" preserveAspectRatio="none" aria-hidden="true">
+            <path :d="chart.points" />
+          </svg>
+          <div class="mini-axis"><span>14 天前</span><span>今天</span></div>
+          <div class="mini-stats">
+            <div class="ms"><b class="mono">+{{ weekXp }}</b><span>本周</span></div>
+            <div class="ms"><b class="mono">{{ checkDays }}/7</b><span>打卡</span></div>
+            <div class="ms"><b class="mono">{{ streakDays }}</b><span>连续</span></div>
+          </div>
+        </aside>
       </section>
 
       <!-- 爆满提醒 -->
@@ -183,19 +189,18 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 <style scoped>
 /* 成就滑墙 */
 .marquee-wrap {
-  margin-top: 1.4rem;
+  margin-top: 1.2rem;
   overflow: hidden;
   border-top: 1px solid #141414;
   border-bottom: 1px solid #141414;
   padding: 0.55rem 0;
-  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
 }
-.marquee { overflow: hidden; }
 .marquee-track {
   display: flex;
   gap: 2.2rem;
-  padding-left: 90px;
   width: max-content;
+  padding-left: 90px;
   animation: marquee 32s linear infinite;
 }
 .marquee-wrap:hover .marquee-track { animation-play-state: paused; }
@@ -217,63 +222,78 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 .mq-ach.tier-4 { color: #ededed; }
 .mq-ach.tier-4 .mq-star { color: #ededed; }
 
-/* 最近状况 */
-.recent { margin-top: 1.3rem; }
-.recent-head { display: flex; justify-content: space-between; align-items: baseline; }
-.recent-title { font-size: 0.7rem; letter-spacing: 0.16em; color: #7a7a7a; }
-.recent-range { font-size: 0.64rem; color: #555; }
-.recent-body {
-  display: flex;
-  align-items: flex-end;
-  gap: 1.4rem;
-  margin-top: 0.5rem;
+/* 主位：近期目标 + 小折线 */
+.hero-row {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1rem;
+  margin-top: 1.3rem;
+  align-items: stretch;
 }
-.chart-wrap {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-.spark {
-  width: 100%;
-  height: 46px;
-  display: block;
-}
-.chart-axis {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.58rem;
-  color: #4a4a4a;
-}
-.spark path {
-  fill: none;
-  stroke: #6a6a6a;
-  stroke-width: 1.4;
-  vector-effect: non-scaling-stroke;
-}
-.recent-stats { display: flex; gap: 1.3rem; }
-.rs { display: flex; flex-direction: column; gap: 0.1rem; }
-.rs b { font-size: 0.9rem; font-weight: 600; color: #d8d8d8; }
-.rs span { font-size: 0.62rem; color: #5f5f5f; }
 
-/* 近期目标 */
 .focus {
-  margin-top: 1.6rem;
-  padding: 1.1rem 1.2rem 1rem;
-  border: 1px solid #242424;
+  padding: 1.15rem 1.25rem 1rem;
+  border: 1px solid #2c2c2c;
   border-radius: 10px;
   background: #060606;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .focus-head { display: flex; justify-content: space-between; align-items: baseline; }
-.focus-label { font-size: 0.7rem; letter-spacing: 0.16em; color: #6f6f6f; }
+.focus-label { font-size: 0.7rem; letter-spacing: 0.18em; color: #7a7a7a; }
 .focus-meta { font-size: 0.66rem; color: #555; }
-.focus-body { display: flex; align-items: baseline; gap: 0.6rem; margin-top: 0.65rem; }
-.focus-name { font-size: 1.55rem; font-weight: 600; }
-.focus-stars { font-size: 0.7rem; color: #cfcfcf; letter-spacing: 1px; }
+.focus-body { display: flex; align-items: baseline; gap: 0.6rem; margin-top: 0.6rem; }
+.focus-name { font-size: 2rem; font-weight: 600; letter-spacing: -0.01em; }
+.focus-stars { font-size: 0.74rem; color: #cfcfcf; letter-spacing: 1px; }
 .focus-tier { font-size: 0.7rem; color: #7a7a7a; }
-.focus .insist-bar { margin-top: 0.8rem; }
-.focus-foot { display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.68rem; color: #6a6a6a; }
+
+.insist-bar.big { height: 8px; border-radius: 4px; margin-top: 0.9rem; }
+.insist-bar.big > i { border-radius: 4px; }
+
+.focus-foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.55rem;
+  font-size: 0.72rem;
+  color: #7a7a7a;
+}
+.focus-tags { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+.tag {
+  font-size: 0.64rem;
+  color: #7a7a7a;
+  border: 1px solid #1e1e1e;
+  border-radius: 3px;
+  padding: 0.1rem 0.35rem;
+}
+.tag b { font-weight: 500; color: #b9b9b9; }
+.tag b.warn { color: #d29922; }
+.tag b.danger { color: #f85149; }
+
+/* 小折线 */
+.mini {
+  padding: 0.85rem 0.95rem 0.75rem;
+  border: 1px solid #1c1c1c;
+  border-radius: 10px;
+  background: #050505;
+  display: flex;
+  flex-direction: column;
+}
+.mini-head { display: flex; justify-content: space-between; align-items: baseline; }
+.mini-head span:first-child { font-size: 0.68rem; letter-spacing: 0.14em; color: #8a8a8a; }
+.mini-unit { font-size: 0.6rem; color: #4a4a4a; }
+.mini-chart { width: 100%; height: 52px; margin-top: 0.45rem; }
+.mini-chart path {
+  fill: none;
+  stroke: #7a7a7a;
+  stroke-width: 1.3;
+  vector-effect: non-scaling-stroke;
+}
+.mini-axis { display: flex; justify-content: space-between; font-size: 0.56rem; color: #3f3f3f; margin-top: 0.15rem; }
+.mini-stats { display: flex; justify-content: space-between; margin-top: auto; padding-top: 0.6rem; }
+.ms { display: flex; flex-direction: column; gap: 0.05rem; }
+.ms b { font-size: 0.86rem; font-weight: 600; color: #d8d8d8; }
+.ms span { font-size: 0.58rem; color: #565656; }
 
 /* 爆满提醒 */
 .alert {
@@ -319,8 +339,9 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 .habit-xp { color: #8a8a8a; }
 .done-btn { opacity: 0.5; }
 
-@media (max-width: 720px) {
-  .recent-body { flex-direction: column; align-items: stretch; }
+@media (max-width: 820px) {
+  .hero-row { grid-template-columns: 1fr; }
+  .mini { order: 2; }
   .habit { flex-wrap: wrap; }
   .habit-sub { width: 100%; }
 }
