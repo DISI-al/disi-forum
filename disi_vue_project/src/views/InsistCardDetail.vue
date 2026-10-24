@@ -3,12 +3,13 @@
  * INSIST · 经验卡详情（接后端）
  */
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import InsistNav from '../components/InsistNav.vue'
-import { apiCard, apiSkills, apiCheckin, apiCompleteCard, apiPatchCard } from '../api/insist_api.js'
+import { apiCard, apiSkills, apiCheckin, apiCompleteCard, apiPatchCard, apiDeleteCard } from '../api/insist_api.js'
 import { tierName, kindLabel, statusLabel } from '../insist/constants.js'
 
 const route = useRoute()
+const router = useRouter()
 const card = ref(null)
 const skillName = ref('')
 const loading = ref(true)
@@ -17,10 +18,15 @@ const notice = ref('')
 const busy = ref(false)
 const showEdit = ref(false)
 const savingEdit = ref(false)
+const confirmDelete = ref(false)
 const editDraft = ref({ title: '', detail: '', tier: 2, xpValue: 0 })
 
 const isHabit = computed(() => card.value?.kind === 'habit')
+const isAchievement = computed(() => card.value?.kind === 'achievement')
 const isDone = computed(() => card.value?.status === 'done')
+// 成就卡回成就墙，其他回卡片库
+const backPath = computed(() => (isAchievement.value ? '/insist/achievements' : '/insist/cards'))
+const backLabel = computed(() => (isAchievement.value ? '成就墙' : '卡片库'))
 
 function todayDone() {
   if (!card.value?.lastCheckin) return false
@@ -79,6 +85,22 @@ async function submitEdit() {
   }
 }
 
+async function removeCard() {
+  if (!confirmDelete.value) {
+    confirmDelete.value = true
+    setTimeout(() => (confirmDelete.value = false), 3000)
+    return
+  }
+  busy.value = true
+  try {
+    await apiDeleteCard(route.params.id)
+    router.push(backPath.value)
+  } catch (e) {
+    error.value = e.message || '删除失败'
+    busy.value = false
+  }
+}
+
 async function checkin() {
   if (busy.value) return
   busy.value = true
@@ -118,7 +140,7 @@ onMounted(load)
       <nav class="insist-crumb">
         <router-link to="/insist">← 主页</router-link>
         <span>/</span>
-        <router-link to="/insist/cards">卡片库</router-link>
+        <router-link :to="backPath">{{ backLabel }}</router-link>
       </nav>
 
       <p v-if="error" class="state err">{{ error }}</p>
@@ -190,7 +212,11 @@ onMounted(load)
           >完成并结算</button>
 
           <button class="insist-btn" type="button" @click="openEdit">编辑卡片</button>
-          <router-link to="/insist/cards" class="insist-btn">返回卡片库</router-link>
+          <router-link :to="backPath" class="insist-btn">返回{{ backLabel }}</router-link>
+
+          <button class="insist-btn danger" type="button" :disabled="busy" @click="removeCard">
+            {{ confirmDelete ? '再点一次确认删除' : '删除卡片' }}
+          </button>
         </div>
       </template>
 

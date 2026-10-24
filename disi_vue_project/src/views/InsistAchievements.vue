@@ -111,23 +111,15 @@ onMounted(load)
       </template>
 
       <div v-else class="ach-grid">
-        <div v-for="a in earned" :key="a.id" class="ach-wrap">
-          <router-link class="ach" :class="'tier-' + a.tier" :to="'/insist/card/' + a.id">
-            <div class="ach-top">
-              <span class="ach-star">✦</span>
-              <span class="ach-grade">{{ tierName(a.tier) }}</span>
-            </div>
-            <h3 class="ach-name">{{ a.title }}</h3>
-            <span class="ach-date">{{ a.detail || '已获得' }}</span>
-            <span v-if="a.skillId" class="ach-skill">关联：{{ skillName(a.skillId) || '技能' }}</span>
-          </router-link>
-          <button
-            class="ach-del"
-            type="button"
-            :disabled="busyId === a.id"
-            @click="remove(a)"
-          >{{ confirmId === a.id ? '确认删除' : '删除' }}</button>
-        </div>
+        <router-link v-for="a in earned" :key="a.id" class="ach" :class="'tier-' + a.tier" :to="'/insist/card/' + a.id">
+          <div class="ach-top">
+            <span class="ach-star">✦</span>
+            <span class="ach-grade">{{ tierName(a.tier) }}</span>
+          </div>
+          <h3 class="ach-name">{{ a.title }}</h3>
+          <span class="ach-date">{{ a.detail || '已获得' }}</span>
+          <span v-if="a.skillId" class="ach-skill">关联：{{ skillName(a.skillId) || '技能' }}</span>
+        </router-link>
       </div>
 
       <div v-if="showAdd" class="modal" @click.self="showAdd = false">
