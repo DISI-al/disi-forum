@@ -12,9 +12,12 @@ const routes = [
   { path: '/post/:id', name: 'PostDetail', component: PostDetail, meta: { requiresAuth: true } },
   { path: '/user', name: 'User', component: User, meta: { requiresAuth: true } },
   { path: '/users', name: 'Users', component: () => import('../views/Users.vue'), meta: { requiresAuth: true } },
+  { path: '/insist', name: 'Insist', component: () => import('../views/Insist.vue'), meta: { requiresAuth: true } },
+  // 旧入口：/dao/space 现在直接进入 INSIST
+  { path: '/dao/space', redirect: '/insist' },
   // 新空间入口（预留）：后续独立应用挂到 /dao 下时，删掉这两个占位路由即可
-  { path: '/dao', name: 'Dao', component: () => import('../views/Dao.vue') },
-  { path: '/dao/space', name: 'DaoSpace', component: () => import('../views/DaoSpace.vue') },
+  // /dao 允许游客浏览（只看到引言页），长按开锁时再要求登录
+  { path: '/dao', name: 'Dao', component: () => import('../views/Dao.vue'), meta: { public: true } },
 ]
 
 const router = createRouter({
@@ -22,14 +25,18 @@ const router = createRouter({
   routes
 })
 
-// 登录守卫：未登录只能看登录页
+// 登录守卫：未登录只能看登录页和公开页（/dao 引言页）
 router.beforeEach((to, from, next) => {
   const hasToken = !!localStorage.getItem('disi_token')
   if (to.path === '/login') {
     hasToken ? next('/index') : next()
-  } else {
-    hasToken ? next() : next('/login')
+    return
   }
+  if (to.meta.public) {
+    next()
+    return
+  }
+  hasToken ? next() : next('/login')
 })
 
 export default router

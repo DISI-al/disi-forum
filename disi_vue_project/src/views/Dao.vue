@@ -8,10 +8,11 @@
  */
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import { apiGetCurrentUser } from '../api/index_api.js'
 
 const router = useRouter()
 
-const UNLOCK_TARGET = '/dao/space'   // 未来应用的挂载点；现在是一个占位页
+const UNLOCK_TARGET = '/insist'      // 解锁后进入 INSIST；游客则先去登录
 const CHARGE_MS = 1200               // 按住多久算充满
 
 const RING_R = 28
@@ -59,7 +60,26 @@ function finish() {
   charging.value = false
   unlocked.value = true
   progress.value = 1
-  jumpTimer = window.setTimeout(() => router.push(UNLOCK_TARGET), 320)
+  jumpTimer = window.setTimeout(async () => {
+    // 游客（未登录 / 登录态过期）长按开锁 → 先去登录页
+    const token = localStorage.getItem('disi_token')
+    if (!token) {
+      router.push('/login')
+      return
+    }
+    try {
+      const me = await apiGetCurrentUser()
+      if (!me || !me.id || me.id === 'guest') throw new Error('guest')
+    } catch (err) {
+      localStorage.removeItem('disi_token')
+      localStorage.removeItem('disi_role')
+      localStorage.removeItem('disi_user_id')
+      localStorage.removeItem('disi_user_name')
+      router.push('/login')
+      return
+    }
+    router.push(UNLOCK_TARGET)
+  }, 320)
 }
 
 function onKeyDown(event) {
