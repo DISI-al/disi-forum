@@ -169,7 +169,7 @@ onMounted(load)
           <div class="cell"><span class="label">进度</span><span class="value mono">{{ card.progress }}%</span></div>
           <div v-if="card.phase" class="cell"><span class="label">阶段</span><span class="value mono">{{ card.phase }}</span></div>
           <div v-if="isHabit" class="cell"><span class="label">打卡</span><span class="value mono">连续 {{ card.streak }} 天 · 累计 {{ card.totalDays }} 天</span></div>
-          <div v-if="card.dailyTarget" class="cell"><span class="label">每日目标</span><span class="value">{{ card.dailyTarget }}</span></div>
+
         </section>
 
         <div class="bar-wrap">

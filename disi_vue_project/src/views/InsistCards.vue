@@ -25,7 +25,7 @@ const showAdd = ref(false)
 const saving = ref(false)
 const busyId = ref('')
 const confirmId = ref('')
-const draft = ref({ kind: 'task', title: '', detail: '', tier: 2, skillId: '', xpValue: 100, cycleDays: 30, dailyTarget: '' })
+const draft = ref({ kind: 'task', title: '', detail: '', tier: 2, skillId: '', xpValue: 100, cycleDays: 30 })
 
 // 经验卡（排除成就卡）
 const experience = computed(() => cards.value.filter((c) => c.kind !== 'achievement'))
@@ -59,7 +59,6 @@ function openAdd() {
     skillId: skills.value[0]?.id || '',
     xpValue: 100,
     cycleDays: 30,
-    dailyTarget: '',
   }
   error.value = ''
   showAdd.value = true
@@ -78,7 +77,7 @@ async function submitAdd() {
       skill_id: draft.value.skillId || null,
       xp_value: draft.value.kind === 'habit' ? 0 : Number(draft.value.xpValue) || 0,
       cycle_days: draft.value.kind === 'habit' ? Number(draft.value.cycleDays) || 30 : null,
-      daily_target: draft.value.kind === 'habit' ? draft.value.dailyTarget : null,
+      daily_target: null,
     })
     showAdd.value = false
     tab.value = draft.value.kind
@@ -259,9 +258,6 @@ onMounted(load)
           </label>
 
           <template v-if="draft.kind === 'habit'">
-            <label class="field"><span>每日目标</span>
-              <input v-model="draft.dailyTarget" type="text" maxlength="60" placeholder="比如 20 个单词 / 30 分钟" />
-            </label>
             <label class="field"><span>周期（天）</span>
               <input v-model.number="draft.cycleDays" type="number" min="1" step="1" />
             </label>
