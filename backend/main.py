@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from database import get_db, init_db
 from models import User, Post, Comment, Like, Favorite, Media
 from auth import get_current_user, require_user, create_access_token
+from insist_api import router as insist_router
 from schemas import (
     LoginRequest, LoginResponse, UserInfo,
     PostResponse, PostAuthor, PostStats, PostMeta,
@@ -27,6 +28,7 @@ from schemas import (
 
 # ====================== 应用初始化 ======================
 app = FastAPI(title="DISI 论坛 API", version="1.0.0")
+app.include_router(insist_router)
 
 # CORS — 允许前端跨域访问
 app.add_middleware(

@@ -35,6 +35,7 @@ def get_db():
 def init_db():
     """初始化数据库：创建所有表，并插入默认管理员账号"""
     from models import User  # 延迟导入避免循环引用
+    import insist_models  # noqa: F401  注册 INSIST 相关表
     Base.metadata.create_all(bind=engine)
 
     # 首次建库时的管理员口令，可用环境变量覆盖（部署脚本会生成随机值）
