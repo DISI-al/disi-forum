@@ -108,7 +108,7 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
           </div>
         </router-link>
 
-        <aside class="mini">
+        <router-link class="mini" to="/insist/stats">
           <div class="mini-head">
             <span>最近 14 天</span>
             <span class="mini-unit">每日 XP</span>
@@ -122,7 +122,7 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
             <div class="ms"><b class="mono">{{ checkDays }}/7</b><span>打卡</span></div>
             <div class="ms"><b class="mono">{{ streakDays }}</b><span>连续</span></div>
           </div>
-        </aside>
+        </router-link>
       </section>
 
       <!-- 爆满提醒 -->
@@ -282,6 +282,11 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 
 /* 小折线 */
 .mini {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
   padding: 0.85rem 0.95rem 0.75rem;
   border: 1px solid #1c1c1c;
   border-radius: 10px;
@@ -289,6 +294,7 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
   display: flex;
   flex-direction: column;
 }
+.mini:hover { transform: translateY(-2px); border-color: #4a4a4a; }
 .mini-head { display: flex; justify-content: space-between; align-items: baseline; }
 .mini-head span:first-child { font-size: 0.68rem; letter-spacing: 0.14em; color: #8a8a8a; }
 .mini-unit { font-size: 0.6rem; color: #4a4a4a; }

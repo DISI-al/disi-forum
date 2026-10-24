@@ -15,6 +15,7 @@ const routes = [
   { path: '/insist', name: 'Insist', component: () => import('../views/Insist.vue'), meta: { requiresAuth: true } },
   { path: '/insist/collection', name: 'InsistCollection', component: () => import('../views/InsistCollection.vue'), meta: { requiresAuth: true } },
   { path: '/insist/skill/:id', name: 'InsistSkill', component: () => import('../views/InsistSkill.vue'), meta: { requiresAuth: true } },
+  { path: '/insist/stats', name: 'InsistStats', component: () => import('../views/InsistStats.vue'), meta: { requiresAuth: true } },
   { path: '/insist/cards', name: 'InsistCards', component: () => import('../views/InsistCards.vue'), meta: { requiresAuth: true } },
   { path: '/insist/card/:id', name: 'InsistCardDetail', component: () => import('../views/InsistCardDetail.vue'), meta: { requiresAuth: true } },
   { path: '/insist/achievements', name: 'InsistAchievements', component: () => import('../views/InsistAchievements.vue'), meta: { requiresAuth: true } },

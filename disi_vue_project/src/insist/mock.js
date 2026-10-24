@@ -24,10 +24,10 @@ export const skills = [
 
 /* ---------- 打卡 ---------- */
 export const habits = [
-  { id: 'h1', name: '英语 · 每天 20 词', skillId: 'en', tier: 2, streak: 13, total: 68, today: 3.0, capped: false, done: false },
-  { id: 'h2', name: 'C++ · 每天 30 分钟', skillId: 'cpp', tier: 2, streak: 6, total: 41, today: 0, capped: true, done: true },
-  { id: 'h3', name: '阅读 · 每天 10 页', skillId: 'write', tier: 1, streak: 3, total: 21, today: 1.5, capped: false, done: false },
-  { id: 'h4', name: '算法 · 每天 1 题', skillId: 'algo', tier: 3, streak: 9, total: 54, today: 12, capped: false, done: false },
+  { id: 'h1', name: '英语 · 每天 20 词', skillId: 'en', tier: 2, streak: 13, total: 68, today: 3.0, capped: false, done: false, history: [1,1,0,1,1,1,1,1,1,1,1,1,1,0] },
+  { id: 'h2', name: 'C++ · 每天 30 分钟', skillId: 'cpp', tier: 2, streak: 6, total: 41, today: 0, capped: true, done: true, history: [1,0,1,1,0,1,1,1,0,1,1,1,0,1] },
+  { id: 'h3', name: '阅读 · 每天 10 页', skillId: 'write', tier: 1, streak: 3, total: 21, today: 1.5, capped: false, done: false, history: [0,1,1,0,1,1,1,0,1,1,1,1,0,0] },
+  { id: 'h4', name: '算法 · 每天 1 题', skillId: 'algo', tier: 3, streak: 9, total: 54, today: 12, capped: false, done: false, history: [1,1,1,1,0,1,1,1,1,1,0,1,1,0] },
 ]
 
 /* ---------- 经验卡 ---------- */
