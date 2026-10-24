@@ -80,7 +80,7 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 
       <!-- 近期目标（主位） + 14 天小折线 -->
       <section class="hero-row">
-        <div class="focus">
+        <router-link class="focus" :to="'/insist/skill/' + focus.id">
           <div class="focus-head">
             <span class="focus-label">近期目标</span>
             <span class="focus-meta">{{ focus.daysAgo }} 天前记录</span>
@@ -106,7 +106,7 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
             <span class="tag">记录 {{ focus.records }} 条</span>
             <span class="tag">难度 {{ tierOf(focus) }}</span>
           </div>
-        </div>
+        </router-link>
 
         <aside class="mini">
           <div class="mini-head">
@@ -236,6 +236,11 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 }
 
 .focus {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
   padding: 1.15rem 1.25rem 1rem;
   border: 1px solid #2c2c2c;
   border-radius: 10px;
@@ -244,6 +249,7 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
   flex-direction: column;
   justify-content: center;
 }
+.focus:hover { transform: translateY(-2px); border-color: #4a4a4a; }
 .focus-head { display: flex; justify-content: space-between; align-items: baseline; }
 .focus-label { font-size: 0.7rem; letter-spacing: 0.18em; color: #7a7a7a; }
 .focus-meta { font-size: 0.66rem; color: #555; }

@@ -108,8 +108,8 @@ const statusLabel = computed(() => ({ active: '进行中', done: '已完成', ar
 .cell { display: flex; flex-direction: column; gap: 0.25rem; }
 .label { font-size: 0.64rem; color: #5f5f5f; letter-spacing: 0.08em; }
 .value { font-size: 0.9rem; color: #d8d8d8; }
-.value.link { color: #58a6ff; text-decoration: none; }
-.value.link:hover { text-decoration: underline; }
+.value.link { color: #ededed; text-decoration: none; }
+.value.link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 .bar-wrap { margin-top: 1.2rem; }
 

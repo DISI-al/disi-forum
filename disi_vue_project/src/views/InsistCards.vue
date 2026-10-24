@@ -101,6 +101,8 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 .row {
   display: flex;
   align-items: center;
+  color: inherit;
+  text-decoration: none;
   gap: 1rem;
   padding: 0.75rem 0.1rem;
   border-bottom: 1px solid #101010;
