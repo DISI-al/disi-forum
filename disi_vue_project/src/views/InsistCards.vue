@@ -25,7 +25,7 @@ const showAdd = ref(false)
 const saving = ref(false)
 const busyId = ref('')
 const confirmId = ref('')
-const draft = ref({ kind: 'task', title: '', tier: 2, skillId: '', xpValue: 100, cycleDays: 30, dailyTarget: '' })
+const draft = ref({ kind: 'task', title: '', detail: '', tier: 2, skillId: '', xpValue: 100, cycleDays: 30, dailyTarget: '' })
 
 // 经验卡（排除成就卡）
 const experience = computed(() => cards.value.filter((c) => c.kind !== 'achievement'))
@@ -54,6 +54,7 @@ function openAdd() {
   draft.value = {
     kind: tab.value,
     title: '',
+    detail: '',
     tier: 2,
     skillId: skills.value[0]?.id || '',
     xpValue: 100,
@@ -72,6 +73,7 @@ async function submitAdd() {
     await apiCreateCard({
       kind: draft.value.kind,
       title,
+      detail: draft.value.detail,
       tier: Number(draft.value.tier),
       skill_id: draft.value.skillId || null,
       xp_value: draft.value.kind === 'habit' ? 0 : Number(draft.value.xpValue) || 0,
@@ -235,6 +237,10 @@ onMounted(load)
             <input v-model="draft.title" type="text" maxlength="120" placeholder="比如 读完 Primer 第 3 章" autofocus />
           </label>
 
+          <label class="field"><span>详情</span>
+            <textarea v-model="draft.detail" rows="3" maxlength="1000" placeholder="补充说明、拆分步骤、参考资料…（会显示在卡片详情页）" />
+          </label>
+
           <div class="field"><span>等级</span>
             <div class="chips">
               <button v-for="(t, i) in TIERS" :key="t" type="button" :class="{ on: draft.tier === i + 1 }" @click="draft.tier = i + 1">{{ t }}</button>
@@ -306,6 +312,8 @@ onMounted(load)
 .dialog h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; }
 .field { display: block; margin-bottom: 0.85rem; }
 .field > span { display: block; font-size: 0.7rem; color: #6a6a6a; letter-spacing: 0.08em; margin-bottom: 0.35rem; }
+.field textarea { width: 100%; background: #0c0c0c; border: 1px solid #222; border-radius: 4px; color: #ededed; font-size: 0.85rem; padding: 0.45rem 0.55rem; outline: none; resize: vertical; font-family: inherit; }
+.field textarea:focus { border-color: #444; }
 .field input, .field select { width: 100%; background: #0c0c0c; border: 1px solid #222; border-radius: 4px; color: #ededed; font-size: 0.85rem; padding: 0.45rem 0.55rem; outline: none; }
 .field input:focus, .field select:focus { border-color: #444; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }

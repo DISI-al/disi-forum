@@ -81,7 +81,7 @@ async function submitAdd() {
     await apiCreateCard({
       kind: draft.value.kind,
       title,
-      detail: draft.value.kind === 'achievement' ? draft.value.detail : '',
+      detail: draft.value.detail,
       tier: Number(draft.value.tier),
       skill_id: route.params.id,
       xp_value: draft.value.kind === 'habit' ? 0 : Number(draft.value.xpValue) || 0,
@@ -289,8 +289,8 @@ onMounted(load)
             </div>
           </div>
 
-          <label v-if="draft.kind === 'achievement'" class="field"><span>说明</span>
-            <input v-model="draft.detail" type="text" maxlength="200" placeholder="比赛 / 证书 / 时间等，会显示在成就卡上" />
+          <label class="field"><span>详情</span>
+            <textarea v-model="draft.detail" rows="3" maxlength="1000" placeholder="补充说明、拆分步骤、参考资料…（会显示在卡片详情页）" />
           </label>
 
           <label v-if="draft.kind === 'task' || draft.kind === 'project'" class="field"><span>完成奖励 XP</span>
@@ -386,6 +386,8 @@ onMounted(load)
 .dialog h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; }
 .field { display: block; margin-bottom: 0.85rem; }
 .field > span { display: block; font-size: 0.7rem; color: #6a6a6a; letter-spacing: 0.08em; margin-bottom: 0.35rem; }
+.field textarea { width: 100%; background: #0c0c0c; border: 1px solid #222; border-radius: 4px; color: #ededed; font-size: 0.85rem; padding: 0.45rem 0.55rem; outline: none; resize: vertical; font-family: inherit; }
+.field textarea:focus { border-color: #444; }
 .field input { width: 100%; background: #0c0c0c; border: 1px solid #222; border-radius: 4px; color: #ededed; font-size: 0.85rem; padding: 0.45rem 0.55rem; outline: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .chips button { background: transparent; border: 1px solid #222; color: #8a8a8a; font-size: 0.75rem; padding: 0.28rem 0.6rem; border-radius: 4px; cursor: pointer; }

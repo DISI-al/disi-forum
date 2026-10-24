@@ -266,7 +266,7 @@ onMounted(load)
 .head-top { display: flex; gap: 0.5rem; font-size: 0.64rem; color: #6a6a6a; }
 .kind { border: 1px solid #2a2a2a; border-radius: 3px; padding: 0.05rem 0.3rem; color: #b9b9b9; }
 .name { margin-top: 0.45rem; font-size: 1.7rem; font-weight: 600; }
-.desc { margin-top: 0.5rem; font-size: 0.82rem; color: #8a8a8a; line-height: 1.7; max-width: 44rem; }
+.desc { margin-top: 0.5rem; font-size: 0.82rem; color: #8a8a8a; line-height: 1.7; max-width: 44rem; white-space: pre-line; word-break: break-word; }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.9rem; margin-top: 1.1rem; }
 .cell { display: flex; flex-direction: column; gap: 0.25rem; }
