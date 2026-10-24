@@ -23,9 +23,14 @@
               v-if="currentUser.isAdmin"
               to="/users"
               class="btn btn-manage-users"
-            >&#x1F465; 用户</router-link>
-            <router-link to="/add" class="btn btn-add-post">&#x270F;&#xFE0F; 发帖</router-link>
-            <a href="#" class="btn btn-logout" @click.prevent="handleLogout">退出登录</a>
+              title="用户管理"
+            ><span class="btn-ico" aria-hidden="true">&#x1F465;</span><span class="btn-label">用户</span></router-link>
+            <router-link to="/add" class="btn btn-add-post" title="发帖">
+              <span class="btn-ico" aria-hidden="true">&#x270F;&#xFE0F;</span><span class="btn-label">发帖</span>
+            </router-link>
+            <a href="#" class="btn btn-logout" title="退出登录" @click.prevent="handleLogout">
+              <span class="btn-ico" aria-hidden="true">&#x23FB;</span><span class="btn-label">退出登录</span>
+            </a>
             <router-link to="/user" class="avatar-link">
               <div class="avatar">
                 <img v-if="currentUser.avatarUrl" :src="currentUser.avatarUrl" class="avatar-img" />
@@ -285,7 +290,14 @@ const handleLogout = () => {
 
 const loadUser = async () => {
   try {
-    currentUser.value = await apiGetCurrentUser()
+    const u = await apiGetCurrentUser()
+    // 后端在 token 失效时会返回 guest 身份，这里直接请回登录页，避免「变成游客」
+    if (!u || u.id === 'guest') {
+      ;['disi_token', 'disi_role', 'disi_user_id', 'disi_user_name'].forEach((k) => localStorage.removeItem(k))
+      router.push('/login')
+      return
+    }
+    currentUser.value = u
   } catch (err) {
     console.warn('获取当前用户失败，按游客处理', err)
   }
@@ -440,16 +452,37 @@ onMounted(() => {
 @media (max-width: 767px) {
   .nav-row {
     flex-wrap: wrap;
+    row-gap: 0.55rem;
   }
   /* Row 1: logo + actions */
-  .logo-wrapper { flex: 1; }
-  .nav-actions { order: 2; }
+  .logo-wrapper { flex: 1 1 auto; min-width: 0; }
+  .site-logo { width: 56px; }
+  .nav-actions { order: 2; gap: 0.4rem; flex-wrap: nowrap; }
+  .btn-add-post, .btn-manage-users, .btn-logout {
+    padding: 0.32rem 0.55rem;
+    font-size: 0.76rem;
+  }
+  .avatar { width: 30px; height: 30px; }
   /* Row 2: full-width search */
   .search-box {
     order: 3;
     flex-basis: 100%;
   }
   .search-box .input-group { max-width: 100%; }
+}
+
+/* 窄屏（iPhone mini 等）：按钮只留图标，保证 logo + 三按钮 + 头像同一行 */
+@media (max-width: 540px) {
+  .site-logo { width: 46px; }
+  .nav-actions { gap: 0.3rem; }
+  .btn-label { display: none; }
+  .btn-ico { margin-right: 0; }
+  .btn-add-post, .btn-manage-users, .btn-logout {
+    padding: 0.34rem 0.48rem;
+    font-size: 0.85rem;
+    line-height: 1;
+  }
+  .avatar { width: 28px; height: 28px; font-size: 0.78rem; }
 }
 
 /* 头像 */

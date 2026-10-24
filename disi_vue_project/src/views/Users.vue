@@ -151,14 +151,14 @@ onMounted(() => {
               class="input"
               type="text"
               maxlength="50"
-              placeholder="昵称（留空自动分配）"
+              placeholder="昵称（可留空）"
             />
             <input
               v-model="newPassword"
               class="input"
               type="text"
               maxlength="100"
-              placeholder="登录口令"
+              placeholder="口令"
               autocomplete="off"
             />
             <button class="btn primary" type="submit" :disabled="busy">添加用户</button>
@@ -350,10 +350,12 @@ onMounted(() => {
 }
 
 @media (max-width: 560px) {
-  .add-row { flex-wrap: wrap; }
-  .add-row .input { flex: 1 1 45%; }
-  .user-row { flex-wrap: wrap; }
-  .user-row .input.name { flex: 1 1 55%; }
+  .add-row { flex-wrap: nowrap; gap: 0.35rem; padding: 0.7rem 0.9rem; }
+  .add-row .input { flex: 1 1 0; min-width: 0; font-size: 0.72rem; padding: 0.35rem 0.4rem; }
+  .add-row .btn { padding: 0.35rem 0.5rem; font-size: 0.72rem; }
+  .user-row { flex-wrap: wrap; row-gap: 0.45rem; }
+  .user-row .input.name { flex: 1 1 60%; min-width: 0; }
+  .user-row button.btn:first-of-type { margin-left: auto; }
   .users-foot { font-size: 0.68rem; }
 }
 </style>

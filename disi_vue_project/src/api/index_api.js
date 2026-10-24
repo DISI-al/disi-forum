@@ -10,6 +10,12 @@ async function request(url, options = {}) {
     headers.Authorization = `Bearer ${token}`
   }
   const res = await fetch(`${API_BASE_URL}${url}`, { ...options, headers })
+  if (res.status === 401) {
+    // token 失效（换设备登录 / 登录版本变化）：清掉本地状态并回登录页
+    ;['disi_token', 'disi_role', 'disi_user_id', 'disi_user_name'].forEach((k) => localStorage.removeItem(k))
+    if (!location.pathname.startsWith('/login')) location.href = '/login'
+    throw new Error('登录已失效，请重新登录')
+  }
   const data = await res.json()
   if (!res.ok) {
     // 后端错误统一放在 detail 字段，这里优先用它，提示才有意义

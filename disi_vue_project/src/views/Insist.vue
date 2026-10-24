@@ -3,9 +3,13 @@
  * INSIST · 主页（接后端）
  */
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import InsistNav from '../components/InsistNav.vue'
 import { apiOverview, apiSkills, apiCards, apiCheckin } from '../api/insist_api.js'
+import { apiCreatePost } from '../api/index_api.js'
 import { levelName, tierName, stars, forgetClass, kindLabel } from '../insist/constants.js'
+
+const router = useRouter()
 
 const loading = ref(true)
 const error = ref('')
@@ -78,6 +82,60 @@ async function checkIn(card) {
     notice.value = e.message || '打卡失败'
   } finally {
     busyId.value = ''
+  }
+}
+
+// 把当前进度整理成一篇帖子发到论坛
+const sharing = ref(false)
+const shareMsg = ref('')
+const publishedId = ref('')
+
+async function publish() {
+  if (sharing.value) return
+  sharing.value = true
+  shareMsg.value = ''
+  try {
+    const now = new Date()
+    const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    const lines = []
+    lines.push(`## INSIST 进度 · ${ymd}`)
+    lines.push('')
+    lines.push(`**本周** +${weekXp.value} XP · 打卡 ${checkDays.value}/7 · 连续 ${streakDays.value} 天`)
+    lines.push('')
+    if (skills.value.length) {
+      lines.push('### 技能')
+      for (const s of skills.value.slice(0, 12)) {
+        const total = s.saturated ? s.xp : s.xp + s.nextNeed
+        lines.push(`- ${s.name}（${tierName(s.tier)} · ${s.levelName}）${s.xp} / ${total}${s.saturated ? ' · 已爆满' : ''} · 遗忘 ${s.forget}%`)
+      }
+      lines.push('')
+    }
+    const today = habits.value
+    if (today.length) {
+      lines.push('### 今日打卡')
+      for (const h of today) {
+        lines.push(`- ${h.title}：${isToday(h) ? '已打卡' : '未打卡'}（连续 ${h.streak} 天 · 累计 ${h.totalDays} 天）`)
+      }
+      lines.push('')
+    }
+    const pending = cards.value.filter((c) => c.status === 'active' && c.kind !== 'habit')
+    if (pending.length) {
+      lines.push('### 进行中')
+      for (const c of pending) {
+        lines.push(`- [${kindLabel(c.kind)}] ${c.title}（${tierName(c.tier)}）${c.progress}%`)
+      }
+    }
+    const res = await apiCreatePost({
+      title: `INSIST 进度 · ${ymd}`,
+      content: lines.join('\n'),
+      tags: ['INSIST', '学习'],
+    })
+    publishedId.value = res.id
+    shareMsg.value = '已发布到论坛'
+  } catch (e) {
+    shareMsg.value = e.message || '发布失败'
+  } finally {
+    sharing.value = false
   }
 }
 
@@ -218,6 +276,22 @@ onMounted(load)
               </div>
             </router-link>
           </div>
+        </section>
+
+        <!-- 分享到论坛 -->
+        <section class="insist-block">
+          <div class="insist-block-head">
+            <h2>分享到论坛</h2>
+            <span class="insist-block-sub">生成一篇 Markdown 帖子</span>
+          </div>
+          <p class="hint">把本周 XP、打卡和技能进度整理成帖子发到论坛，想复盘或立 flag 都行。</p>
+          <div class="share-actions">
+            <button class="insist-btn" type="button" :disabled="sharing" @click="publish">
+              {{ sharing ? '发布中…' : '发布本周总结' }}
+            </button>
+            <router-link v-if="publishedId" class="insist-btn" :to="'/post/' + publishedId">查看帖子 →</router-link>
+          </div>
+          <p v-if="shareMsg" class="notice">{{ shareMsg }}</p>
         </section>
       </template>
     </main>
@@ -370,4 +444,6 @@ onMounted(load)
 @media (prefers-reduced-motion: reduce) {
   .marquee-track { animation: none; }
 }
+.hint { margin-top: 0.4rem; font-size: 0.7rem; color: #5f5f5f; }
+.share-actions { display: flex; gap: 0.6rem; margin-top: 0.9rem; }
 </style>

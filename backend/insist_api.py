@@ -3,8 +3,11 @@ INSIST 接口：技能 / 卡片 / 打卡 / 结算 / 晋升 / 统计 / AI 审核�
 挂载前缀 /api/insist，全部按登录用户隔离。
 """
 from datetime import date, datetime, timedelta, timezone
+import csv
+import io
+import json
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from auth import require_user
@@ -415,3 +418,67 @@ def ai_review(req: AiReviewRequest, current_user: User = Depends(require_user), 
     payload["target_level"] = req.target_level
     payload["note"] = req.note
     return review_promotion(payload)
+
+
+# ====================== 导出 ======================
+@router.get("/export")
+def export_data(format: str = "json", current_user: User = Depends(require_user), db: Session = Depends(get_db)):
+    """
+    format=json      全量 JSON（技能、卡片、打卡记录、XP 事件）
+    format=csv       技能表 CSV（Excel 可直接打开，带 BOM）
+    format=csv-cards 卡片表 CSV
+    """
+    skills = db.query(InsistSkill).filter(InsistSkill.user_id == current_user.id).all()
+    cards = db.query(InsistCard).filter(InsistCard.user_id == current_user.id).all()
+    logs = db.query(InsistHabitLog).filter(InsistHabitLog.user_id == current_user.id).all()
+    events = db.query(InsistXpEvent).filter(InsistXpEvent.user_id == current_user.id).all()
+
+    if format in ("csv", "csv-cards"):
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        if format == "csv":
+            writer.writerow(["名称", "分类", "难度阶", "重要程度", "段位", "XP", "溢出", "遗忘%", "记录数", "最近活跃"])
+            for s in skills:
+                last = s.last_active.strftime("%Y-%m-%d") if s.last_active else ""
+                writer.writerow([
+                    s.name, s.category, TIERS[s.tier - 1], IMPORTANCE[s.importance - 1],
+                    LEVELS[s.level], round(s.xp or 0, 2), round(s.overflow or 0, 2),
+                    forget_percent(s), sum(1 for e in events if e.skill_id == s.id), last,
+                ])
+            filename = "insist-skills.csv"
+        else:
+            writer.writerow(["标题", "类型", "难度阶", "状态", "进度%", "奖励XP", "连续天数", "累计天数", "最近打卡"])
+            for c in cards:
+                writer.writerow([
+                    c.title, c.kind, TIERS[c.tier - 1], c.status, round(c.progress or 0, 1),
+                    round(c.xp_value or 0, 1), c.streak or 0, c.total_days or 0,
+                    c.last_checkin.isoformat() if c.last_checkin else "",
+                ])
+            filename = "insist-cards.csv"
+        body = "\ufeff" + buf.getvalue()  # BOM，Excel 打开不乱码
+        return Response(
+            body,
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    payload = {
+        "exportedAt": datetime.now(timezone.utc).isoformat(),
+        "user": current_user.username,
+        "skills": [skill_payload(s, db) for s in skills],
+        "cards": [card_payload(c) for c in cards],
+        "habitLogs": [
+            {"cardId": l.card_id, "day": l.day.isoformat(), "xp": round(l.xp or 0, 3)}
+            for l in logs
+        ],
+        "xpEvents": [
+            {"skillId": e.skill_id, "cardId": e.card_id, "source": e.source,
+             "xp": round(e.xp or 0, 3), "note": e.note, "day": e.occurred_on.isoformat()}
+            for e in events
+        ],
+    }
+    return Response(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        media_type="application/json; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="insist.json"'},
+    )

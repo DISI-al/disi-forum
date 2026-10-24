@@ -469,8 +469,18 @@ onMounted(async () => {
   }
   .talent-word.bottom { font-size: 26px; opacity: 1; transform: none; }
 }
-@media (max-width: 600px) {
-  .talent-door { width: 100%; flex-basis: 100%; margin: 0.5rem 0 0; }
+@media (max-width: 640px) {
+  .user-card {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.5rem 1.1rem;
+    gap: 1rem;
+  }
+  .user-meta { align-items: center; width: 100%; }
+  .user-name { justify-content: center; }
+  .user-stats { justify-content: center; }
+  .talent-door { width: 100%; flex-basis: 100%; margin: 0.9rem 0 0; }
 }
 
 /* 系统要求减少动效：改成淡入淡出，不做位移 */

@@ -3,8 +3,27 @@
  * INSIST · 设置（P1 静态版）
  * 图例说明 + 段位阈值 + 打卡数值 + 复习间隔 + 原因模板
  */
+import { ref } from 'vue'
 import InsistNav from '../components/InsistNav.vue'
 import { LEVELS, TIERS, IMPORTANCE } from '../insist/constants.js'
+import { apiExport } from '../api/insist_api.js'
+
+const exporting = ref(false)
+const exportMsg = ref('')
+
+async function download(format) {
+  if (exporting.value) return
+  exporting.value = true
+  exportMsg.value = ''
+  try {
+    await apiExport(format)
+    exportMsg.value = '已开始下载'
+  } catch (e) {
+    exportMsg.value = e.message || '导出失败'
+  } finally {
+    exporting.value = false
+  }
+}
 
 const thresholds = [
   { level: '初识', min: 0 },
@@ -127,9 +146,20 @@ const reasons = ['网课观看', '看书', '实践练习', '独立项目', '分�
         </div>
       </section>
 
-      <div class="actions">
-        <button class="insist-btn" type="button" disabled>导出数据（待接后端）</button>
-      </div>
+      <!-- 数据导出 -->
+      <section class="insist-block">
+        <div class="insist-block-head"><h2>数据导出</h2><span class="insist-block-sub">备份 / 迁移</span></div>
+        <p class="hint">
+          JSON 是完整备份（技能、卡片、打卡记录、XP 事件），换设备或迁移时用；
+          CSV 适合丢进 Excel 看，带 BOM，中文不乱码。
+        </p>
+        <div class="actions export-actions">
+          <button class="insist-btn" type="button" :disabled="exporting" @click="download('json')">导出 JSON（全量）</button>
+          <button class="insist-btn" type="button" :disabled="exporting" @click="download('csv')">导出技能 CSV</button>
+          <button class="insist-btn" type="button" :disabled="exporting" @click="download('csv-cards')">导出卡片 CSV</button>
+        </div>
+        <p v-if="exportMsg" class="notice">{{ exportMsg }}</p>
+      </section>
     </main>
   </div>
 </template>
@@ -166,4 +196,7 @@ const reasons = ['网课观看', '看书', '实践练习', '独立项目', '分�
 
 .actions { margin-top: 2rem; }
 @media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
+.hint { margin-top: 0.4rem; font-size: 0.7rem; color: #5f5f5f; line-height: 1.7; }
+.export-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.8rem; }
+.notice { margin-top: 0.6rem; font-size: 0.72rem; color: #8a8a8a; }
 </style>
