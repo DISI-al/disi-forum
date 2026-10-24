@@ -6,7 +6,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import InsistNav from '../components/InsistNav.vue'
 import { apiOverview, apiSkills, apiCards, apiCheckin } from '../api/insist_api.js'
-import { apiCreatePost } from '../api/index_api.js'
+import { apiCreatePost, apiUpdatePost } from '../api/index_api.js'
 import { levelName, tierName, stars, forgetClass, kindLabel } from '../insist/constants.js'
 
 const router = useRouter()
@@ -130,6 +130,8 @@ async function publish() {
       content: lines.join('\n'),
       tags: ['INSIST', '学习'],
     })
+    // 后端会从正文里抽 #标签，Markdown 的 ## 标题会被误抽，这里发完再覆盖一次
+    try { await apiUpdatePost(res.id, { tags: ['INSIST', '学习'] }) } catch (e) { /* 覆盖失败不影响发布 */ }
     publishedId.value = res.id
     shareMsg.value = '已发布到论坛'
   } catch (e) {
