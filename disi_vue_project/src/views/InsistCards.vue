@@ -73,7 +73,7 @@ async function submitAdd() {
     await apiCreateCard({
       kind: draft.value.kind,
       title,
-      detail: draft.value.kind === 'habit' ? '' : draft.value.detail,
+      detail: draft.value.detail,
       tier: Number(draft.value.tier),
       skill_id: draft.value.skillId || null,
       xp_value: draft.value.kind === 'habit' ? 0 : Number(draft.value.xpValue) || 0,
@@ -227,7 +227,7 @@ onMounted(load)
           <h3>新建{{ tabs.find(t => t.key === draft.kind)?.label }}</h3>
 
           <div class="field"><span>类型</span>
-            <div class="chips">
+            <div class="chips equal-3">
               <button v-for="t in tabs" :key="t.key" type="button"
                 :class="{ on: draft.kind === t.key }" @click="draft.kind = t.key">{{ t.label }}</button>
             </div>
@@ -237,7 +237,7 @@ onMounted(load)
             <input v-model="draft.title" type="text" maxlength="120" placeholder="比如 读完 Primer 第 3 章" autofocus />
           </label>
 
-          <label v-if="draft.kind !== 'habit'" class="field"><span>详情</span>
+          <label class="field"><span>详情</span>
             <textarea v-model="draft.detail" rows="3" maxlength="1000" placeholder="补充说明、拆分步骤、参考资料…（会显示在卡片详情页）" />
           </label>
 
@@ -318,6 +318,8 @@ onMounted(load)
 .field input:focus, .field select:focus { border-color: #444; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .chips button { background: transparent; border: 1px solid #222; color: #8a8a8a; font-size: 0.75rem; padding: 0.28rem 0.6rem; border-radius: 4px; cursor: pointer; }
+.chips.equal-3 { display: grid; grid-template-columns: repeat(3, 1fr); }
+.chips.equal-3 button { width: 100%; text-align: center; }
 .chips button.on { border-color: #6a6a6a; color: #ededed; background: #111; }
 .dialog-err { color: #f85149; font-size: 0.74rem; margin: 0.3rem 0 0; }
 .dialog-foot { display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.4rem; }
