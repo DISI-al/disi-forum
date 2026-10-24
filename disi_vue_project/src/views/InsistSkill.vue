@@ -81,7 +81,7 @@ async function submitAdd() {
     await apiCreateCard({
       kind: draft.value.kind,
       title,
-      detail: draft.value.detail,
+      detail: draft.value.kind === 'habit' ? '' : draft.value.detail,
       tier: Number(draft.value.tier),
       skill_id: route.params.id,
       xp_value: draft.value.kind === 'habit' ? 0 : Number(draft.value.xpValue) || 0,
@@ -289,7 +289,7 @@ onMounted(load)
             </div>
           </div>
 
-          <label class="field"><span>详情</span>
+          <label v-if="draft.kind !== 'habit'" class="field"><span>详情</span>
             <textarea v-model="draft.detail" rows="3" maxlength="1000" placeholder="补充说明、拆分步骤、参考资料…（会显示在卡片详情页）" />
           </label>
 

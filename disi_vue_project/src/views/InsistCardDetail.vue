@@ -154,7 +154,7 @@ onMounted(load)
             <span class="status">{{ statusLabel(card.status) }}</span>
           </div>
           <h1 class="name">{{ card.title }}</h1>
-          <p class="desc">{{ card.detail || '暂无描述' }}</p>
+          <p v-if="!isHabit" class="desc">{{ card.detail || '暂无描述' }}</p>
         </section>
 
         <p v-if="notice" class="notice">{{ notice }}</p>
@@ -229,7 +229,7 @@ onMounted(load)
             <input v-model="editDraft.title" type="text" maxlength="120" autofocus />
           </label>
 
-          <label class="field"><span>描述 / 内容</span>
+          <label v-if="!isHabit" class="field"><span>描述 / 内容</span>
             <textarea v-model="editDraft.detail" rows="3" maxlength="1000" />
           </label>
 
