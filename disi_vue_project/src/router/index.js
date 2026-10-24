@@ -13,6 +13,11 @@ const routes = [
   { path: '/user', name: 'User', component: User, meta: { requiresAuth: true } },
   { path: '/users', name: 'Users', component: () => import('../views/Users.vue'), meta: { requiresAuth: true } },
   { path: '/insist', name: 'Insist', component: () => import('../views/Insist.vue'), meta: { requiresAuth: true } },
+  { path: '/insist/collection', name: 'InsistCollection', component: () => import('../views/InsistCollection.vue'), meta: { requiresAuth: true } },
+  { path: '/insist/skill/:id', name: 'InsistSkill', component: () => import('../views/InsistSkill.vue'), meta: { requiresAuth: true } },
+  { path: '/insist/cards', name: 'InsistCards', component: () => import('../views/InsistCards.vue'), meta: { requiresAuth: true } },
+  { path: '/insist/achievements', name: 'InsistAchievements', component: () => import('../views/InsistAchievements.vue'), meta: { requiresAuth: true } },
+  { path: '/insist/settings', name: 'InsistSettings', component: () => import('../views/InsistSettings.vue'), meta: { requiresAuth: true } },
   // 旧入口：/dao/space 现在直接进入 INSIST
   { path: '/dao/space', redirect: '/insist' },
   // 新空间入口（预留）：后续独立应用挂到 /dao 下时，删掉这两个占位路由即可
