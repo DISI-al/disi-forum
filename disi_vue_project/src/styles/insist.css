@@ -216,6 +216,34 @@
   .insist-grid { grid-template-columns: 1fr; }
 }
 
+/* 手机端：导航保持一行，链接太多时横向滑动而不是换行 */
+@media (max-width: 640px) {
+  .insist-nav {
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+    padding: 0.95rem 0;
+  }
+  .insist-mark { flex-shrink: 0; }
+  .insist-brand { margin-right: 0.1rem; flex-shrink: 0; }
+  .insist-links {
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .insist-links::-webkit-scrollbar { display: none; }
+  .insist-links a {
+    white-space: nowrap;
+    font-size: 0.74rem;
+    flex-shrink: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .insist-bar.full { animation: none; }
   .sk-card { transition: none; }

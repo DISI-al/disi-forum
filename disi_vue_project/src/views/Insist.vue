@@ -438,8 +438,9 @@ onMounted(load)
 
 @media (max-width: 820px) {
   .hero-row { grid-template-columns: 1fr; }
-  .habit { flex-wrap: wrap; }
+  .habit { flex-wrap: wrap; row-gap: 0.35rem; }
   .habit-sub { width: 100%; }
+  .habit .insist-btn { margin-left: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
   .marquee-track { animation: none; }
