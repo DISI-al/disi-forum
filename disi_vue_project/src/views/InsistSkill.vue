@@ -58,7 +58,7 @@ async function promote() {
   notice.value = ''
   try {
     const res = await apiPromote(route.params.id)
-    notice.value = `已晋升到「${res.skill.levelName}」，溢出转入 ${res.transferred} XP`
+    notice.value = `已晋升到「${res.skill.levelName}」，溢出转入 ${res.transferred} XP` + (res.awards?.length ? ` · 获得成就「${res.awards.join('、')}」` : '')
     await load()
   } catch (e) {
     error.value = e.message || '晋升失败'

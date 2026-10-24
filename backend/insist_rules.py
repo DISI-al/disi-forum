@@ -22,6 +22,7 @@ DEFAULT_CONFIG = {
     ],
     "reviewDays": {"1": 180, "2": 120, "3": 60, "4": 30},
     "streakBonus": {"7": 20, "30": 80, "100": 300},
+    "reasons": ["网课观看", "看书", "实践练习", "独立项目", "分享 / 教学", "其他"],
 }
 
 LEVELS = ['初识', '入门', '熟练', '精通', '专家']
@@ -51,6 +52,8 @@ def merge_config(custom: dict | None) -> dict:
             continue
         if isinstance(cfg[key], dict) and isinstance(value, dict):
             cfg[key].update(value)
+        elif key == "reasons" and isinstance(value, list):
+            cfg[key] = [str(x) for x in value if str(x).strip()][:30]
         elif isinstance(cfg[key], list) and isinstance(value, list) and len(value) == len(cfg[key]):
             cfg[key] = value
         elif not isinstance(cfg[key], (dict, list)):

@@ -84,7 +84,7 @@ async function checkin() {
   busy.value = true
   try {
     const res = await apiCheckin(card.value.id)
-    notice.value = `打卡成功 +${res.xp} XP` + (res.streak > 1 ? ` · 连续 ${res.streak} 天` : '')
+    notice.value = `打卡成功 +${res.xp} XP` + (res.streak > 1 ? ` · 连续 ${res.streak} 天` : '') + (res.awards?.length ? ` · 获得成就「${res.awards.join('、')}」` : '')
     await load()
   } catch (e) {
     error.value = e.message || '打卡失败'
@@ -98,7 +98,7 @@ async function complete() {
   busy.value = true
   try {
     const res = await apiCompleteCard(card.value.id)
-    notice.value = `已结算 +${card.value.xpValue} XP`
+    notice.value = `已结算 +${card.value.xpValue} XP` + (res.awards?.length ? ` · 获得成就「${res.awards.join('、')}」` : '')
     await load()
   } catch (e) {
     error.value = e.message || '结算失败'

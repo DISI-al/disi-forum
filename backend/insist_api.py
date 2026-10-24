@@ -94,6 +94,20 @@ def _user_config(db: Session, user: User) -> dict:
     return merge_config(row.config if row else None)
 
 
+def _award(db: Session, user: User, title: str, tier: int, detail: str = ""):
+    """自动发放成就卡（同名只发一次），返回标题或 None"""
+    exists = db.query(InsistCard).filter(
+        InsistCard.user_id == user.id, InsistCard.kind == "achievement", InsistCard.title == title
+    ).first()
+    if exists:
+        return None
+    db.add(InsistCard(
+        user_id=user.id, kind="achievement", title=title, tier=tier, detail=detail,
+        status="done", progress=100, done_at=datetime.now(timezone.utc),
+    ))
+    return title
+
+
 def _event(db: Session, user: User, skill_id: str, xp: float, source: str, note: str, card_id=None):
     db.add(InsistXpEvent(
         user_id=user.id, skill_id=skill_id, card_id=card_id,
@@ -257,8 +271,9 @@ def checkin(card_id: str, current_user: User = Depends(require_user), db: Sessio
     if card.last_checkin == today:
         raise HTTPException(status_code=400, detail="今天已经打过卡了")
 
-    base = DAILY_XP.get(card.tier, 1.5)
-    multiplier = day_decay(card.total_days or 0)
+    cfg = _user_config(db, current_user)
+    base = daily_xp(card.tier, cfg)
+    multiplier = day_decay(card.total_days or 0, cfg)
     gained = round(base * multiplier, 3)
 
     if card.last_checkin and (today - card.last_checkin).days == 1:
@@ -271,6 +286,18 @@ def checkin(card_id: str, current_user: User = Depends(require_user), db: Sessio
     bonus = streak_bonus(card.streak, cfg)
     total = round(gained + bonus, 3)
 
+    awards = []
+    streak_tier = {7: 2, 30: 3, 100: 4}.get(card.streak)
+    if streak_tier:
+        got = _award(db, current_user, f"连续 {card.streak} 天", streak_tier, f"{card.title} 连续打卡 {card.streak} 天")
+        if got:
+            awards.append(got)
+    total_tier = {30: 2, 100: 3, 150: 3, 200: 4}.get(card.total_days)
+    if total_tier:
+        got = _award(db, current_user, f"累计 {card.total_days} 天", total_tier, f"{card.title} 累计打卡 {card.total_days} 天")
+        if got:
+            awards.append(got)
+
     log = InsistHabitLog(
         card_id=card.id, user_id=current_user.id, day=today,
         base_xp=base, multiplier=multiplier, xp=total,
@@ -281,9 +308,9 @@ def checkin(card_id: str, current_user: User = Depends(require_user), db: Sessio
     skill_payload_out = None
     if card.skill_id:
         skill = _skill_or_404(db, current_user, card.skill_id)
-        applied = apply_xp(skill, total)
+        applied = apply_xp(skill, total, cfg)
         _event(db, current_user, skill.id, total, "habit", f"打卡《{card.title}》", card.id)
-        skill_payload_out = skill_payload(skill, db)
+        skill_payload_out = skill_payload(skill, db, cfg)
 
     db.commit()
     db.refresh(card)
@@ -297,6 +324,7 @@ def checkin(card_id: str, current_user: User = Depends(require_user), db: Sessio
         "applied": applied,
         "card": card_payload(card),
         "skill": skill_payload_out,
+        "awards": awards,
     }
 
 
@@ -316,14 +344,26 @@ def complete_card(card_id: str, current_user: User = Depends(require_user), db: 
     applied = {"progress": 0.0, "overflow": 0.0, "saturated": False}
     skill_out = None
     if card.skill_id and card.xp_value:
+        cfg = _user_config(db, current_user)
         skill = _skill_or_404(db, current_user, card.skill_id)
-        applied = apply_xp(skill, card.xp_value)
+        applied = apply_xp(skill, card.xp_value, cfg)
         _event(db, current_user, skill.id, card.xp_value, card.kind, f"完成《{card.title}》", card.id)
-        skill_out = skill_payload(skill, db)
+        skill_out = skill_payload(skill, db, cfg)
+
+    db.flush()
+    done_count = db.query(InsistCard).filter(
+        InsistCard.user_id == current_user.id, InsistCard.status == "done", InsistCard.kind != "achievement"
+    ).count()
+    awards = []
+    if done_count in (10, 30, 100):
+        tier = 4 if done_count >= 100 else (3 if done_count >= 30 else 2)
+        got = _award(db, current_user, f"完成 {done_count} 张经验卡", tier, f"累计完成 {done_count} 张经验卡")
+        if got:
+            awards.append(got)
 
     db.commit()
     db.refresh(card)
-    return {"applied": applied, "card": card_payload(card), "skill": skill_out}
+    return {"applied": applied, "card": card_payload(card), "skill": skill_out, "awards": awards}
 
 
 # ====================== 晋升 ======================
@@ -375,7 +415,7 @@ def promote(skill_id: str, current_user: User = Depends(require_user), db: Sessi
     _event(db, current_user, skill.id, transferred, "promotion", f"晋升到{LEVELS[skill.level]}，转入溢出 {transferred}")
     db.commit()
     db.refresh(skill)
-    return {"skill": skill_payload(skill, db, cfg), "transferred": transferred}
+    return {"skill": skill_payload(skill, db, cfg), "transferred": transferred, "awards": [promoted_award] if promoted_award else []}
 
 
 # ====================== 统计 ======================

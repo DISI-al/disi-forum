@@ -22,8 +22,6 @@ const exportMsg = ref('')
 
 const levelNames = ['入门', '熟练', '精通', '专家']
 
-const reasons = ['网课观看', '看书', '实践练习', '独立项目', '分享 / 教学', '其他']
-
 async function load() {
   loading.value = true
   error.value = ''
@@ -212,10 +210,14 @@ onMounted(load)
 
         <!-- 原因模板 -->
         <section class="insist-block">
-          <div class="insist-block-head"><h2>XP 原因模板</h2><span class="insist-block-sub">P4 可增删改</span></div>
-          <div class="chips">
-            <span v-for="r in reasons" :key="r" class="chip">{{ r }}</span>
+          <div class="insist-block-head"><h2>XP 原因模板</h2><span class="insist-block-sub">记录 XP 时可选的原因</span></div>
+          <div class="reason-list">
+            <div v-for="(r, i) in config.reasons" :key="i" class="reason-row">
+              <input v-model="config.reasons[i]" type="text" maxlength="20" class="num wide" />
+              <button class="insist-btn" type="button" @click="config.reasons.splice(i, 1)">删除</button>
+            </div>
           </div>
+          <button class="insist-btn" type="button" @click="config.reasons.push('')">＋ 添加原因</button>
         </section>
 
         <div class="actions">
@@ -296,4 +298,7 @@ onMounted(load)
 .notice { margin-top: 0.6rem; font-size: 0.72rem; color: #8a8a8a; }
 .notice.inline { margin-top: 0; margin-left: 0.2rem; }
 @media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
+.reason-list { display: flex; flex-direction: column; gap: 0.45rem; margin-top: 0.6rem; }
+.reason-row { display: flex; align-items: center; gap: 0.5rem; }
+.num.wide { width: 200px; }
 </style>

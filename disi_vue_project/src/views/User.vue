@@ -450,7 +450,7 @@ onMounted(async () => {
 /* 只在触屏 / 窄屏上出现的静态小字 */
 .talent-word.legend { display: none; }
 
-/* 触屏 / 窄屏：不依赖悬停，改成 TALENT ↔ INSIST 循环呼吸 */
+/* 触屏 / 窄屏：不渲染 TALENT，只留 INSIST 并轻微呼吸 */
 @media (max-width: 600px), (hover: none) {
   .talent-door {
     height: auto;
@@ -463,26 +463,18 @@ onMounted(async () => {
   }
   .glitch { display: none; }
   .talent-word { position: static; inset: auto; }
-  .talent-word.legend {
-    display: block;
-    font-size: 26px;
-    animation: legend-breathe 5.2s ease-in-out infinite;
-  }
+  .talent-word.legend { display: none; }
   .talent-word.bottom {
-    font-size: 26px;
-    opacity: 0.28;
+    font-size: 28px;
+    opacity: 1;
     transform: none;
-    animation: insist-breathe 5.2s ease-in-out infinite;
+    animation: insist-glow 4.6s ease-in-out infinite;
   }
 }
 
-@keyframes legend-breathe {
-  0%, 40%, 100% { opacity: 1; }
-  52%, 88% { opacity: 0.28; }
-}
-@keyframes insist-breathe {
-  0%, 40%, 100% { opacity: 0.28; }
-  52%, 88% { opacity: 1; }
+@keyframes insist-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 @media (max-width: 640px) {
   .user-card {

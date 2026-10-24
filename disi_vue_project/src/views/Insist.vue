@@ -76,7 +76,7 @@ async function checkIn(card) {
   notice.value = ''
   try {
     const res = await apiCheckin(card.id)
-    notice.value = `打卡成功 +${res.xp} XP` + (res.streak > 1 ? ` · 连续 ${res.streak} 天` : '')
+    notice.value = `打卡成功 +${res.xp} XP` + (res.streak > 1 ? ` · 连续 ${res.streak} 天` : '') + (res.awards?.length ? ` · 获得成就「${res.awards.join('、')}」` : '')
     await load()
   } catch (e) {
     notice.value = e.message || '打卡失败'
