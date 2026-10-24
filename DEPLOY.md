@@ -1,164 +1,115 @@
-# DISI 技术论坛 — Linux 服务器部署指南
+# DISI 技术论坛 — 部署与更新
 
-## 项目结构
+## 目录结构
 
 ```
-final_demo/
-├── disi_vue_project/dist/   # 前端打包文件（部署到 nginx）
+disi_forum/
 ├── backend/                  # FastAPI 后端
-│   ├── main.py               # API 主程序
-│   ├── models.py             # 数据库模型
-│   ├── database.py           # 数据库连接
+│   ├── main.py               # API 主程序（接口 + 静态挂载）
+│   ├── models.py             # SQLAlchemy 模型
+│   ├── database.py           # 数据库连接 / 建表 / 默认管理员
 │   ├── auth.py               # JWT 认证
-│   ├── schemas.py            # 请求/响应模型
-│   ├── requirements.txt      # Python 依赖
-│   └── uploads/              # 上传文件目录
-├── database/
-│   ├── init_postgres.sql     # PostgreSQL 初始化脚本
-│   └── init_mysql.sql        # MySQL 初始化脚本
-└── nginx.conf                # Nginx 配置
+│   ├── schemas.py            # 请求 / 响应模型
+│   ├── requirements.txt
+│   └── uploads/              # 上传文件（运行时生成）
+├── disi_vue_project/         # Vue 3 前端
+│   ├── src/
+│   └── dist/                 # 构建产物（部署到 nginx）
+├── deploy_oneclick.sh        # 首次部署（Ubuntu / Debian 等，SQLite）
+├── update.sh                 # 日常更新（拉代码 → 构建 → 重启）
+├── nginx.conf                # nginx 站点配置模板
+└── 运维手册.md               # 故障排查记录
 ```
 
-## 一、环境要求
+## 一、服务器上的目录约定
 
-- Linux 服务器（Ubuntu 20.04+ / Debian / CentOS 7+）
-- Python 3.10+
-- Nginx
-- SQLite（默认，无需安装）或 PostgreSQL / MySQL
+| 用途 | 路径 |
+|---|---|
+| git 源码目录 | `/opt/disi-forum-src` |
+| 后端运行目录 | `/opt/disi-forum`（含 `venv/`、`backend/`、`backend/disi_forum.db`） |
+| 前端静态目录 | `/var/www/disi-forum` |
+| systemd 服务 | `disi-forum.service` |
+| 后端监听 | `127.0.0.1:8000`（仅本机，由 nginx 反代） |
 
----
-
-## 二、部署后端
-
-### 1. 安装 Python 依赖
+## 二、首次部署
 
 ```bash
-# 把 backend 目录上传到服务器的 /opt/disi-forum/backend/
-cd /opt/disi-forum/backend
-
-# 创建虚拟环境
-python3 -m venv venv
-source venv/bin/activate
-
-# 安装依赖
-pip install -r requirements.txt
+git clone https://github.com/DISI-al/disi-forum.git /opt/disi-forum-src
+cd /opt/disi-forum-src
+sudo bash deploy_oneclick.sh
 ```
 
-### 2. 配置环境变量（可选）
+脚本会：装系统依赖 → 建 venv 并装后端依赖 → 构建前端 → 写 nginx 配置 → 写 systemd 服务 → 放行防火墙 → 自检。
+管理员账号 `disi` 的初始口令**由脚本随机生成并在最后打印出来**（只写进 systemd 的 `ADMIN_INIT_PASSWORD`，仅首次建库生效）。
+
+> 旧的 `deploy.sh`（CentOS + MySQL + Cloudflare）已废弃，执行会直接退出。
+
+## 三、日常更新（最常用）
+
+服务器上已有部署后，改完代码提交推送，然后在服务器执行：
 
 ```bash
-# 默认使用 SQLite，无需额外配置
-# 如果要用 PostgreSQL，设置：
-export DATABASE_URL="postgresql://user:password@localhost/disi_forum"
-export JWT_SECRET_KEY="your-random-secret-key"
+cd /opt/disi-forum-src
+sudo bash update.sh
 ```
 
-### 3. 启动后端
+`update.sh` 会依次做 7 步，任一步失败就停下并打印原因：
+
+1. `git fetch` + `git pull --ff-only`（本地有未提交改动会失败，不会强拉）；
+2. `rsync` 同步 `backend/`，**保留** `disi_forum.db`、`uploads/`、`venv/`；
+3. 重装后端依赖；
+4. `npm ci`（有 lockfile 时）+ `npm run build`，并校验 `dist/index.html` 存在；
+5. 发布静态文件，上一版备份到 `/var/www/disi-forum.bak`；
+6. 重启 `disi-forum`，`nginx -t` 通过后才 reload；
+7. 健康检查：后端 `/docs`、首页 `/` 各打一次。
+
+可用环境变量覆盖路径：`SRC_DIR` `DEPLOY_DIR` `WWW_DIR` `SERVICE` `PORT` `BRANCH` `NGINX_USER`。
+
+### 回滚前端
 
 ```bash
-# 开发/测试（前台运行）
-uvicorn main:app --host 0.0.0.0 --port 8000
-
-# 生产环境（后台运行，使用 systemd）
+sudo rm -rf /var/www/disi-forum
+sudo mv /var/www/disi-forum.bak /var/www/disi-forum
+sudo systemctl reload nginx
 ```
 
-### 4. 配置 systemd 服务（推荐）
-
-创建 `/etc/systemd/system/disi-forum.service`：
-
-```ini
-[Unit]
-Description=DISI Forum Backend
-After=network.target
-
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=/opt/disi-forum/backend
-Environment="DATABASE_URL=sqlite:////opt/disi-forum/backend/disi_forum.db"
-Environment="JWT_SECRET_KEY=your-random-secret-key"
-ExecStart=/opt/disi-forum/backend/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
+### 回滚后端
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now disi-forum
-sudo systemctl status disi-forum
+cd /opt/disi-forum-src
+git reset --hard <上一个提交>
+sudo bash update.sh
 ```
 
----
+## 四、缓存策略（发版后看不到新页面时看这里）
 
-## 三、部署前端
+- `/index.html`：`expires -1` → `Cache-Control: no-cache`，每次都回源；
+- `/assets/*`：带 hash 的 JS/CSS，30 天 immutable；
+- 因此正常刷新即可拿到新版本；个别浏览器强缓存时用 `Ctrl+F5`。
 
-### 1. 上传前端文件
+`nginx.conf` 模板和 `deploy_oneclick.sh` 生成的配置里都包含这条规则。
+
+## 五、环境变量（systemd 里已设置）
+
+| 变量 | 默认 | 说明 |
+|---|---|---|
+| `DATABASE_URL` | `sqlite:///./disi_forum.db` | SQLite 路径或 PostgreSQL/MySQL 连接串 |
+| `JWT_SECRET_KEY` | 随机生成 | 首次部署由脚本写进 systemd unit，**不要改成固定值** |
+| `ADMIN_INIT_PASSWORD` | 首次部署脚本随机生成 | 仅当数据库里还没有 `disi` 用户时生效；已有库不受影响 |
+
+修改方式：
 
 ```bash
-# 把 disi_vue_project/dist/ 下的所有文件复制到 nginx 目录
-sudo mkdir -p /var/www/disi-forum
-sudo cp -r dist/* /var/www/disi-forum/
-sudo chown -R www-data:www-data /var/www/disi-forum
+sudo systemctl edit disi-forum      # 覆盖 Environment=...
+sudo systemctl restart disi-forum
 ```
 
-### 2. 配置 Nginx
+## 六、常见问题
 
-```bash
-# 复制配置文件
-sudo cp nginx.conf /etc/nginx/sites-available/disi-forum
-
-# 启用站点
-sudo ln -s /etc/nginx/sites-available/disi-forum /etc/nginx/sites-enabled/
-
-# 测试配置
-sudo nginx -t
-
-# 重载 nginx
-sudo nginx -s reload
-```
-
----
-
-## 四、数据库初始化（可选）
-
-默认使用 SQLite，后端启动时会自动建表和创建管理员账号，**无需手动操作**。
-
-如果使用 PostgreSQL 或 MySQL，先执行对应的初始化脚本：
-
-```bash
-# PostgreSQL
-sudo -u postgres psql -f database/init_postgres.sql
-
-# MySQL
-mysql -u root -p < database/init_mysql.sql
-```
-
----
-
-## 五、验证部署
-
-1. 打开浏览器访问 `http://服务器IP`
-2. 输入密码 `disi0001` 登录
-3. 可以发帖、评论、点赞、收藏
-
----
-
-## 六、默认管理员
-
-| 字段 | 值 |
-|------|-----|
-| 用户名 | admin |
-| 密码 | disi0001 |
-| 角色 | admin |
-
----
-
-## 七、注意事项
-
-1. **JWT_SECRET_KEY** 生产环境务必修改为随机字符串
-2. **上传文件** 保存在 backend/uploads/ 目录，确保有写入权限
-3. **防火墙** 确保 80 端口对外开放，8000 端口仅本机访问
-4. **HTTPS** 生产环境建议配置 SSL 证书（Let's Encrypt）
+| 现象 | 处理 |
+|---|---|
+| 页面还是旧的 | 确认 nginx 里有 `location = /index.html { expires -1; }`，`sudo nginx -t && sudo systemctl reload nginx` |
+| 登录后立刻掉线 | 后端重启会换 JWT，重新登录即可（单端登录设计） |
+| 上传失败 | 检查 `backend/uploads` 属主为 `disi`，`client_max_body_size` 为 500M |
+| 后端起不来 | `journalctl -u disi-forum -n 50 --no-pager` |
+| 前端构建失败 | 看 `update.sh` 输出；Node 建议 20+ |

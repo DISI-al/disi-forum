@@ -37,6 +37,9 @@ def init_db():
     from models import User  # 延迟导入避免循环引用
     Base.metadata.create_all(bind=engine)
 
+    # 首次建库时的管理员口令，可用环境变量覆盖（部署脚本会生成随机值）
+    init_password = os.getenv("ADMIN_INIT_PASSWORD", "disi0001")
+
     db = SessionLocal()
     try:
         # 给缺少 login_version 的旧用户补上默认值
@@ -56,7 +59,7 @@ def init_db():
                 admin = User(
                     id="u-admin",
                     username="disi",
-                    hashed_password=User.hash_password("disi0001"),
+                    hashed_password=User.hash_password(init_password),
                     role="admin"
                 )
                 db.add(admin)

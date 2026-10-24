@@ -37,6 +37,7 @@ WWW_DIR="/var/www/disi-forum"         # 前端静态文件目录
 APP_USER="disi"                       # 运行后端的系统用户
 BACKEND_PORT="8000"                   # 后端监听端口（仅本机）
 JWT_KEY="$(openssl rand -hex 32)"     # 随机 JWT 密钥
+ADMIN_PASS="$(openssl rand -hex 6)"   # 首次建库的管理员口令（仅首次生效）
 
 # 数据库：默认 SQLite（零配置）
 # 如需 MySQL，取消下面注释并填写（同时需装 mariadb-server）
@@ -183,6 +184,11 @@ server {
         try_files \$uri \$uri/ /index.html;
     }
 
+    # 入口文件禁用缓存，发版后浏览器立即拿到新的 index.html
+    location = /index.html {
+        expires -1;
+    }
+
     location /api/ {
         proxy_pass http://127.0.0.1:${BACKEND_PORT};
         proxy_set_header Host \$host;
@@ -244,6 +250,7 @@ Group=${APP_USER}
 WorkingDirectory=${DEPLOY_DIR}/backend
 Environment="DATABASE_URL=${DATABASE_URL}"
 Environment="JWT_SECRET_KEY=${JWT_KEY}"
+Environment="ADMIN_INIT_PASSWORD=${ADMIN_PASS}"
 ExecStart=${DEPLOY_DIR}/venv/bin/uvicorn main:app --host 127.0.0.1 --port ${BACKEND_PORT} --workers 2
 Restart=always
 RestartSec=5
@@ -308,7 +315,7 @@ echo "  ║            部 署 完 成                    ║"
 echo "  ╠══════════════════════════════════════════╣"
 echo "  ║  访问:   http://${IP}"
 echo "  ║  账号:   disi"
-echo "  ║  密码:   disi0001"
+echo "  ║  密码:   ${ADMIN_PASS}  （随机生成，仅首次建库生效）"
 echo "  ║  数据库: SQLite (${DEPLOY_DIR}/backend/disi_forum.db)"
 echo "  ║  日志:   journalctl -u disi-forum -f"
 echo "  ╚══════════════════════════════════════════╝"
