@@ -1,0 +1,54 @@
+/** INSIST 接口封装 */
+const BASE = '/api/insist'
+
+async function request(path, options = {}) {
+  const token = localStorage.getItem('disi_token')
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const res = await fetch(`${BASE}${path}`, { ...options, headers })
+  const text = await res.text()
+  let data = null
+  try { data = text ? JSON.parse(text) : null } catch { data = null }
+  if (!res.ok) {
+    throw new Error((data && (data.detail || data.message)) || `请求失败（${res.status}）`)
+  }
+  return data
+}
+
+const qs = (params = {}) => {
+  const s = new URLSearchParams()
+  Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') s.set(k, v) })
+  const str = s.toString()
+  return str ? `?${str}` : ''
+}
+
+// 技能
+export const apiSkills = () => request('/skills')
+export const apiSkill = (id) => request(`/skills/${id}`)
+export const apiCreateSkill = (data) => request('/skills', { method: 'POST', body: JSON.stringify(data) })
+export const apiPatchSkill = (id, data) => request(`/skills/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+export const apiDeleteSkill = (id) => request(`/skills/${id}`, { method: 'DELETE' })
+
+// 卡片
+export const apiCards = (params) => request(`/cards${qs(params)}`)
+export const apiCard = (id) => request(`/cards/${id}`)
+export const apiCreateCard = (data) => request('/cards', { method: 'POST', body: JSON.stringify(data) })
+export const apiPatchCard = (id, data) => request(`/cards/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+export const apiDeleteCard = (id) => request(`/cards/${id}`, { method: 'DELETE' })
+
+// 打卡 / 结算
+export const apiCheckin = (id) => request(`/cards/${id}/checkin`, { method: 'POST' })
+export const apiCompleteCard = (id) => request(`/cards/${id}/complete`, { method: 'POST' })
+
+// 晋升
+export const apiPromotion = (id) => request(`/skills/${id}/promotion`)
+export const apiPromote = (id) => request(`/skills/${id}/promote`, { method: 'POST' })
+
+// 统计
+export const apiStats = (days = 14) => request(`/stats/checkins?days=${days}`)
+export const apiOverview = () => request('/overview')
+
+// AI 审核（预留）
+export const apiAiReview = (skillId, targetLevel, note = '') =>
+  request('/ai/review', { method: 'POST', body: JSON.stringify({ skill_id: skillId, target_level: targetLevel, note }) })

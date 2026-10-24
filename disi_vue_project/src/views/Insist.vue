@@ -1,39 +1,39 @@
 <script setup>
 /**
- * INSIST · 主页（P1 静态版）
- * 成就滑墙 → 近期目标（主位）+ 14 天小折线 → 爆满提醒 → 今日打卡 → 进行中
+ * INSIST · 主页（接后端）
  */
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import InsistNav from '../components/InsistNav.vue'
-import {
-  skills, habits, cards, achievements, dailyXp,
-  progressOf, forgetClass, tierOf, stars,
-} from '../insist/mock.js'
+import { apiOverview, apiSkills, apiCards, apiCheckin } from '../api/insist_api.js'
+import { levelName, tierName, stars, forgetClass, kindLabel } from '../insist/constants.js'
 
-/* 近期目标：固定 C++ */
-const focus = computed(() => skills.find((s) => s.id === 'cpp') || skills[0])
-const focusPct = computed(() => progressOf(focus.value))
+const loading = ref(true)
+const error = ref('')
+const overview = ref({ skillCount: 0, totalXp: 0, saturatedCount: 0, dailyXp: [], todayCheckins: 0 })
+const skills = ref([])
+const cards = ref([])
+const busyId = ref('')
+const notice = ref('')
 
-/* 爆满的技能 */
-const saturated = computed(() => skills.filter((s) => s.overflow > 0 && s.xp >= 700))
+const focus = computed(() => skills.value[0] || null)
+const habits = computed(() => cards.value.filter((c) => c.kind === 'habit' && c.status === 'active'))
+const activeCards = computed(() => cards.value.filter((c) => c.status === 'active' && c.kind !== 'habit').slice(0, 3))
+const achievements = computed(() => cards.value.filter((c) => c.kind === 'achievement' && c.status === 'done'))
 
-/* 今日打卡 */
-const habitsState = ref(habits.map((h) => ({ ...h })))
-const doneToday = computed(() => habitsState.value.filter((h) => h.done).length)
+const dailyXp = computed(() => overview.value.dailyXp || [])
+const weekXp = computed(() => dailyXp.value.slice(-7).reduce((a, b) => a + b, 0))
+const checkDays = computed(() => dailyXp.value.slice(-7).filter((v) => v > 0).length)
+const streakDays = computed(() => {
+  let n = 0
+  for (let i = dailyXp.value.length - 1; i >= 0; i--) {
+    if (dailyXp.value[i] > 0) n++
+    else break
+  }
+  return n
+})
 
-function checkIn(habit) {
-  if (habit.done) return
-  habit.done = true
-  habit.streak += 1
-  habit.total += 1
-}
-
-/* 进行中的卡片（最多 3 张） */
-const activeCards = computed(() => cards.filter((c) => c.status === 'active').slice(0, 3))
-
-/* 14 天折线 */
 const chart = computed(() => {
-  const values = dailyXp
+  const values = dailyXp.value.length ? dailyXp.value : new Array(14).fill(0)
   const max = Math.max(...values, 1)
   const w = 220
   const h = 44
@@ -42,20 +42,46 @@ const chart = computed(() => {
   return { points: 'M' + points.join(' L'), w, h }
 })
 
-const weekXp = computed(() => dailyXp.slice(-7).reduce((a, b) => a + b, 0))
-const checkDays = computed(() => dailyXp.slice(-7).filter((v) => v > 0).length)
+const saturated = computed(() => skills.value.filter((s) => s.saturated))
 
-/* 连续天数：从今天往回数，连续有记录的天数 */
-const streakDays = computed(() => {
-  let n = 0
-  for (let i = dailyXp.length - 1; i >= 0; i--) {
-    if (dailyXp[i] > 0) n++
-    else break
+function isToday(card) {
+  if (!card.lastCheckin) return false
+  const d = new Date(card.lastCheckin)
+  const now = new Date()
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+}
+
+async function load() {
+  loading.value = true
+  error.value = ''
+  try {
+    const [ov, sk, cs] = await Promise.all([apiOverview(), apiSkills(), apiCards()])
+    overview.value = ov
+    skills.value = sk
+    cards.value = cs
+  } catch (e) {
+    error.value = e.message || '加载失败'
+  } finally {
+    loading.value = false
   }
-  return n
-})
+}
 
-const skillName = (id) => skills.find((s) => s.id === id)?.name || id
+async function checkIn(card) {
+  if (busyId.value || isToday(card)) return
+  busyId.value = card.id
+  notice.value = ''
+  try {
+    const res = await apiCheckin(card.id)
+    notice.value = `打卡成功 +${res.xp} XP` + (res.streak > 1 ? ` · 连续 ${res.streak} 天` : '')
+    await load()
+  } catch (e) {
+    notice.value = e.message || '打卡失败'
+  } finally {
+    busyId.value = ''
+  }
+}
+
+onMounted(load)
 </script>
 
 <template>
@@ -63,131 +89,148 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
     <InsistNav active="home" />
 
     <main class="insist-main">
-      <!-- 成就滑墙（固定在顶部，持续滚动） -->
-      <section class="marquee-wrap" aria-label="成就墙">
-        <div class="marquee-track">
-          <router-link
-            v-for="(a, i) in [...achievements, ...achievements]"
-            :key="a.id + '-' + i"
-            class="mq-ach"
-            :class="'tier-' + a.tier"
-            :to="'/insist/achievement/' + a.id"
-          >
-            <span class="mq-star">✦</span>{{ a.name }}
-          </router-link>
-        </div>
-      </section>
+      <p v-if="error" class="state err">{{ error }}</p>
+      <p v-else-if="loading" class="state">加载中…</p>
 
-      <!-- 近期目标（主位） + 14 天小折线 -->
-      <section class="hero-row">
-        <router-link class="focus" :to="'/insist/skill/' + focus.id">
-          <div class="focus-head">
-            <span class="focus-label">近期目标</span>
-            <span class="focus-meta">{{ focus.daysAgo }} 天前记录</span>
+      <template v-else>
+        <!-- 成就滑墙 -->
+        <section v-if="achievements.length" class="marquee-wrap" aria-label="成就墙">
+          <div class="marquee-track">
+            <router-link
+              v-for="(a, i) in [...achievements, ...achievements]"
+              :key="a.id + '-' + i"
+              class="mq-ach"
+              :class="'tier-' + a.tier"
+              :to="'/insist/card/' + a.id"
+            >
+              <span class="mq-star">✦</span>{{ a.title }}
+            </router-link>
           </div>
+        </section>
 
-          <div class="focus-body">
-            <span class="focus-name">{{ focus.name }}</span>
-            <span class="focus-stars">{{ stars(focus.importance) }}</span>
-            <span class="focus-tier">{{ tierOf(focus) }}</span>
-          </div>
+        <p v-if="notice" class="notice">{{ notice }}</p>
 
-          <div class="insist-bar big" :class="{ full: focus.overflow > 0 }">
-            <i :style="{ width: focusPct + '%' }"></i>
-          </div>
-
-          <div class="focus-foot">
-            <span class="mono">{{ focus.xp }} / 700</span>
-            <span>本周 +{{ weekXp }} · 连续 {{ streakDays }} 天</span>
-          </div>
-
-          <div class="focus-tags">
-            <span class="tag">遗忘 <b :class="forgetClass(focus.forget)">{{ focus.forget }}%</b></span>
-            <span class="tag">记录 {{ focus.records }} 条</span>
-            <span class="tag">难度 {{ tierOf(focus) }}</span>
-          </div>
-        </router-link>
-
-        <router-link class="mini" to="/insist/stats">
-          <div class="mini-head">
-            <span>最近 14 天</span>
-            <span class="mini-unit">每日 XP</span>
-          </div>
-          <svg class="mini-chart" :viewBox="`0 0 ${chart.w} ${chart.h}`" preserveAspectRatio="none" aria-hidden="true">
-            <path :d="chart.points" />
-          </svg>
-          <div class="mini-axis"><span>14 天前</span><span>今天</span></div>
-          <div class="mini-stats">
-            <div class="ms"><b class="mono">+{{ weekXp }}</b><span>本周</span></div>
-            <div class="ms"><b class="mono">{{ checkDays }}/7</b><span>打卡</span></div>
-            <div class="ms"><b class="mono">{{ streakDays }}</b><span>连续</span></div>
-          </div>
-        </router-link>
-      </section>
-
-      <!-- 爆满提醒 -->
-      <section v-if="saturated.length" class="alert">
-        <span class="alert-mark">⚠</span>
-        <div class="alert-body">
-          <strong>{{ saturated[0].name }}</strong> 已爆满 · 溢出 +{{ saturated[0].overflow }}
-          <span class="alert-sub">继续打卡只进溢出池（×0.10 起），尽快凑齐晋升凭证</span>
-        </div>
-        <router-link class="alert-btn" :to="'/insist/skill/' + saturated[0].id">查看</router-link>
-      </section>
-
-      <!-- 今日打卡 -->
-      <section class="insist-block">
-        <div class="insist-block-head">
-          <h2>今日打卡</h2>
-          <span class="insist-block-sub">{{ doneToday }} / {{ habitsState.length }} 已完成</span>
-        </div>
-
-        <ul class="habit-list">
-          <li v-for="h in habitsState" :key="h.id" class="habit" :class="{ done: h.done }">
-            <div class="habit-main">
-              <span class="habit-name">{{ h.name }}</span>
-              <span class="habit-tier">{{ ['低阶', '中阶', '高阶', '臻阶'][h.tier - 1] }}</span>
-              <span v-if="h.capped" class="habit-cap">已封顶</span>
+        <!-- 近期目标 + 14 天折线 -->
+        <section class="hero-row">
+          <router-link v-if="focus" class="focus" :to="'/insist/skill/' + focus.id">
+            <div class="focus-head">
+              <span class="focus-label">近期目标</span>
+              <span class="focus-meta">{{ focus.daysAgo }} 天前记录</span>
             </div>
-            <div class="habit-sub">
-              <span>连续 {{ h.streak }} 天 · 累计 {{ h.total }} 天</span>
-              <span class="habit-xp">今日 +{{ h.today.toFixed(1) }}</span>
+            <div class="focus-body">
+              <span class="focus-name">{{ focus.name }}</span>
+              <span class="focus-stars">{{ stars(focus.importance) }}</span>
+              <span class="focus-tier">{{ tierName(focus.tier) }}</span>
             </div>
-            <button class="insist-btn" :class="{ 'done-btn': h.done }" type="button" :disabled="h.done" @click="checkIn(h)">
-              {{ h.done ? '已打卡' : '打卡' }}
-            </button>
-          </li>
-        </ul>
-      </section>
-
-      <!-- 进行中 -->
-      <section class="insist-block">
-        <div class="insist-block-head">
-          <h2>进行中</h2>
-          <router-link to="/insist/cards" class="insist-more">{{ activeCards.length }} 张 · 全部 →</router-link>
-        </div>
-
-        <div class="insist-grid">
-          <router-link v-for="c in activeCards" :key="c.id" class="x-card" :class="c.kind" :to="'/insist/card/' + c.id">
-            <header class="x-card-top">
-              <span>{{ c.kind === 'project' ? '项目' : '任务' }}</span>
-              <span>{{ ['低阶', '中阶', '高阶', '臻阶'][c.tier - 1] }}</span>
-            </header>
-            <h3 class="x-card-name">{{ c.name }}</h3>
-            <p class="x-card-sub">{{ skillName(c.skillId) }}<template v-if="c.phase"> · 阶段 {{ c.phase }}</template></p>
-            <div class="insist-bar small"><i :style="{ width: c.progress + '%' }"></i></div>
-            <div class="x-card-foot">
-              <span class="mono">{{ c.progress }}%</span>
-              <span>完成 +{{ c.xp }}</span>
+            <div class="insist-bar big" :class="{ full: focus.saturated }">
+              <i :style="{ width: focus.progress + '%' }"></i>
+            </div>
+            <div class="focus-foot">
+              <span class="mono">{{ focus.xp }} / {{ focus.saturated ? focus.xp : focus.xp + focus.nextNeed }}</span>
+              <span>本周 +{{ weekXp }} · 连续 {{ streakDays }} 天</span>
+            </div>
+            <div class="focus-tags">
+              <span class="tag">遗忘 <b :class="forgetClass(focus.forget)">{{ focus.forget }}%</b></span>
+              <span class="tag">记录 {{ focus.records }} 条</span>
+              <span class="tag">{{ levelName(focus.level) }}</span>
             </div>
           </router-link>
-        </div>
-      </section>
+
+          <router-link v-else class="focus" to="/insist/collection">
+            <div class="focus-head"><span class="focus-label">近期目标</span></div>
+            <div class="focus-name">还没有技能</div>
+            <div class="focus-foot"><span>去收藏室新建一个 →</span></div>
+          </router-link>
+
+          <router-link class="mini" to="/insist/stats">
+            <div class="mini-head"><span>最近 14 天</span><span class="mini-unit">每日 XP</span></div>
+            <svg class="mini-chart" :viewBox="`0 0 ${chart.w} ${chart.h}`" preserveAspectRatio="none" aria-hidden="true">
+              <path :d="chart.points" />
+            </svg>
+            <div class="mini-axis"><span>14 天前</span><span>今天</span></div>
+            <div class="mini-stats">
+              <div class="ms"><b class="mono">+{{ weekXp }}</b><span>本周</span></div>
+              <div class="ms"><b class="mono">{{ checkDays }}/7</b><span>打卡</span></div>
+              <div class="ms"><b class="mono">{{ streakDays }}</b><span>连续</span></div>
+            </div>
+          </router-link>
+        </section>
+
+        <!-- 爆满提醒 -->
+        <section v-if="saturated.length" class="alert">
+          <span class="alert-mark">⚠</span>
+          <div class="alert-body">
+            <strong>{{ saturated[0].name }}</strong> 已爆满<template v-if="saturated[0].overflow > 0"> · 溢出 +{{ saturated[0].overflow }}</template>
+            <span class="alert-sub">继续记录只进溢出池（×0.10 起），尽快凑齐晋升凭证</span>
+          </div>
+          <router-link class="alert-btn" :to="'/insist/skill/' + saturated[0].id">查看</router-link>
+        </section>
+
+        <!-- 今日打卡 -->
+        <section class="insist-block">
+          <div class="insist-block-head">
+            <h2>今日打卡</h2>
+            <span class="insist-block-sub">{{ overview.todayCheckins }} / {{ habits.length }} 已完成</span>
+          </div>
+
+          <p v-if="habits.length === 0" class="state small">还没有打卡卡，去卡片页新建一个。</p>
+
+          <ul v-else class="habit-list">
+            <li v-for="h in habits" :key="h.id" class="habit" :class="{ done: isToday(h) }">
+              <router-link class="habit-main" :to="'/insist/card/' + h.id">
+                <span class="habit-name">{{ h.title }}</span>
+                <span class="habit-tier">{{ tierName(h.tier) }}</span>
+              </router-link>
+              <div class="habit-sub">
+                <span>连续 {{ h.streak }} 天 · 累计 {{ h.totalDays }} 天</span>
+              </div>
+              <button
+                class="insist-btn"
+                type="button"
+                :disabled="isToday(h) || busyId === h.id"
+                @click="checkIn(h)"
+              >{{ isToday(h) ? '已打卡' : '打卡' }}</button>
+            </li>
+          </ul>
+        </section>
+
+        <!-- 进行中 -->
+        <section class="insist-block">
+          <div class="insist-block-head">
+            <h2>进行中</h2>
+            <router-link to="/insist/cards" class="insist-more">{{ activeCards.length }} 张 · 全部 →</router-link>
+          </div>
+
+          <p v-if="activeCards.length === 0" class="state small">没有进行中的卡片</p>
+
+          <div v-else class="insist-grid">
+            <router-link v-for="c in activeCards" :key="c.id" class="x-card" :class="c.kind" :to="'/insist/card/' + c.id">
+              <header class="x-card-top">
+                <span>{{ kindLabel(c.kind) }}</span>
+                <span>{{ tierName(c.tier) }}</span>
+              </header>
+              <h3 class="x-card-name">{{ c.title }}</h3>
+              <p class="x-card-sub">{{ c.phase ? '阶段 ' + c.phase : '' }}</p>
+              <div class="insist-bar small"><i :style="{ width: c.progress + '%' }"></i></div>
+              <div class="x-card-foot">
+                <span class="mono">{{ c.progress }}%</span>
+                <span>完成 +{{ c.xpValue }}</span>
+              </div>
+            </router-link>
+          </div>
+        </section>
+      </template>
     </main>
   </div>
 </template>
 
 <style scoped>
+.state { color: #8a8a8a; font-size: 0.82rem; padding: 1.5rem 0; }
+.state.err { color: #f85149; }
+.state.small { padding: 1rem 0; }
+
+.notice { margin-top: 0.8rem; font-size: 0.76rem; color: #b9b9b9; }
+
 /* 成就滑墙 */
 .marquee-wrap {
   margin-top: 1.2rem;
@@ -226,14 +269,8 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 .mq-ach.tier-4 { color: #ededed; }
 .mq-ach.tier-4 .mq-star { color: #ededed; }
 
-/* 主位：近期目标 + 小折线 */
-.hero-row {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 1rem;
-  margin-top: 1.3rem;
-  align-items: stretch;
-}
+/* 主位 */
+.hero-row { display: grid; grid-template-columns: 1fr 280px; gap: 1rem; margin-top: 1.3rem; align-items: stretch; }
 
 .focus {
   display: block;
@@ -245,9 +282,6 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
   border: 1px solid #2c2c2c;
   border-radius: 10px;
   background: #060606;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
 }
 .focus:hover { transform: translateY(-2px); border-color: #4a4a4a; }
 .focus-head { display: flex; justify-content: space-between; align-items: baseline; }
@@ -261,21 +295,9 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 .insist-bar.big { height: 8px; border-radius: 4px; margin-top: 0.9rem; }
 .insist-bar.big > i { border-radius: 4px; }
 
-.focus-foot {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 0.55rem;
-  font-size: 0.72rem;
-  color: #7a7a7a;
-}
+.focus-foot { display: flex; justify-content: space-between; margin-top: 0.55rem; font-size: 0.72rem; color: #7a7a7a; }
 .focus-tags { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
-.tag {
-  font-size: 0.64rem;
-  color: #7a7a7a;
-  border: 1px solid #1e1e1e;
-  border-radius: 3px;
-  padding: 0.1rem 0.35rem;
-}
+.tag { font-size: 0.64rem; color: #7a7a7a; border: 1px solid #1e1e1e; border-radius: 3px; padding: 0.1rem 0.35rem; }
 .tag b { font-weight: 500; color: #b9b9b9; }
 .tag b.warn { color: #d29922; }
 .tag b.danger { color: #f85149; }
@@ -291,20 +313,13 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
   border: 1px solid #1c1c1c;
   border-radius: 10px;
   background: #050505;
-  display: flex;
-  flex-direction: column;
 }
 .mini:hover { transform: translateY(-2px); border-color: #4a4a4a; }
 .mini-head { display: flex; justify-content: space-between; align-items: baseline; }
 .mini-head span:first-child { font-size: 0.68rem; letter-spacing: 0.14em; color: #8a8a8a; }
 .mini-unit { font-size: 0.6rem; color: #4a4a4a; }
 .mini-chart { width: 100%; height: 52px; margin-top: 0.45rem; }
-.mini-chart path {
-  fill: none;
-  stroke: #7a7a7a;
-  stroke-width: 1.3;
-  vector-effect: non-scaling-stroke;
-}
+.mini-chart path { fill: none; stroke: #7a7a7a; stroke-width: 1.3; vector-effect: non-scaling-stroke; }
 .mini-axis { display: flex; justify-content: space-between; font-size: 0.56rem; color: #3f3f3f; margin-top: 0.15rem; }
 .mini-stats { display: flex; justify-content: space-between; margin-top: auto; padding-top: 0.6rem; }
 .ms { display: flex; flex-direction: column; gap: 0.05rem; }
@@ -339,25 +354,16 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 
 /* 打卡 */
 .habit-list { list-style: none; margin-top: 0.4rem; }
-.habit {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  padding: 0.7rem 0.1rem;
-  border-bottom: 1px solid #101010;
-}
+.habit { display: flex; align-items: center; gap: 0.9rem; padding: 0.7rem 0.1rem; border-bottom: 1px solid #101010; }
 .habit.done { opacity: 0.55; }
-.habit-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.5rem; }
+.habit-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.5rem; color: inherit; text-decoration: none; }
+.habit-main:hover .habit-name { color: #fff; }
 .habit-name { font-size: 0.88rem; }
 .habit-tier { font-size: 0.62rem; color: #5f5f5f; border: 1px solid #1e1e1e; border-radius: 3px; padding: 0.02rem 0.28rem; }
-.habit-cap { font-size: 0.62rem; color: #b98a00; border: 1px solid rgba(185, 138, 0, 0.4); border-radius: 3px; padding: 0.02rem 0.28rem; }
 .habit-sub { display: flex; gap: 0.8rem; font-size: 0.64rem; color: #5f5f5f; }
-.habit-xp { color: #8a8a8a; }
-.done-btn { opacity: 0.5; }
 
 @media (max-width: 820px) {
   .hero-row { grid-template-columns: 1fr; }
-  .mini { order: 2; }
   .habit { flex-wrap: wrap; }
   .habit-sub { width: 100%; }
 }

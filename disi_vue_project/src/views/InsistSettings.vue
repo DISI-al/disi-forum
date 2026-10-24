@@ -4,7 +4,7 @@
  * 图例说明 + 段位阈值 + 打卡数值 + 复习间隔 + 原因模板
  */
 import InsistNav from '../components/InsistNav.vue'
-import { LEVELS, TIERS, IMPORTANCE } from '../insist/mock.js'
+import { LEVELS, TIERS, IMPORTANCE } from '../insist/constants.js'
 
 const thresholds = [
   { level: '初识', min: 0 },

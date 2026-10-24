@@ -1,11 +1,16 @@
 <script setup>
 /**
- * INSIST · 卡片库（P1 静态版）
- * 进行中 / 已完成 / 已归档 三个 tab
+ * INSIST · 卡片库（接后端）
  */
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import InsistNav from '../components/InsistNav.vue'
-import { cards, skills, TIERS } from '../insist/mock.js'
+import { apiCards, apiSkills, apiCreateCard, apiCompleteCard } from '../api/insist_api.js'
+import { TIERS, kindLabel, tierName } from '../insist/constants.js'
+
+const loading = ref(true)
+const error = ref('')
+const cards = ref([])
+const skills = ref([])
 
 const tab = ref('active')
 const tabs = [
@@ -14,10 +19,76 @@ const tabs = [
   { key: 'archived', label: '已归档' },
 ]
 
-const list = computed(() => cards.filter((c) => c.status === tab.value))
-const countOf = (key) => cards.filter((c) => c.status === key).length
-const kindLabel = (c) => (c.kind === 'project' ? '项目' : c.kind === 'habit' ? '打卡' : '任务')
-const skillName = (id) => skills.find((s) => s.id === id)?.name || id
+const showAdd = ref(false)
+const saving = ref(false)
+const busyId = ref('')
+const draft = ref({ kind: 'task', title: '', tier: 2, skillId: '', xpValue: 100, cycleDays: 30, dailyTarget: '' })
+
+const list = computed(() => cards.value.filter((c) => c.status === tab.value))
+const countOf = (key) => cards.value.filter((c) => c.status === key).length
+const skillName = (id) => skills.value.find((s) => s.id === id)?.name || ''
+
+async function load() {
+  loading.value = true
+  error.value = ''
+  try {
+    const [cs, sk] = await Promise.all([apiCards(), apiSkills()])
+    cards.value = cs
+    skills.value = sk
+  } catch (e) {
+    error.value = e.message || '加载失败'
+  } finally {
+    loading.value = false
+  }
+}
+
+function openAdd() {
+  draft.value = {
+    kind: 'task', title: '', tier: 2,
+    skillId: skills.value[0]?.id || '',
+    xpValue: 100, cycleDays: 30, dailyTarget: '',
+  }
+  error.value = ''
+  showAdd.value = true
+}
+
+async function submitAdd() {
+  const title = draft.value.title.trim()
+  if (!title || saving.value) return
+  saving.value = true
+  try {
+    await apiCreateCard({
+      kind: draft.value.kind,
+      title,
+      tier: Number(draft.value.tier),
+      skill_id: draft.value.skillId || null,
+      xp_value: draft.value.kind === 'habit' ? 0 : Number(draft.value.xpValue) || 0,
+      cycle_days: draft.value.kind === 'habit' ? Number(draft.value.cycleDays) || 30 : null,
+      daily_target: draft.value.kind === 'habit' ? draft.value.dailyTarget : null,
+    })
+    showAdd.value = false
+    await load()
+  } catch (e) {
+    error.value = e.message || '创建失败'
+  } finally {
+    saving.value = false
+  }
+}
+
+async function complete(card) {
+  if (busyId.value) return
+  busyId.value = card.id
+  try {
+    await apiCompleteCard(card.id)
+    await load()
+  } catch (e) {
+    error.value = e.message || '结算失败'
+  } finally {
+    busyId.value = ''
+  }
+}
+
+onMounted(load)
 </script>
 
 <template>
@@ -25,98 +96,120 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
     <InsistNav active="cards" />
 
     <main class="insist-main">
-      <nav class="insist-crumb">
-        <router-link to="/insist">← 主页</router-link>
-      </nav>
+      <nav class="insist-crumb"><router-link to="/insist">← 主页</router-link></nav>
 
       <section class="head">
         <div class="tabs">
           <button
-            v-for="t in tabs"
-            :key="t.key"
-            type="button"
-            class="tab"
-            :class="{ on: tab === t.key }"
-            @click="tab = t.key"
+            v-for="t in tabs" :key="t.key" type="button" class="tab"
+            :class="{ on: tab === t.key }" @click="tab = t.key"
           >{{ t.label }} <span class="num">{{ countOf(t.key) }}</span></button>
         </div>
-        <button class="insist-btn primary" type="button" disabled>＋ 新建卡片（待接后端）</button>
+        <button class="insist-btn primary" type="button" @click="openAdd">＋ 新建卡片</button>
       </section>
 
-      <p v-if="list.length === 0" class="insist-empty">这里还没有卡片</p>
+      <p v-if="error" class="state err">{{ error }}</p>
+      <p v-else-if="loading" class="state">加载中…</p>
+      <p v-else-if="list.length === 0" class="insist-empty">这里还没有卡片</p>
 
       <ul v-else class="card-list">
         <li v-for="c in list" :key="c.id">
-        <router-link class="row" :class="c.kind" :to="'/insist/card/' + c.id">
-          <span class="kind">{{ kindLabel(c) }}</span>
-          <div class="main">
-            <div class="title">{{ c.name }}</div>
-            <div class="sub">{{ skillName(c.skillId) }} · {{ TIERS[c.tier - 1] }}<template v-if="c.phase"> · 阶段 {{ c.phase }}</template></div>
-          </div>
+          <router-link class="row" :class="c.kind" :to="'/insist/card/' + c.id">
+            <span class="kind">{{ kindLabel(c.kind) }}</span>
+            <div class="main">
+              <div class="title">{{ c.title }}</div>
+              <div class="sub">{{ skillName(c.skillId) || '未关联技能' }} · {{ tierName(c.tier) }}<template v-if="c.phase"> · 阶段 {{ c.phase }}</template></div>
+            </div>
 
-          <div class="prog">
-            <div class="insist-bar small"><i :style="{ width: c.progress + '%' }"></i></div>
-            <span class="mono">{{ c.progress }}%</span>
-          </div>
+            <div class="prog">
+              <div class="insist-bar small"><i :style="{ width: c.progress + '%' }"></i></div>
+              <span class="mono">{{ c.progress }}%</span>
+            </div>
 
-          <span class="xp mono">+{{ c.xp }}</span>
-          <span class="chev">→</span>
-        </router-link>
-      </li>
+            <span class="xp mono">+{{ c.xpValue }}</span>
+
+            <button
+              v-if="c.status === 'active' && (c.kind === 'task' || c.kind === 'project')"
+              class="insist-btn"
+              type="button"
+              :disabled="busyId === c.id"
+              @click.prevent.stop="complete(c)"
+            >完成</button>
+            <span v-else class="chev">→</span>
+          </router-link>
+        </li>
       </ul>
 
-      <p class="hint">
-        打卡卡：每天结算，达到阈值可进化成任务卡。任务卡：完成一次性结算。项目卡：按阶段分批结算。
-      </p>
+      <p class="hint">打卡卡：每天结算，达到阈值可进化成任务卡。任务卡：完成一次性结算。项目卡：按阶段分批结算。</p>
+
+      <div v-if="showAdd" class="modal" @click.self="showAdd = false">
+        <form class="dialog" @submit.prevent="submitAdd">
+          <h3>新建卡片</h3>
+
+          <div class="field"><span>类型</span>
+            <div class="chips">
+              <button v-for="k in [['task','任务'],['project','项目'],['habit','打卡'],['achievement','成就']]" :key="k[0]"
+                type="button" :class="{ on: draft.kind === k[0] }" @click="draft.kind = k[0]">{{ k[1] }}</button>
+            </div>
+          </div>
+
+          <label class="field"><span>标题</span>
+            <input v-model="draft.title" type="text" maxlength="120" placeholder="比如 读完 Primer 第 3 章" autofocus />
+          </label>
+
+          <div class="field"><span>等级</span>
+            <div class="chips">
+              <button v-for="(t, i) in TIERS" :key="t" type="button" :class="{ on: draft.tier === i + 1 }" @click="draft.tier = i + 1">{{ t }}</button>
+            </div>
+          </div>
+
+          <label class="field"><span>关联技能</span>
+            <select v-model="draft.skillId">
+              <option value="">不关联</option>
+              <option v-for="s in skills" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </label>
+
+          <label v-if="draft.kind !== 'habit'" class="field"><span>完成奖励 XP</span>
+            <input v-model.number="draft.xpValue" type="number" min="0" step="10" />
+          </label>
+
+          <template v-if="draft.kind === 'habit'">
+            <label class="field"><span>每日目标</span>
+              <input v-model="draft.dailyTarget" type="text" maxlength="60" placeholder="比如 20 个单词 / 30 分钟" />
+            </label>
+            <label class="field"><span>周期（天）</span>
+              <input v-model.number="draft.cycleDays" type="number" min="1" step="1" />
+            </label>
+          </template>
+
+          <p v-if="error" class="dialog-err">{{ error }}</p>
+
+          <footer class="dialog-foot">
+            <button class="insist-btn" type="button" @click="showAdd = false">取消</button>
+            <button class="insist-btn primary" type="submit" :disabled="saving">{{ saving ? '创建中…' : '创建' }}</button>
+          </footer>
+        </form>
+      </div>
     </main>
   </div>
 </template>
 
 <style scoped>
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 1.4rem;
-  padding-bottom: 0.7rem;
-  border-bottom: 1px solid #141414;
-  flex-wrap: wrap;
-}
+.state { color: #8a8a8a; font-size: 0.82rem; padding: 1rem 0; }
+.state.err { color: #f85149; }
+
+.head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.2rem; padding-bottom: 0.7rem; border-bottom: 1px solid #141414; flex-wrap: wrap; }
 .tabs { display: flex; gap: 0.4rem; }
-.tab {
-  background: transparent;
-  border: 1px solid transparent;
-  color: #7a7a7a;
-  font-size: 0.78rem;
-  padding: 0.3rem 0.6rem;
-  border-radius: 4px;
-  cursor: pointer;
-}
+.tab { background: transparent; border: 1px solid transparent; color: #7a7a7a; font-size: 0.78rem; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; }
 .tab:hover { color: #ededed; }
 .tab.on { color: #ededed; border-color: #2a2a2a; background: #0a0a0a; }
 .tab .num { color: #5f5f5f; font-size: 0.66rem; }
 
 .card-list { list-style: none; margin-top: 0.4rem; }
-.row {
-  display: flex;
-  align-items: center;
-  color: inherit;
-  text-decoration: none;
-  gap: 1rem;
-  padding: 0.75rem 0.1rem;
-  border-bottom: 1px solid #101010;
-}
-.kind {
-  flex-shrink: 0;
-  font-size: 0.62rem;
-  color: #8a8a8a;
-  border: 1px solid #242424;
-  border-radius: 3px;
-  padding: 0.08rem 0.3rem;
-  width: 2.4rem;
-  text-align: center;
-}
+.row { display: flex; align-items: center; gap: 1rem; color: inherit; text-decoration: none; padding: 0.75rem 0.1rem; border-bottom: 1px solid #101010; }
+.row:hover { background: #060606; }
+.kind { flex-shrink: 0; font-size: 0.62rem; color: #8a8a8a; border: 1px solid #242424; border-radius: 3px; padding: 0.08rem 0.3rem; width: 2.4rem; text-align: center; }
 .row.project .kind { border-color: #444; color: #cfcfcf; }
 .main { flex: 1; min-width: 0; }
 .title { font-size: 0.86rem; }
@@ -126,12 +219,20 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 .prog .mono { font-size: 0.64rem; color: #6a6a6a; width: 2.6rem; text-align: right; }
 .xp { font-size: 0.7rem; color: #8a8a8a; width: 3.2rem; text-align: right; }
 .chev { color: #4a4a4a; font-size: 0.8rem; }
-.row:hover { background: #060606; }
-.row:hover .chev { color: #b9b9b9; }
 .hint { margin-top: 1.4rem; font-size: 0.68rem; color: #5f5f5f; line-height: 1.7; }
 
-@media (max-width: 720px) {
-  .row { flex-wrap: wrap; }
-  .prog { width: 100%; }
-}
+.modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.72); display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 50; }
+.dialog { width: min(460px, 100%); max-height: 86vh; overflow-y: auto; background: #070707; border: 1px solid #242424; border-radius: 10px; padding: 1.2rem 1.2rem 0.9rem; }
+.dialog h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; }
+.field { display: block; margin-bottom: 0.85rem; }
+.field > span { display: block; font-size: 0.7rem; color: #6a6a6a; letter-spacing: 0.08em; margin-bottom: 0.35rem; }
+.field input, .field select { width: 100%; background: #0c0c0c; border: 1px solid #222; border-radius: 4px; color: #ededed; font-size: 0.85rem; padding: 0.45rem 0.55rem; outline: none; }
+.field input:focus, .field select:focus { border-color: #444; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chips button { background: transparent; border: 1px solid #222; color: #8a8a8a; font-size: 0.75rem; padding: 0.28rem 0.6rem; border-radius: 4px; cursor: pointer; }
+.chips button.on { border-color: #6a6a6a; color: #ededed; background: #111; }
+.dialog-err { color: #f85149; font-size: 0.74rem; margin: 0.3rem 0 0; }
+.dialog-foot { display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.4rem; }
+
+@media (max-width: 720px) { .row { flex-wrap: wrap; } .prog { width: 100%; } }
 </style>
