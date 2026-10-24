@@ -19,13 +19,12 @@
 
           <!-- 右侧操作 -->
           <div class="nav-actions">
-            <router-link to="/add" class="btn btn-add-post">&#x270F;&#xFE0F; 发帖</router-link>
-            <button
+            <router-link
               v-if="currentUser.isAdmin"
-              type="button"
+              to="/users"
               class="btn btn-manage-users"
-              @click="showUserManager = true"
-            >&#x1F465; 用户</button>
+            >&#x1F465; 用户</router-link>
+            <router-link to="/add" class="btn btn-add-post">&#x270F;&#xFE0F; 发帖</router-link>
             <a href="#" class="btn btn-logout" @click.prevent="handleLogout">退出登录</a>
             <router-link to="/user" class="avatar-link">
               <div class="avatar">
@@ -146,13 +145,6 @@
       </main>
     </div>
 
-    <!-- 用户管理（仅管理员） -->
-    <UserManager
-      v-if="showUserManager"
-      @close="showUserManager = false"
-      @renamed="handleSelfRenamed"
-    />
-
     <!-- 图片灯箱 -->
     <div class="lightbox" v-if="lightboxUrl" @click="closeLightbox">
       <img :src="lightboxUrl" class="lightbox-img" @click.stop />
@@ -168,7 +160,6 @@ import {
   apiAddComment, apiDeleteComment, apiGetCurrentUser, apiLogout
 } from '../api/index_api.js'
 import { makePreview } from '../utils/markdown.js'
-import UserManager from '../components/UserManager.vue'
 
 const router = useRouter()
 const posts = ref([])
@@ -179,13 +170,6 @@ const lightboxUrl = ref('')
 const loading = ref(true)
 const errorMsg = ref('')
 const currentUser = ref({ id: '', name: '', role: 'user', isAdmin: false, avatarUrl: '' })
-const showUserManager = ref(false)
-
-/** 管理员在弹窗里改了自己的昵称，同步顶部显示与本地缓存 */
-function handleSelfRenamed(name) {
-  currentUser.value.name = name
-  localStorage.setItem('disi_user_name', name)
-}
 
 const openLightbox = (url) => { lightboxUrl.value = url }
 const closeLightbox = () => { lightboxUrl.value = '' }
@@ -424,6 +408,8 @@ onMounted(() => {
 .btn-add-post:hover { background: #2ea043; color: #fff; }
 
 .btn-manage-users {
+  display: inline-flex;
+  align-items: center;
   background: var(--gh-bg-tertiary);
   color: var(--gh-text-primary);
   border: 1px solid var(--gh-border);
@@ -431,6 +417,7 @@ onMounted(() => {
   padding: 0.4rem 0.9rem;
   font-size: 0.875rem;
   font-weight: 500;
+  text-decoration: none;
   cursor: pointer;
   white-space: nowrap;
 }
