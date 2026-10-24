@@ -18,6 +18,11 @@ class CreateUserRequest(BaseModel):
     role: str = "user"  # "admin" 或 "user"
 
 
+class UpdateUserRequest(BaseModel):
+    """修改昵称（登录仍是只认口令，昵称只用于展示）"""
+    name: str = Field(..., min_length=1, max_length=50)
+
+
 class UserInfo(BaseModel):
     id: str
     name: str

@@ -18,7 +18,25 @@
         </div>
 
         <div class="user-meta">
-          <div class="user-name">{{ user.name || '未登录' }}</div>
+          <div class="user-name">
+            <template v-if="editingName">
+              <input
+                v-model="nameDraft"
+                class="name-input"
+                type="text"
+                maxlength="50"
+                @keydown.enter.prevent="saveName"
+                @keydown.esc="cancelName"
+              />
+              <button class="name-btn" type="button" :disabled="savingName" @click="saveName">保存</button>
+              <button class="name-btn ghost" type="button" @click="cancelName">取消</button>
+            </template>
+            <template v-else>
+              <span>{{ user.name || '未登录' }}</span>
+              <button class="name-edit" type="button" title="修改昵称" aria-label="修改昵称" @click="startName">✎</button>
+            </template>
+          </div>
+          <p v-if="nameError" class="name-error">{{ nameError }}</p>
           <div class="user-badges">
             <span class="badge" :class="user.isAdmin ? 'badge-admin' : 'badge-user'">
               {{ user.isAdmin ? '管理员' : '成员' }}
@@ -94,7 +112,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { apiGetCurrentUser, apiGetPosts, apiDeletePost, apiUploadAvatar, apiGetLikesCount } from '../api/index_api.js'
+import { apiGetCurrentUser, apiGetPosts, apiDeletePost, apiUploadAvatar, apiGetLikesCount, apiUpdateUserName } from '../api/index_api.js'
 import { makePreview } from '../utils/markdown.js'
 
 const router = useRouter()
@@ -102,6 +120,44 @@ const user = ref({ id: '', name: '', role: 'user', isAdmin: false, avatarUrl: ''
 const userPosts = ref([])
 const totalLikes = ref(0)
 const avatarInput = ref(null)
+
+/* ---------- 修改自己的昵称 ---------- */
+const editingName = ref(false)
+const nameDraft = ref('')
+const savingName = ref(false)
+const nameError = ref('')
+
+function startName() {
+  if (!user.value.id) return
+  nameDraft.value = user.value.name
+  nameError.value = ''
+  editingName.value = true
+}
+
+function cancelName() {
+  editingName.value = false
+  nameError.value = ''
+}
+
+async function saveName() {
+  const value = nameDraft.value.trim()
+  if (!value || value === user.value.name || savingName.value) {
+    if (!value) nameError.value = '昵称不能为空'
+    return
+  }
+  savingName.value = true
+  nameError.value = ''
+  try {
+    const updated = await apiUpdateUserName(user.value.id, value)
+    user.value.name = updated.name
+    localStorage.setItem('disi_user_name', updated.name)
+    editingName.value = false
+  } catch (e) {
+    nameError.value = e.message || '修改失败'
+  } finally {
+    savingName.value = false
+  }
+}
 
 const triggerAvatar = () => { avatarInput.value?.click() }
 
@@ -232,7 +288,66 @@ onMounted(async () => {
 }
 
 .user-meta { flex: 1; min-width: 0; }
-.user-name { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.3rem; }
+.user-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.name-edit {
+  background: transparent;
+  border: 1px solid var(--gh-border, #30363d);
+  border-radius: 6px;
+  color: var(--gh-text-secondary, #8b949e);
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0.28rem 0.42rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.name-edit:hover { color: var(--gh-text-primary, #e6edf3); border-color: #6e7681; }
+
+.name-input {
+  width: 12em;
+  max-width: 100%;
+  background: var(--gh-bg-primary, #0d1117);
+  border: 1px solid var(--gh-border, #30363d);
+  border-radius: 6px;
+  color: var(--gh-text-primary, #e6edf3);
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.3rem 0.55rem;
+  outline: none;
+}
+.name-input:focus { border-color: var(--gh-text-link, #58a6ff); }
+
+.name-btn {
+  background: #238636;
+  border: 1px solid #238636;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.78rem;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+.name-btn:hover:not(:disabled) { background: #2ea043; border-color: #2ea043; }
+.name-btn:disabled { opacity: 0.5; cursor: default; }
+.name-btn.ghost {
+  background: transparent;
+  border-color: var(--gh-border, #30363d);
+  color: var(--gh-text-secondary, #8b949e);
+}
+.name-btn.ghost:hover { color: var(--gh-text-primary, #e6edf3); border-color: #6e7681; }
+
+.name-error {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  color: #f85149;
+}
 .user-badges { margin-bottom: 0.75rem; }
 
 /* ===== 入口：TALENT 故障切片 → 红色 INSIST =====

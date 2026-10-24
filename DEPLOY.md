@@ -40,7 +40,7 @@ sudo bash deploy_oneclick.sh
 ```
 
 脚本会：装系统依赖 → 建 venv 并装后端依赖 → 构建前端 → 写 nginx 配置 → 写 systemd 服务 → 放行防火墙 → 自检。
-管理员账号 `disi` 的初始口令**由脚本随机生成并在最后打印出来**（只写进 systemd 的 `ADMIN_INIT_PASSWORD`，仅首次建库生效）。
+管理员账号 `DISI` 的初始口令**由脚本随机生成并在最后打印出来**（只写进 systemd 的 `ADMIN_INIT_PASSWORD`，仅首次建库生效）。
 
 > 旧的 `deploy.sh`（CentOS + MySQL + Cloudflare）已废弃，执行会直接退出。
 
@@ -95,7 +95,7 @@ sudo bash update.sh
 |---|---|---|
 | `DATABASE_URL` | `sqlite:///./disi_forum.db` | SQLite 路径或 PostgreSQL/MySQL 连接串 |
 | `JWT_SECRET_KEY` | 随机生成 | 首次部署由脚本写进 systemd unit，**不要改成固定值** |
-| `ADMIN_INIT_PASSWORD` | 首次部署脚本随机生成 | 仅当数据库里还没有 `disi` 用户时生效；已有库不受影响 |
+| `ADMIN_INIT_PASSWORD` | 首次部署脚本随机生成 | 仅当数据库里还没有 `DISI` 用户时生效；已有库不受影响 |
 
 修改方式：
 

@@ -47,18 +47,19 @@ def init_db():
             u.login_version = "1"
         db.commit()
 
-        # 确保默认管理员存在
-        admin = db.query(User).filter(User.username == "disi").first()
+        # 确保默认管理员存在（昵称 DISI）
+        admin = db.query(User).filter(User.username == "DISI").first()
         if not admin:
-            # 兼容旧数据：检查是否有名为 admin 的用户，有则改名
-            old_admin = db.query(User).filter(User.username == "admin").first()
-            if old_admin:
-                old_admin.username = "disi"
+            # 兼容旧数据：disi / admin 一律改名为 DISI
+            legacy = db.query(User).filter(User.username.in_(["disi", "admin"])).first()
+            if legacy:
+                legacy.username = "DISI"
+                legacy.role = "admin"
                 db.commit()
             else:
                 admin = User(
                     id="u-admin",
-                    username="disi",
+                    username="DISI",
                     hashed_password=User.hash_password(init_password),
                     role="admin"
                 )

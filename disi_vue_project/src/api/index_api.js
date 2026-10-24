@@ -28,6 +28,25 @@ export const apiLogin = (password) => {
 
 export const apiGetCurrentUser = () => request('/user/me')
 
+// ====================== 用户管理（管理员） ======================
+export const apiListUsers = () => request('/users')
+
+export const apiCreateUser = (payload) => {
+  return request('/users', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export const apiUpdateUserName = (userId, name) => {
+  return request(`/users/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name })
+  })
+}
+
+export const apiDeleteUser = (userId) => request(`/users/${userId}`, { method: 'DELETE' })
+
 export const apiLogout = () => {
   localStorage.removeItem('disi_token')
   localStorage.removeItem('disi_role')
@@ -135,6 +154,10 @@ export async function publishPost(postData, files) {
 export default {
   login: apiLogin,
   getCurrentUser: apiGetCurrentUser,
+  listUsers: apiListUsers,
+  createUser: apiCreateUser,
+  updateUserName: apiUpdateUserName,
+  deleteUser: apiDeleteUser,
   logout: apiLogout,
   uploadAvatar: apiUploadAvatar,
   getLikesCount: apiGetLikesCount,

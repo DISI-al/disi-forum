@@ -22,7 +22,7 @@ from schemas import (
     PostResponse, PostAuthor, PostStats, PostMeta,
     CommentItem, MediaGroup,
     PostCreateRequest, PostUpdateRequest, PinRequest,
-    CommentCreateRequest, CreateUserRequest,
+    CommentCreateRequest, CreateUserRequest, UpdateUserRequest,
 )
 
 # ====================== 应用初始化 ======================
@@ -301,6 +301,38 @@ def delete_user(
     db.delete(user)
     db.commit()
     return {"message": f"用户 {user.username} 已删除"}
+
+
+@app.patch("/api/posts/users/{user_id}")
+def update_user(
+    user_id: str,
+    req: UpdateUserRequest,
+    current_user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    """
+    修改昵称：管理员可改任意用户，普通用户只能改自己。
+    登录只认口令，昵称仅用于展示，所以改昵称不影响登录。
+    """
+    if current_user.role != "admin" and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="只能修改自己的昵称")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    name = req.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="昵称不能为空")
+
+    exists = db.query(User).filter(User.username == name, User.id != user_id).first()
+    if exists:
+        raise HTTPException(status_code=400, detail="这个昵称已被占用")
+
+    user.username = name
+    db.commit()
+    db.refresh(user)
+    return build_user_response(user)
 
 
 # ====================== 当前用户接口 ======================
