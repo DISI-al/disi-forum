@@ -45,12 +45,26 @@ def _ensure_insist_columns():
         pass
 
 
+def _clean_insist_orphans():
+    """启动时清掉已删除用户留下的 INSIST 数据"""
+    from sqlalchemy import text
+    tables = ["insist_habit_logs", "insist_xp_events", "insist_cards", "insist_skills", "insist_settings"]
+    try:
+        with engine.connect() as conn:
+            for table in tables:
+                conn.execute(text(f"DELETE FROM {table} WHERE user_id NOT IN (SELECT id FROM users)"))
+            conn.commit()
+    except Exception:
+        pass
+
+
 def init_db():
     """初始化数据库：创建所有表，并插入默认管理员账号"""
     from models import User  # 延迟导入避免循环引用
     import insist_models  # noqa: F401  注册 INSIST 相关表
     Base.metadata.create_all(bind=engine)
     _ensure_insist_columns()
+    _clean_insist_orphans()
 
     # 首次建库时的管理员口令，可用环境变量覆盖（部署脚本会生成随机值）
     init_password = os.getenv("ADMIN_INIT_PASSWORD", "disi0001")

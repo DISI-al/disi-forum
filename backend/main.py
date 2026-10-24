@@ -300,6 +300,15 @@ def delete_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
+
+    # INSIST 数据没有 ORM 级联，删用户时显式清掉，避免孤儿数据
+    from insist_models import InsistCard, InsistHabitLog, InsistSetting, InsistSkill, InsistXpEvent
+    db.query(InsistHabitLog).filter(InsistHabitLog.user_id == user.id).delete(synchronize_session=False)
+    db.query(InsistXpEvent).filter(InsistXpEvent.user_id == user.id).delete(synchronize_session=False)
+    db.query(InsistCard).filter(InsistCard.user_id == user.id).delete(synchronize_session=False)
+    db.query(InsistSkill).filter(InsistSkill.user_id == user.id).delete(synchronize_session=False)
+    db.query(InsistSetting).filter(InsistSetting.user_id == user.id).delete(synchronize_session=False)
+
     db.delete(user)
     db.commit()
     return {"message": f"用户 {user.username} 已删除"}
