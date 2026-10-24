@@ -13,6 +13,10 @@ const gradeOf = (tier) => ['入门级', '熟练级', '精通级', '专家级'][t
     <InsistNav active="achievements" />
 
     <main class="insist-main">
+      <nav class="insist-crumb">
+        <router-link to="/insist">← 主页</router-link>
+      </nav>
+
       <section class="head">
         <div class="head-left">
           <h1>成就墙</h1>
@@ -26,14 +30,14 @@ const gradeOf = (tier) => ['入门级', '熟练级', '精通级', '专家级'][t
           <h2>已获得</h2>
         </div>
         <div class="ach-grid">
-          <article v-for="a in achievements" :key="a.id" class="ach" :class="'tier-' + a.tier">
+          <router-link v-for="a in achievements" :key="a.id" class="ach" :class="'tier-' + a.tier" :to="'/insist/achievement/' + a.id">
             <div class="ach-top">
               <span class="ach-star">✦</span>
               <span class="ach-grade">{{ gradeOf(a.tier) }}</span>
             </div>
             <h3 class="ach-name">{{ a.name }}</h3>
             <span class="ach-date mono">{{ a.date }}</span>
-          </article>
+          </router-link>
         </div>
       </section>
 
@@ -43,14 +47,14 @@ const gradeOf = (tier) => ['入门级', '熟练级', '精通级', '专家级'][t
           <span class="insist-block-sub">系统按规则发放</span>
         </div>
         <div class="ach-grid">
-          <article v-for="a in lockedAchievements" :key="a.id" class="ach locked">
+          <router-link v-for="a in lockedAchievements" :key="a.id" class="ach locked" :to="'/insist/achievement/' + a.id">
             <div class="ach-top">
               <span class="ach-star">✦</span>
               <span class="ach-grade">未解锁</span>
             </div>
             <h3 class="ach-name">{{ a.name }}</h3>
             <span class="ach-date">{{ a.hint }}</span>
-          </article>
+          </router-link>
         </div>
       </section>
     </main>
@@ -78,6 +82,10 @@ const gradeOf = (tier) => ['入门级', '熟练级', '精通级', '专家级'][t
   margin-top: 0.8rem;
 }
 .ach {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.15s ease, border-color 0.15s ease;
   padding: 0.85rem 0.9rem;
   border: 1px solid #242424;
   border-radius: 8px;
@@ -89,6 +97,7 @@ const gradeOf = (tier) => ['入门级', '熟练级', '精通级', '专家级'][t
   box-shadow: 0 0 22px rgba(255, 255, 255, 0.05);
 }
 .ach.locked { opacity: 0.45; border-style: dashed; }
+.ach:hover { transform: translateY(-2px); border-color: #5a5a5a; }
 .ach-top { display: flex; align-items: center; justify-content: space-between; font-size: 0.62rem; color: #6a6a6a; }
 .ach-star { font-size: 0.7rem; color: #6a6a6a; }
 .ach.tier-4 .ach-star { color: #ededed; }

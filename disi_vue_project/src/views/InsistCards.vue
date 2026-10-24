@@ -25,6 +25,10 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
     <InsistNav active="cards" />
 
     <main class="insist-main">
+      <nav class="insist-crumb">
+        <router-link to="/insist">← 主页</router-link>
+      </nav>
+
       <section class="head">
         <div class="tabs">
           <button
@@ -42,7 +46,8 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
       <p v-if="list.length === 0" class="insist-empty">这里还没有卡片</p>
 
       <ul v-else class="card-list">
-        <li v-for="c in list" :key="c.id" class="row" :class="c.kind">
+        <li v-for="c in list" :key="c.id">
+        <router-link class="row" :class="c.kind" :to="'/insist/card/' + c.id">
           <span class="kind">{{ kindLabel(c) }}</span>
           <div class="main">
             <div class="title">{{ c.name }}</div>
@@ -55,8 +60,9 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
           </div>
 
           <span class="xp mono">+{{ c.xp }}</span>
-          <button class="insist-btn" type="button" disabled>{{ c.status === 'active' ? '完成' : '查看' }}</button>
-        </li>
+          <span class="chev">→</span>
+        </router-link>
+      </li>
       </ul>
 
       <p class="hint">
@@ -117,6 +123,9 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 .prog .insist-bar { flex: 1; }
 .prog .mono { font-size: 0.64rem; color: #6a6a6a; width: 2.6rem; text-align: right; }
 .xp { font-size: 0.7rem; color: #8a8a8a; width: 3.2rem; text-align: right; }
+.chev { color: #4a4a4a; font-size: 0.8rem; }
+.row:hover { background: #060606; }
+.row:hover .chev { color: #b9b9b9; }
 .hint { margin-top: 1.4rem; font-size: 0.68rem; color: #5f5f5f; line-height: 1.7; }
 
 @media (max-width: 720px) {

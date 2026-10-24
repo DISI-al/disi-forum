@@ -50,6 +50,10 @@ const reasons = ['网课观看', '看书', '实践练习', '独立项目', '分�
     <InsistNav active="settings" />
 
     <main class="insist-main">
+      <nav class="insist-crumb">
+        <router-link to="/insist">← 主页</router-link>
+      </nav>
+
       <section class="head">
         <h1>设置</h1>
         <span class="sub">图例、阈值、模板（P1 只读，P4 可编辑）</span>

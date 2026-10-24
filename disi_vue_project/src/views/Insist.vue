@@ -66,14 +66,15 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
       <!-- 成就滑墙（固定在顶部，持续滚动） -->
       <section class="marquee-wrap" aria-label="成就墙">
         <div class="marquee-track">
-          <span
+          <router-link
             v-for="(a, i) in [...achievements, ...achievements]"
             :key="a.id + '-' + i"
             class="mq-ach"
             :class="'tier-' + a.tier"
+            :to="'/insist/achievement/' + a.id"
           >
             <span class="mq-star">✦</span>{{ a.name }}
-          </span>
+          </router-link>
         </div>
       </section>
 
@@ -167,7 +168,7 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
         </div>
 
         <div class="insist-grid">
-          <article v-for="c in activeCards" :key="c.id" class="x-card" :class="c.kind">
+          <router-link v-for="c in activeCards" :key="c.id" class="x-card" :class="c.kind" :to="'/insist/card/' + c.id">
             <header class="x-card-top">
               <span>{{ c.kind === 'project' ? '项目' : '任务' }}</span>
               <span>{{ ['低阶', '中阶', '高阶', '臻阶'][c.tier - 1] }}</span>
@@ -179,7 +180,7 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
               <span class="mono">{{ c.progress }}%</span>
               <span>完成 +{{ c.xp }}</span>
             </div>
-          </article>
+          </router-link>
         </div>
       </section>
     </main>
@@ -209,6 +210,8 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
   to { transform: translateX(-50%); }
 }
 .mq-ach {
+  text-decoration: none;
+  transition: transform 0.16s ease, color 0.16s ease;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -216,6 +219,7 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
   color: #8a8a8a;
   white-space: nowrap;
 }
+.mq-ach:hover { transform: scale(1.15); color: #fff; }
 .mq-star { color: #4a4a4a; font-size: 0.62rem; }
 .mq-ach.tier-3 { color: #b9b9b9; }
 .mq-ach.tier-3 .mq-star { color: #9a9a9a; }

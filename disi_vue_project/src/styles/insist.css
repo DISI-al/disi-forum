@@ -162,12 +162,18 @@
 
 /* ---------- 小卡片（经验卡） ---------- */
 .x-card {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
   padding: 0.8rem 0.9rem;
   border: 1px solid #1e1e1e;
   border-radius: 8px;
   background: #070707;
 }
 .x-card.project { border-color: #333; }
+.x-card:hover { transform: translateY(-2px); border-color: #4a4a4a; }
 .x-card-top { display: flex; justify-content: space-between; font-size: 0.62rem; color: #6a6a6a; letter-spacing: 0.1em; }
 .x-card-name { margin-top: 0.45rem; font-size: 0.92rem; font-weight: 600; }
 .x-card-sub { margin-top: 0.22rem; font-size: 0.66rem; color: #5f5f5f; }
@@ -214,3 +220,8 @@
   .insist-bar.full { animation: none; }
   .sk-card { transition: none; }
 }
+
+.insist-crumb { display: flex; gap: 0.45rem; align-items: center; margin-top: 1.2rem; font-size: 0.74rem; }
+.insist-crumb a { color: #7a7a7a; text-decoration: none; }
+.insist-crumb a:hover { color: #ededed; }
+.insist-crumb span { color: #3f3f3f; }

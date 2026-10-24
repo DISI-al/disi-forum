@@ -16,7 +16,9 @@ const routes = [
   { path: '/insist/collection', name: 'InsistCollection', component: () => import('../views/InsistCollection.vue'), meta: { requiresAuth: true } },
   { path: '/insist/skill/:id', name: 'InsistSkill', component: () => import('../views/InsistSkill.vue'), meta: { requiresAuth: true } },
   { path: '/insist/cards', name: 'InsistCards', component: () => import('../views/InsistCards.vue'), meta: { requiresAuth: true } },
+  { path: '/insist/card/:id', name: 'InsistCardDetail', component: () => import('../views/InsistCardDetail.vue'), meta: { requiresAuth: true } },
   { path: '/insist/achievements', name: 'InsistAchievements', component: () => import('../views/InsistAchievements.vue'), meta: { requiresAuth: true } },
+  { path: '/insist/achievement/:id', name: 'InsistAchievementDetail', component: () => import('../views/InsistAchievementDetail.vue'), meta: { requiresAuth: true } },
   { path: '/insist/settings', name: 'InsistSettings', component: () => import('../views/InsistSettings.vue'), meta: { requiresAuth: true } },
   // 旧入口：/dao/space 现在直接进入 INSIST
   { path: '/dao/space', redirect: '/insist' },

@@ -59,6 +59,10 @@ const fullCount = computed(() => skills.filter((s) => s.overflow > 0).length)
     <InsistNav active="collection" />
 
     <main class="insist-main">
+      <nav class="insist-crumb">
+        <router-link to="/insist">← 主页</router-link>
+      </nav>
+
       <!-- 概览 -->
       <section class="summary">
         <div class="stat"><span class="num mono">{{ skills.length }}</span><span class="label">技能</span></div>

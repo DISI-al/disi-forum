@@ -32,9 +32,9 @@ export const habits = [
 
 /* ---------- 经验卡 ---------- */
 export const cards = [
-  { id: 't1', kind: 'task', name: '读完《C++ Primer》第 3 章', skillId: 'cpp', tier: 2, progress: 60, xp: 100, status: 'active' },
-  { id: 't2', kind: 'task', name: '整理 Linux 常用命令笔记', skillId: 'linux', tier: 1, progress: 30, xp: 40, status: 'active' },
-  { id: 'p1', kind: 'project', name: '机房管理系统', skillId: 'cpp', tier: 3, progress: 30, xp: 250, status: 'active', phase: '2/4' },
+  { id: 't1', kind: 'task', name: '读完《C++ Primer》第 3 章', skillId: 'cpp', tier: 2, progress: 60, xp: 100, status: 'active', desc: '第 3 章：字符串、向量和数组，含课后 12 道练习。' },
+  { id: 't2', kind: 'task', name: '整理 Linux 常用命令笔记', skillId: 'linux', tier: 1, progress: 30, xp: 40, status: 'active', desc: '按文件 / 进程 / 网络分组整理，目标 60 条。' },
+  { id: 'p1', kind: 'project', name: '机房管理系统', skillId: 'cpp', tier: 3, progress: 30, xp: 250, status: 'active', phase: '2/4', desc: 'C++ 独立项目：机房预约、座位分配、上机记录导出。当前完成 2/4 阶段。' },
   { id: 'p2', kind: 'project', name: '个人博客重构', skillId: 'write', tier: 2, progress: 100, xp: 100, status: 'done' },
   { id: 't3', kind: 'task', name: '《算法导论》第 2 章', skillId: 'algo', tier: 3, progress: 100, xp: 250, status: 'done' },
   { id: 'h5', kind: 'habit', name: '日语 · 每天 15 分钟', skillId: 'jp', tier: 1, progress: 100, xp: 60, status: 'archived', streak: 0, total: 40 },
@@ -42,12 +42,12 @@ export const cards = [
 
 /* ---------- 成就 ---------- */
 export const achievements = [
-  { id: 'a1', name: '算法比赛二等奖', tier: 4, grade: '专家级', date: '2026-09' },
-  { id: 'a2', name: '150 天坚持', tier: 3, grade: '精通级', date: '2026-08' },
-  { id: 'a3', name: '连续 30 天', tier: 2, grade: '熟练级', date: '2026-07' },
-  { id: 'a4', name: '六级 520', tier: 3, grade: '精通级', date: '2026-06' },
-  { id: 'a5', name: '10 张经验卡', tier: 2, grade: '熟练级', date: '2026-05' },
-  { id: 'a6', name: '首个项目卡完成', tier: 2, grade: '熟练级', date: '2026-04' },
+  { id: 'a1', name: '算法比赛二等奖', tier: 4, grade: '专家级', date: '2026-09', desc: '2026 年校级程序设计竞赛，独立完成 3 道题，总排名第 2。' },
+  { id: 'a2', name: '150 天坚持', tier: 3, grade: '精通级', date: '2026-08', desc: '英语打卡累计 150 天，最近 30 天完成 26 天。' },
+  { id: 'a3', name: '连续 30 天', tier: 2, grade: '熟练级', date: '2026-07', desc: '连续 30 天有任意学习记录。' },
+  { id: 'a4', name: '六级 520', tier: 3, grade: '精通级', date: '2026-06', desc: 'CET-6 总分 520，可作为英语「熟练 → 精通」的晋升凭证。' },
+  { id: 'a5', name: '10 张经验卡', tier: 2, grade: '熟练级', date: '2026-05', desc: '累计完成 10 张经验卡（任务 + 项目）。' },
+  { id: 'a6', name: '首个项目卡完成', tier: 2, grade: '熟练级', date: '2026-04', desc: '完成第一个项目卡《个人博客重构》。' },
 ]
 
 export const lockedAchievements = [

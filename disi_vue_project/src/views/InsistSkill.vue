@@ -35,7 +35,11 @@ const nextMin = computed(() => (skill.value.level < 4 ? LEVEL_MIN[skill.value.le
     <InsistNav active="collection" />
 
     <main class="insist-main">
-      <router-link to="/insist/collection" class="back">← 收藏室</router-link>
+      <nav class="crumb">
+        <router-link to="/insist">← 主页</router-link>
+        <span>/</span>
+        <router-link to="/insist/collection">收藏室</router-link>
+      </nav>
 
       <!-- 头部 -->
       <section class="head">
@@ -125,8 +129,10 @@ const nextMin = computed(() => (skill.value.level < 4 ? LEVEL_MIN[skill.value.le
 </template>
 
 <style scoped>
-.back { display: inline-block; margin-top: 1.2rem; color: #7a7a7a; text-decoration: none; font-size: 0.76rem; }
-.back:hover { color: #ededed; }
+.crumb { display: flex; gap: 0.45rem; align-items: center; margin-top: 1.2rem; font-size: 0.74rem; }
+.crumb a { color: #7a7a7a; text-decoration: none; }
+.crumb a:hover { color: #ededed; }
+.crumb span { color: #3f3f3f; }
 
 .head { margin-top: 0.9rem; padding-bottom: 1.1rem; border-bottom: 1px solid #141414; }
 .head-top { display: flex; align-items: center; gap: 0.6rem; font-size: 0.66rem; color: #6a6a6a; }
