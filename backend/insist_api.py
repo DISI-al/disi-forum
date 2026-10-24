@@ -222,10 +222,15 @@ def list_cards(
 def create_card(req: CardCreate, current_user: User = Depends(require_user), db: Session = Depends(get_db)):
     if req.skill_id:
         _skill_or_404(db, current_user, req.skill_id)
+    # 成就卡录入即视为已获得，不需要再点「完成」
+    is_achievement = req.kind == "achievement"
     card = InsistCard(
         user_id=current_user.id, skill_id=req.skill_id, kind=req.kind,
         title=req.title.strip(), detail=req.detail, tier=req.tier,
         xp_value=req.xp_value, cycle_days=req.cycle_days, daily_target=req.daily_target,
+        status="done" if is_achievement else "active",
+        progress=100 if is_achievement else 0,
+        done_at=datetime.now(timezone.utc) if is_achievement else None,
     )
     db.add(card)
     db.commit()

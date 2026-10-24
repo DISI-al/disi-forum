@@ -1,31 +1,36 @@
 <script setup>
 /**
  * INSIST · 卡片库（接后端）
+ * 只放经验卡：任务 / 打卡 / 项目。成就卡在「成就」页。
  */
 import { ref, computed, onMounted } from 'vue'
 import InsistNav from '../components/InsistNav.vue'
-import { apiCards, apiSkills, apiCreateCard, apiCompleteCard } from '../api/insist_api.js'
-import { TIERS, kindLabel, tierName } from '../insist/constants.js'
+import { apiCards, apiSkills, apiCreateCard, apiCompleteCard, apiDeleteCard } from '../api/insist_api.js'
+import { TIERS, kindLabel, tierName, statusLabel } from '../insist/constants.js'
 
 const loading = ref(true)
 const error = ref('')
+const notice = ref('')
 const cards = ref([])
 const skills = ref([])
 
-const tab = ref('active')
 const tabs = [
-  { key: 'active', label: '进行中' },
-  { key: 'done', label: '已完成' },
-  { key: 'archived', label: '已归档' },
+  { key: 'task', label: '任务卡' },
+  { key: 'habit', label: '打卡卡' },
+  { key: 'project', label: '项目卡' },
 ]
+const tab = ref('task')
 
 const showAdd = ref(false)
 const saving = ref(false)
 const busyId = ref('')
+const confirmId = ref('')
 const draft = ref({ kind: 'task', title: '', tier: 2, skillId: '', xpValue: 100, cycleDays: 30, dailyTarget: '' })
 
-const list = computed(() => cards.value.filter((c) => c.status === tab.value))
-const countOf = (key) => cards.value.filter((c) => c.status === key).length
+// 经验卡（排除成就卡）
+const experience = computed(() => cards.value.filter((c) => c.kind !== 'achievement'))
+const list = computed(() => experience.value.filter((c) => c.kind === tab.value))
+const countOf = (kind) => experience.value.filter((c) => c.kind === kind).length
 const skillName = (id) => skills.value.find((s) => s.id === id)?.name || ''
 
 async function load() {
@@ -44,9 +49,13 @@ async function load() {
 
 function openAdd() {
   draft.value = {
-    kind: 'task', title: '', tier: 2,
+    kind: tab.value,
+    title: '',
+    tier: 2,
     skillId: skills.value[0]?.id || '',
-    xpValue: 100, cycleDays: 30, dailyTarget: '',
+    xpValue: 100,
+    cycleDays: 30,
+    dailyTarget: '',
   }
   error.value = ''
   showAdd.value = true
@@ -67,7 +76,9 @@ async function submitAdd() {
       daily_target: draft.value.kind === 'habit' ? draft.value.dailyTarget : null,
     })
     showAdd.value = false
+    tab.value = draft.value.kind
     await load()
+    notice.value = '已添加'
   } catch (e) {
     error.value = e.message || '创建失败'
   } finally {
@@ -79,10 +90,30 @@ async function complete(card) {
   if (busyId.value) return
   busyId.value = card.id
   try {
-    await apiCompleteCard(card.id)
+    const res = await apiCompleteCard(card.id)
+    notice.value = `已结算 +${card.xpValue} XP` + (res.awards?.length ? ` · 获得成就「${res.awards.join('、')}」` : '')
     await load()
   } catch (e) {
     error.value = e.message || '结算失败'
+  } finally {
+    busyId.value = ''
+  }
+}
+
+async function remove(card) {
+  if (confirmId.value !== card.id) {
+    confirmId.value = card.id
+    setTimeout(() => { if (confirmId.value === card.id) confirmId.value = '' }, 3000)
+    return
+  }
+  busyId.value = card.id
+  confirmId.value = ''
+  try {
+    await apiDeleteCard(card.id)
+    await load()
+    notice.value = '已删除'
+  } catch (e) {
+    error.value = e.message || '删除失败'
   } finally {
     busyId.value = ''
   }
@@ -105,21 +136,27 @@ onMounted(load)
             :class="{ on: tab === t.key }" @click="tab = t.key"
           >{{ t.label }} <span class="num">{{ countOf(t.key) }}</span></button>
         </div>
-        <button class="insist-btn primary" type="button" @click="openAdd">＋ 新建卡片</button>
+        <button class="insist-btn primary" type="button" @click="openAdd">＋ 新建{{ tabs.find(t => t.key === tab)?.label }}</button>
       </section>
 
       <p v-if="error" class="state err">{{ error }}</p>
       <p v-else-if="loading" class="state">加载中…</p>
-      <p v-else-if="list.length === 0" class="insist-empty">这里还没有卡片</p>
+      <p v-else-if="notice" class="notice">{{ notice }}</p>
+      <p v-else-if="list.length === 0" class="insist-empty">这一类还没有卡片</p>
 
-      <ul v-else class="card-list">
+      <ul v-if="!loading && !error && list.length" class="card-list">
         <li v-for="c in list" :key="c.id">
-          <router-link class="row" :class="c.kind" :to="'/insist/card/' + c.id">
+          <div class="row" :class="[c.kind, { done: c.status !== 'active' }]">
             <span class="kind">{{ kindLabel(c.kind) }}</span>
-            <div class="main">
+
+            <router-link class="main" :to="'/insist/card/' + c.id">
               <div class="title">{{ c.title }}</div>
-              <div class="sub">{{ skillName(c.skillId) || '未关联技能' }} · {{ tierName(c.tier) }}<template v-if="c.phase"> · 阶段 {{ c.phase }}</template></div>
-            </div>
+              <div class="sub">
+                {{ skillName(c.skillId) || '未关联技能' }} · {{ tierName(c.tier) }}
+                · {{ statusLabel(c.status) }}
+                <template v-if="c.phase"> · 阶段 {{ c.phase }}</template>
+              </div>
+            </router-link>
 
             <div class="prog">
               <div class="insist-bar small"><i :style="{ width: c.progress + '%' }"></i></div>
@@ -133,23 +170,29 @@ onMounted(load)
               class="insist-btn"
               type="button"
               :disabled="busyId === c.id"
-              @click.prevent.stop="complete(c)"
+              @click="complete(c)"
             >完成</button>
-            <span v-else class="chev">→</span>
-          </router-link>
+
+            <button
+              class="insist-btn danger"
+              type="button"
+              :disabled="busyId === c.id"
+              @click="remove(c)"
+            >{{ confirmId === c.id ? '确认删除' : '删除' }}</button>
+          </div>
         </li>
       </ul>
 
-      <p class="hint">打卡卡：每天结算，达到阈值可进化成任务卡。任务卡：完成一次性结算。项目卡：按阶段分批结算。</p>
+      <p class="hint">打卡卡：每天结算，达到阈值可进化成任务卡。任务卡：完成一次性结算。项目卡：按阶段分批结算。成就卡在「成就」页录入，不入卡片库。</p>
 
       <div v-if="showAdd" class="modal" @click.self="showAdd = false">
         <form class="dialog" @submit.prevent="submitAdd">
-          <h3>新建卡片</h3>
+          <h3>新建{{ tabs.find(t => t.key === draft.kind)?.label }}</h3>
 
           <div class="field"><span>类型</span>
             <div class="chips">
-              <button v-for="k in [['task','任务'],['project','项目'],['habit','打卡'],['achievement','成就']]" :key="k[0]"
-                type="button" :class="{ on: draft.kind === k[0] }" @click="draft.kind = k[0]">{{ k[1] }}</button>
+              <button v-for="t in tabs" :key="t.key" type="button"
+                :class="{ on: draft.kind === t.key }" @click="draft.kind = t.key">{{ t.label }}</button>
             </div>
           </div>
 
@@ -198,27 +241,29 @@ onMounted(load)
 <style scoped>
 .state { color: #8a8a8a; font-size: 0.82rem; padding: 1rem 0; }
 .state.err { color: #f85149; }
+.notice { margin-top: 0.8rem; font-size: 0.74rem; color: #b9b9b9; }
 
 .head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.2rem; padding-bottom: 0.7rem; border-bottom: 1px solid #141414; flex-wrap: wrap; }
-.tabs { display: flex; gap: 0.4rem; }
+.tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .tab { background: transparent; border: 1px solid transparent; color: #7a7a7a; font-size: 0.78rem; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; }
 .tab:hover { color: #ededed; }
 .tab.on { color: #ededed; border-color: #2a2a2a; background: #0a0a0a; }
 .tab .num { color: #5f5f5f; font-size: 0.66rem; }
 
 .card-list { list-style: none; margin-top: 0.4rem; }
-.row { display: flex; align-items: center; gap: 1rem; color: inherit; text-decoration: none; padding: 0.75rem 0.1rem; border-bottom: 1px solid #101010; }
+.row { display: flex; align-items: center; gap: 0.9rem; padding: 0.75rem 0.1rem; border-bottom: 1px solid #101010; }
+.row.done { opacity: 0.62; }
 .row:hover { background: #060606; }
 .kind { flex-shrink: 0; font-size: 0.62rem; color: #8a8a8a; border: 1px solid #242424; border-radius: 3px; padding: 0.08rem 0.3rem; width: 2.4rem; text-align: center; }
 .row.project .kind { border-color: #444; color: #cfcfcf; }
-.main { flex: 1; min-width: 0; }
+.main { flex: 1; min-width: 0; color: inherit; text-decoration: none; }
+.main:hover .title { color: #fff; }
 .title { font-size: 0.86rem; }
 .sub { margin-top: 0.15rem; font-size: 0.64rem; color: #5f5f5f; }
 .prog { display: flex; align-items: center; gap: 0.5rem; width: 130px; }
 .prog .insist-bar { flex: 1; }
 .prog .mono { font-size: 0.64rem; color: #6a6a6a; width: 2.6rem; text-align: right; }
 .xp { font-size: 0.7rem; color: #8a8a8a; width: 3.2rem; text-align: right; }
-.chev { color: #4a4a4a; font-size: 0.8rem; }
 .hint { margin-top: 1.4rem; font-size: 0.68rem; color: #5f5f5f; line-height: 1.7; }
 
 .modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.72); display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 50; }
@@ -234,5 +279,8 @@ onMounted(load)
 .dialog-err { color: #f85149; font-size: 0.74rem; margin: 0.3rem 0 0; }
 .dialog-foot { display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.4rem; }
 
-@media (max-width: 720px) { .row { flex-wrap: wrap; } .prog { width: 100%; } }
+@media (max-width: 720px) {
+  .row { flex-wrap: wrap; row-gap: 0.35rem; }
+  .prog { width: 100%; }
+}
 </style>
