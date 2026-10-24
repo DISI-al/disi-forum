@@ -30,6 +30,9 @@ const draft = ref({ kind: 'task', title: '', tier: 2, skillId: '', xpValue: 100,
 // 经验卡（排除成就卡）
 const experience = computed(() => cards.value.filter((c) => c.kind !== 'achievement'))
 const list = computed(() => experience.value.filter((c) => c.kind === tab.value))
+// 未完成 / 已完成各放一起
+const openList = computed(() => list.value.filter((c) => c.status === 'active'))
+const closedList = computed(() => list.value.filter((c) => c.status !== 'active'))
 const countOf = (kind) => experience.value.filter((c) => c.kind === kind).length
 const skillName = (id) => skills.value.find((s) => s.id === id)?.name || ''
 
@@ -144,44 +147,76 @@ onMounted(load)
       <p v-else-if="notice" class="notice">{{ notice }}</p>
       <p v-else-if="list.length === 0" class="insist-empty">这一类还没有卡片</p>
 
-      <ul v-if="!loading && !error && list.length" class="card-list">
-        <li v-for="c in list" :key="c.id">
-          <div class="row" :class="[c.kind, { done: c.status !== 'active' }]">
-            <span class="kind">{{ kindLabel(c.kind) }}</span>
+      <template v-if="!loading && !error && list.length">
+        <section v-if="openList.length" class="group">
+          <h2 class="group-title">未完成 <span class="count">{{ openList.length }}</span></h2>
+          <ul class="card-list">
+            <li v-for="c in openList" :key="c.id">
+              <div class="row" :class="c.kind">
+                <span class="kind">{{ kindLabel(c.kind) }}</span>
 
-            <router-link class="main" :to="'/insist/card/' + c.id">
-              <div class="title">{{ c.title }}</div>
-              <div class="sub">
-                {{ skillName(c.skillId) || '未关联技能' }} · {{ tierName(c.tier) }}
-                · {{ statusLabel(c.status) }}
-                <template v-if="c.phase"> · 阶段 {{ c.phase }}</template>
+                <router-link class="main" :to="'/insist/card/' + c.id">
+                  <div class="title">{{ c.title }}</div>
+                  <div class="sub">
+                    {{ skillName(c.skillId) || '未关联技能' }} · {{ tierName(c.tier) }}
+                    <template v-if="c.phase"> · 阶段 {{ c.phase }}</template>
+                  </div>
+                </router-link>
+
+                <div class="prog">
+                  <div class="insist-bar small"><i :style="{ width: c.progress + '%' }"></i></div>
+                  <span class="mono">{{ c.progress }}%</span>
+                </div>
+
+                <span class="xp mono">+{{ c.xpValue }}</span>
+
+                <button
+                  v-if="c.kind === 'task' || c.kind === 'project'"
+                  class="insist-btn"
+                  type="button"
+                  :disabled="busyId === c.id"
+                  @click="complete(c)"
+                >完成</button>
+
+                <button
+                  class="insist-btn danger"
+                  type="button"
+                  :disabled="busyId === c.id"
+                  @click="remove(c)"
+                >{{ confirmId === c.id ? '确认删除' : '删除' }}</button>
               </div>
-            </router-link>
+            </li>
+          </ul>
+        </section>
 
-            <div class="prog">
-              <div class="insist-bar small"><i :style="{ width: c.progress + '%' }"></i></div>
-              <span class="mono">{{ c.progress }}%</span>
-            </div>
+        <section v-if="closedList.length" class="group">
+          <h2 class="group-title">已完成 <span class="count">{{ closedList.length }}</span></h2>
+          <ul class="card-list">
+            <li v-for="c in closedList" :key="c.id">
+              <div class="row done" :class="c.kind">
+                <span class="kind">{{ kindLabel(c.kind) }}</span>
 
-            <span class="xp mono">+{{ c.xpValue }}</span>
+                <router-link class="main" :to="'/insist/card/' + c.id">
+                  <div class="title">{{ c.title }}</div>
+                  <div class="sub">
+                    {{ skillName(c.skillId) || '未关联技能' }} · {{ tierName(c.tier) }} · {{ statusLabel(c.status) }}
+                    <template v-if="c.phase"> · 阶段 {{ c.phase }}</template>
+                  </div>
+                </router-link>
 
-            <button
-              v-if="c.status === 'active' && (c.kind === 'task' || c.kind === 'project')"
-              class="insist-btn"
-              type="button"
-              :disabled="busyId === c.id"
-              @click="complete(c)"
-            >完成</button>
+                <span class="xp mono">+{{ c.xpValue }}</span>
 
-            <button
-              class="insist-btn danger"
-              type="button"
-              :disabled="busyId === c.id"
-              @click="remove(c)"
-            >{{ confirmId === c.id ? '确认删除' : '删除' }}</button>
-          </div>
-        </li>
-      </ul>
+                <button
+                  class="insist-btn danger"
+                  type="button"
+                  :disabled="busyId === c.id"
+                  @click="remove(c)"
+                >{{ confirmId === c.id ? '确认删除' : '删除' }}</button>
+              </div>
+            </li>
+          </ul>
+        </section>
+      </template>
 
       <p class="hint">打卡卡：每天结算，达到阈值可进化成任务卡。任务卡：完成一次性结算。项目卡：按阶段分批结算。成就卡在「成就」页录入，不入卡片库。</p>
 
@@ -283,4 +318,7 @@ onMounted(load)
   .row { flex-wrap: wrap; row-gap: 0.35rem; }
   .prog { width: 100%; }
 }
+.group { margin-top: 1.3rem; }
+.group-title { display: flex; align-items: center; gap: 0.45rem; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.14em; color: #8a8a8a; margin-bottom: 0.4rem; }
+.group-title .count { color: #4a4a4a; letter-spacing: 0; }
 </style>

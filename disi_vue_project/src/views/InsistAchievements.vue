@@ -176,9 +176,9 @@ onMounted(load)
 .head h1 { font-size: 1.05rem; font-weight: 600; margin: 0; }
 .count { margin-left: 0.7rem; font-size: 0.68rem; color: #5f5f5f; }
 
-.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0.75rem; margin-top: 0.9rem; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); grid-auto-rows: 150px; gap: 0.75rem; margin-top: 0.9rem; }
 .ach-wrap { position: relative; }
-.ach { display: block; color: inherit; text-decoration: none; padding: 0.85rem 0.9rem 0.7rem; border: 1px solid #242424; border-radius: 8px; background: #070707; transition: transform 0.15s ease, border-color 0.15s ease; }
+.ach { display: flex; flex-direction: column; height: 100%; overflow: hidden; color: inherit; text-decoration: none; padding: 0.85rem 0.9rem 0.7rem; border: 1px solid #242424; border-radius: 8px; background: #070707; transition: transform 0.15s ease, border-color 0.15s ease; }
 .ach.tier-3 { border-color: #3a3a3a; }
 .ach.tier-4 { border-color: #5a5a5a; box-shadow: 0 0 22px rgba(255, 255, 255, 0.05); }
 .ach:hover { transform: translateY(-2px); border-color: #5a5a5a; }
@@ -186,25 +186,23 @@ onMounted(load)
 .ach-star { font-size: 0.7rem; color: #6a6a6a; }
 .ach.tier-4 .ach-star { color: #ededed; }
 .ach.tier-3 .ach-star { color: #b9b9b9; }
-.ach-name { margin-top: 0.5rem; font-size: 0.9rem; font-weight: 600; }
-.ach-date { display: block; margin-top: 0.35rem; font-size: 0.64rem; color: #5f5f5f; }
-.ach-skill { display: block; margin-top: 0.3rem; font-size: 0.62rem; color: #6a6a6a; }
+.ach-name { margin-top: 0.5rem; font-size: 0.9rem; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ach-date { display: block; margin-top: 0.35rem; font-size: 0.64rem; color: #5f5f5f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ach-skill { display: block; margin-top: auto; padding-top: 0.3rem; padding-right: 3.2rem; font-size: 0.62rem; color: #6a6a6a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .ach-del {
   position: absolute;
-  top: 0.55rem;
-  right: 0.55rem;
-  background: rgba(0, 0, 0, 0.6);
+  right: 0.6rem;
+  bottom: 0.55rem;
+  background: #0b0b0b;
   border: 1px solid #2a2a2a;
-  color: #7a7a7a;
+  color: #8a8a8a;
   font-size: 0.62rem;
-  padding: 0.1rem 0.35rem;
+  padding: 0.12rem 0.4rem;
   border-radius: 3px;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s ease;
+  z-index: 2;
 }
-.ach-wrap:hover .ach-del { opacity: 1; }
 .ach-del:hover { color: #f85149; border-color: rgba(248, 81, 73, 0.5); }
 
 .modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.72); display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 50; }
