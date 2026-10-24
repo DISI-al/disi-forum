@@ -225,10 +225,7 @@ onMounted(() => {
 }
 
 .center-area {
-  flex: 1;
   width: 100%;
-  display: grid;
-  place-items: center;
 }
 
 .back-link {
@@ -240,6 +237,7 @@ onMounted(() => {
 
 .users-card {
   width: min(760px, 100%);
+  margin: 0 auto;
   background: #161b22;
   border: 1px solid #30363d;
   border-radius: 12px;
