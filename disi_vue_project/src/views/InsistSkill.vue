@@ -68,7 +68,7 @@ async function promote() {
 }
 
 function openAdd() {
-  draft.value = { kind: 'task', title: '', tier: skill.value?.tier || 2, xpValue: 100 }
+  draft.value = { kind: 'task', title: '', tier: skill.value?.tier || 2, xpValue: 100, detail: '' }
   error.value = ''
   showAdd.value = true
 }
@@ -81,6 +81,7 @@ async function submitAdd() {
     await apiCreateCard({
       kind: draft.value.kind,
       title,
+      detail: draft.value.kind === 'achievement' ? draft.value.detail : '',
       tier: Number(draft.value.tier),
       skill_id: route.params.id,
       xp_value: draft.value.kind === 'habit' ? 0 : Number(draft.value.xpValue) || 0,
@@ -288,7 +289,11 @@ onMounted(load)
             </div>
           </div>
 
-          <label v-if="draft.kind !== 'habit'" class="field"><span>完成奖励 XP</span>
+          <label v-if="draft.kind === 'achievement'" class="field"><span>说明</span>
+            <input v-model="draft.detail" type="text" maxlength="200" placeholder="比赛 / 证书 / 时间等，会显示在成就卡上" />
+          </label>
+
+          <label v-if="draft.kind === 'task' || draft.kind === 'project'" class="field"><span>完成奖励 XP</span>
             <input v-model.number="draft.xpValue" type="number" min="0" step="10" />
           </label>
 
