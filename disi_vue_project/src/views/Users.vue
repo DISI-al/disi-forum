@@ -131,11 +131,11 @@ onMounted(() => {
 
 <template>
   <div class="disi-forum">
-    <div class="forum-center-container">
-      <nav class="sub-nav">
-        <router-link to="/index" class="back-link">← 返回论坛</router-link>
-      </nav>
+    <nav class="sub-nav">
+      <router-link to="/index" class="back-link">← 返回论坛</router-link>
+    </nav>
 
+    <div class="center-area">
       <section class="users-card">
         <header class="users-head">
           <h1>用户管理</h1>
@@ -212,16 +212,25 @@ onMounted(() => {
   color: #e6edf3;
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1rem 2rem;
+}
+
+.sub-nav {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  padding: 0 0 0.75rem;
+  flex-shrink: 0;
+}
+
+.center-area {
+  flex: 1;
+  width: 100%;
   display: grid;
-  place-content: center;
-  padding: 2rem 1rem;
+  place-items: center;
 }
 
-.forum-center-container {
-  width: min(760px, calc(100vw - 2rem));
-}
-
-.sub-nav { padding: 0 0 0.75rem; }
 .back-link {
   color: var(--gh-text-link, #58a6ff);
   text-decoration: none;
@@ -230,6 +239,7 @@ onMounted(() => {
 .back-link:hover { text-decoration: underline; }
 
 .users-card {
+  width: min(760px, 100%);
   background: #161b22;
   border: 1px solid #30363d;
   border-radius: 12px;
