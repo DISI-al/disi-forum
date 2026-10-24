@@ -5,7 +5,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import InsistNav from '../components/InsistNav.vue'
-import { apiCard, apiSkills, apiCheckin, apiCompleteCard } from '../api/insist_api.js'
+import { apiCard, apiSkills, apiCheckin, apiCompleteCard, apiPatchCard } from '../api/insist_api.js'
 import { tierName, kindLabel, statusLabel } from '../insist/constants.js'
 
 const route = useRoute()
@@ -15,6 +15,9 @@ const loading = ref(true)
 const error = ref('')
 const notice = ref('')
 const busy = ref(false)
+const showEdit = ref(false)
+const savingEdit = ref(false)
+const editDraft = ref({ title: '', detail: '', tier: 2, xpValue: 0 })
 
 const isHabit = computed(() => card.value?.kind === 'habit')
 const isDone = computed(() => card.value?.status === 'done')
@@ -40,6 +43,39 @@ async function load() {
     error.value = e.message || '加载失败'
   } finally {
     loading.value = false
+  }
+}
+
+function openEdit() {
+  editDraft.value = {
+    title: card.value.title,
+    detail: card.value.detail || '',
+    tier: card.value.tier,
+    xpValue: card.value.xpValue,
+  }
+  error.value = ''
+  showEdit.value = true
+}
+
+async function submitEdit() {
+  if (savingEdit.value) return
+  const title = editDraft.value.title.trim()
+  if (!title) return
+  savingEdit.value = true
+  try {
+    await apiPatchCard(route.params.id, {
+      title,
+      detail: editDraft.value.detail,
+      tier: Number(editDraft.value.tier),
+      xp_value: card.value.kind === 'habit' ? 0 : Number(editDraft.value.xpValue) || 0,
+    })
+    showEdit.value = false
+    await load()
+    notice.value = '已保存'
+  } catch (e) {
+    error.value = e.message || '保存失败'
+  } finally {
+    savingEdit.value = false
   }
 }
 
@@ -153,9 +189,44 @@ onMounted(load)
             @click="complete"
           >完成并结算</button>
 
+          <button class="insist-btn" type="button" @click="openEdit">编辑卡片</button>
           <router-link to="/insist/cards" class="insist-btn">返回卡片库</router-link>
         </div>
       </template>
+
+      <!-- 编辑卡片 -->
+      <div v-if="showEdit" class="modal" @click.self="showEdit = false">
+        <form class="dialog" @submit.prevent="submitEdit">
+          <h3>编辑卡片</h3>
+
+          <label class="field"><span>标题</span>
+            <input v-model="editDraft.title" type="text" maxlength="120" autofocus />
+          </label>
+
+          <label class="field"><span>描述 / 内容</span>
+            <textarea v-model="editDraft.detail" rows="3" maxlength="1000" />
+          </label>
+
+          <div class="field"><span>等级</span>
+            <div class="chips">
+              <button v-for="t in ['低阶', '中阶', '高阶', '臻阶']" :key="t" type="button"
+                :class="{ on: editDraft.tier === ['低阶', '中阶', '高阶', '臻阶'].indexOf(t) + 1 }"
+                @click="editDraft.tier = ['低阶', '中阶', '高阶', '臻阶'].indexOf(t) + 1">{{ t }}</button>
+            </div>
+          </div>
+
+          <label v-if="card.kind !== 'habit'" class="field"><span>奖励 XP</span>
+            <input v-model.number="editDraft.xpValue" type="number" min="0" step="10" />
+          </label>
+
+          <p v-if="error" class="dialog-err">{{ error }}</p>
+
+          <footer class="dialog-foot">
+            <button class="insist-btn" type="button" @click="showEdit = false">取消</button>
+            <button class="insist-btn primary" type="submit" :disabled="savingEdit">{{ savingEdit ? '保存中…' : '保存' }}</button>
+          </footer>
+        </form>
+      </div>
     </main>
   </div>
 </template>
@@ -183,4 +254,16 @@ onMounted(load)
 .rules li { position: relative; padding: 0.35rem 0 0.35rem 0.9rem; font-size: 0.76rem; color: #8a8a8a; line-height: 1.7; }
 .rules li::before { content: '·'; position: absolute; left: 0.2rem; color: #4a4a4a; }
 .actions { margin-top: 2rem; display: flex; gap: 0.6rem; }
+.modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.72); display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 50; }
+.dialog { width: min(440px, 100%); max-height: 86vh; overflow-y: auto; background: #070707; border: 1px solid #242424; border-radius: 10px; padding: 1.2rem 1.2rem 0.9rem; }
+.dialog h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; }
+.field { display: block; margin-bottom: 0.85rem; }
+.field > span { display: block; font-size: 0.7rem; color: #6a6a6a; letter-spacing: 0.08em; margin-bottom: 0.35rem; }
+.field input, .field textarea { width: 100%; background: #0c0c0c; border: 1px solid #222; border-radius: 4px; color: #ededed; font-size: 0.85rem; padding: 0.45rem 0.55rem; outline: none; resize: vertical; }
+.field input:focus, .field textarea:focus { border-color: #444; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chips button { background: transparent; border: 1px solid #222; color: #8a8a8a; font-size: 0.75rem; padding: 0.28rem 0.6rem; border-radius: 4px; cursor: pointer; }
+.chips button.on { border-color: #6a6a6a; color: #ededed; background: #111; }
+.dialog-err { color: #f85149; font-size: 0.74rem; }
+.dialog-foot { display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.4rem; }
 </style>

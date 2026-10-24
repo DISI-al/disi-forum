@@ -50,6 +50,7 @@ def skill_payload(skill: InsistSkill, db: Session) -> dict:
         "nextNeed": round(max(0, cap - skill.xp), 1) if cap else 0,
         "daysAgo": (date.today() - last).days if last else 0,
         "records": db.query(InsistXpEvent).filter(InsistXpEvent.skill_id == skill.id).count(),
+        "isFocus": bool(skill.is_focus),
     }
 
 
@@ -112,6 +113,13 @@ def create_skill(req: SkillCreate, current_user: User = Depends(require_user), d
         xp=max(0.0, float(req.xp)), last_active=datetime.now(timezone.utc),
     )
     db.add(skill)
+    db.flush()
+    # 第一个技能自动成为近期目标
+    has_focus = db.query(InsistSkill).filter(
+        InsistSkill.user_id == current_user.id, InsistSkill.is_focus.is_(True)
+    ).first()
+    if not has_focus:
+        skill.is_focus = True
     db.commit()
     db.refresh(skill)
     return skill_payload(skill, db)
@@ -138,8 +146,26 @@ def update_skill(skill_id: str, req: SkillUpdate, current_user: User = Depends(r
         skill.tier = req.tier
     if req.importance is not None:
         skill.importance = req.importance
+    if req.level is not None:
+        skill.level = req.level
+        skill.xp = float(LEVEL_MIN[req.level])
+        skill.overflow = 0
+        skill.overflow_since = None
+    if req.xp is not None:
+        skill.xp = max(0.0, float(req.xp))
     if req.forget_manual is not None:
         skill.forget_manual = req.forget_manual
+    db.commit()
+    db.refresh(skill)
+    return skill_payload(skill, db)
+
+
+@router.post("/skills/{skill_id}/focus")
+def set_focus(skill_id: str, current_user: User = Depends(require_user), db: Session = Depends(get_db)):
+    """设为近期目标（核心技能），同一用户只保留一个"""
+    skill = _skill_or_404(db, current_user, skill_id)
+    db.query(InsistSkill).filter(InsistSkill.user_id == current_user.id).update({InsistSkill.is_focus: False})
+    skill.is_focus = True
     db.commit()
     db.refresh(skill)
     return skill_payload(skill, db)
@@ -394,7 +420,9 @@ def overview(current_user: User = Depends(require_user), db: Session = Depends(g
         if e.occurred_on in daily:
             daily[e.occurred_on] += e.xp or 0
 
+    focus = next((s for s in skills if s.is_focus), skills[0] if skills else None)
     return {
+        "focusId": focus.id if focus else None,
         "skillCount": len(skills),
         "cardCount": len(cards),
         "totalXp": round(sum(s.xp or 0 for s in skills), 1),

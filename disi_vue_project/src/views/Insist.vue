@@ -19,7 +19,7 @@ const cards = ref([])
 const busyId = ref('')
 const notice = ref('')
 
-const focus = computed(() => skills.value[0] || null)
+const focus = computed(() => skills.value.find((s) => s.isFocus) || skills.value[0] || null)
 const habits = computed(() => cards.value.filter((c) => c.kind === 'habit' && c.status === 'active'))
 const activeCards = computed(() => cards.value.filter((c) => c.status === 'active' && c.kind !== 'habit').slice(0, 3))
 const achievements = computed(() => cards.value.filter((c) => c.kind === 'achievement' && c.status === 'done'))

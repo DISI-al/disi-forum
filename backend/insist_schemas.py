@@ -18,6 +18,8 @@ class SkillUpdate(BaseModel):
     category: Optional[str] = None
     tier: Optional[int] = Field(None, ge=1, le=4)
     importance: Optional[int] = Field(None, ge=1, le=4)
+    level: Optional[int] = Field(None, ge=0, le=4)
+    xp: Optional[float] = Field(None, ge=0)
     forget_manual: Optional[int] = Field(None, ge=0, le=100)
 
 

@@ -4,7 +4,7 @@ INSIST 数据模型
 """
 from datetime import datetime, timezone, date
 
-from sqlalchemy import Column, String, Text, Integer, Float, Date, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, Text, Integer, Float, Boolean, Date, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -33,6 +33,7 @@ class InsistSkill(Base):
     overflow = Column(Float, default=0)      # 爆满后的溢出池
     overflow_since = Column(DateTime, nullable=True)
     forget_manual = Column(Integer, nullable=True)  # 手动覆盖遗忘度
+    is_focus = Column(Boolean, default=False)        # 近期目标（核心技能）
     last_active = Column(DateTime, default=now)
     created_at = Column(DateTime, default=now)
     updated_at = Column(DateTime, default=now, onupdate=now)

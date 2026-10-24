@@ -3,14 +3,16 @@
  * INSIST · 技能详情（接后端）
  */
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import InsistNav from '../components/InsistNav.vue'
 import {
   apiSkill, apiPromotion, apiCards, apiCreateCard, apiPromote,
+  apiPatchSkill, apiDeleteSkill, apiSetFocus,
 } from '../api/insist_api.js'
-import { TIERS, stars, forgetClass, kindLabel, tierName } from '../insist/constants.js'
+import { TIERS, LEVELS, stars, forgetClass, kindLabel, tierName } from '../insist/constants.js'
 
 const route = useRoute()
+const router = useRouter()
 const skill = ref(null)
 const promotion = ref(null)
 const cards = ref([])
@@ -22,6 +24,11 @@ const showAdd = ref(false)
 const saving = ref(false)
 const busy = ref(false)
 const draft = ref({ kind: 'task', title: '', tier: 2, xpValue: 100 })
+
+const showEdit = ref(false)
+const savingEdit = ref(false)
+const confirmDelete = ref(false)
+const editDraft = ref({ name: '', category: '', tier: 2, importance: 2, level: 0 })
 
 const related = computed(() => cards.value.filter((c) => c.skillId === route.params.id))
 const canPromote = computed(() => promotion.value?.canPromote)
@@ -87,6 +94,74 @@ async function submitAdd() {
   }
 }
 
+// ===== 编辑 / 删除 / 设为近期目标 =====
+function openEdit() {
+  editDraft.value = {
+    name: skill.value.name,
+    category: skill.value.category,
+    tier: skill.value.tier,
+    importance: skill.value.importance,
+    level: skill.value.level,
+  }
+  error.value = ''
+  showEdit.value = true
+}
+
+async function submitEdit() {
+  if (savingEdit.value) return
+  const name = editDraft.value.name.trim()
+  if (!name) return
+  savingEdit.value = true
+  try {
+    await apiPatchSkill(route.params.id, {
+      name,
+      category: editDraft.value.category.trim() || '未分类',
+      tier: Number(editDraft.value.tier),
+      importance: Number(editDraft.value.importance),
+    })
+    // 段位改动单独提交：会把 XP 重置到该段位起点
+    if (Number(editDraft.value.level) !== skill.value.level) {
+      await apiPatchSkill(route.params.id, { level: Number(editDraft.value.level) })
+    }
+    showEdit.value = false
+    await load()
+    notice.value = '已保存'
+  } catch (e) {
+    error.value = e.message || '保存失败'
+  } finally {
+    savingEdit.value = false
+  }
+}
+
+async function remove() {
+  if (!confirmDelete.value) {
+    confirmDelete.value = true
+    setTimeout(() => (confirmDelete.value = false), 3000)
+    return
+  }
+  busy.value = true
+  try {
+    await apiDeleteSkill(route.params.id)
+    router.push('/insist/collection')
+  } catch (e) {
+    error.value = e.message || '删除失败'
+    busy.value = false
+  }
+}
+
+async function setFocus() {
+  busy.value = true
+  try {
+    await apiSetFocus(route.params.id)
+    await load()
+    notice.value = '已设为近期目标'
+  } catch (e) {
+    error.value = e.message || '设置失败'
+  } finally {
+    busy.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -110,6 +185,7 @@ onMounted(load)
             <span class="cat">{{ skill.category }}</span>
             <span class="stars">{{ stars(skill.importance) }}</span>
             <span class="tier">{{ tierName(skill.tier) }}</span>
+            <span v-if="skill.isFocus" class="focus-badge">近期目标</span>
           </div>
           <h1 class="name">{{ skill.name }}</h1>
 
@@ -123,6 +199,14 @@ onMounted(load)
             <span v-if="skill.nextNeed">还差 {{ skill.nextNeed }} XP</span>
             <span>遗忘 <b :class="forgetClass(skill.forget)">{{ skill.forget }}%</b></span>
             <span v-if="skill.overflow">溢出 +{{ skill.overflow }}</span>
+          </div>
+
+          <div class="head-actions">
+            <button class="insist-btn" type="button" @click="openEdit">编辑技能</button>
+            <button v-if="!skill.isFocus" class="insist-btn" type="button" :disabled="busy" @click="setFocus">设为近期目标</button>
+            <button class="insist-btn danger" type="button" :disabled="busy" @click="remove">
+              {{ confirmDelete ? '再点一次确认删除' : '删除技能' }}
+            </button>
           </div>
         </section>
 
@@ -216,6 +300,51 @@ onMounted(load)
           </footer>
         </form>
       </div>
+
+      <!-- 编辑技能 -->
+      <div v-if="showEdit" class="modal" @click.self="showEdit = false">
+        <form class="dialog" @submit.prevent="submitEdit">
+          <h3>编辑技能</h3>
+
+          <label class="field"><span>名称</span>
+            <input v-model="editDraft.name" type="text" maxlength="60" autofocus />
+          </label>
+
+          <label class="field"><span>分类</span>
+            <input v-model="editDraft.category" type="text" maxlength="30" />
+          </label>
+
+          <div class="field"><span>难度阶</span>
+            <div class="chips">
+              <button v-for="(t, i) in TIERS" :key="t" type="button" :class="{ on: editDraft.tier === i + 1 }" @click="editDraft.tier = i + 1">{{ t }}</button>
+            </div>
+          </div>
+
+          <div class="field"><span>重要程度</span>
+            <div class="chips">
+              <button v-for="t in ['次要', '一般', '重要', '核心']" :key="t" type="button" :class="{ on: editDraft.importance === ['次要', '一般', '重要', '核心'].indexOf(t) + 1 }" @click="editDraft.importance = ['次要', '一般', '重要', '核心'].indexOf(t) + 1">{{ t }}</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <span>熟练度段位</span>
+            <div class="chips">
+              <button
+                v-for="(name, i) in LEVELS" :key="name" type="button"
+                :class="{ on: editDraft.level === i }" @click="editDraft.level = i"
+              >{{ name }}</button>
+            </div>
+            <p class="field-hint">改段位会把 XP 重置到该段位起点，已获得的溢出会清空。</p>
+          </div>
+
+          <p v-if="error" class="dialog-err">{{ error }}</p>
+
+          <footer class="dialog-foot">
+            <button class="insist-btn" type="button" @click="showEdit = false">取消</button>
+            <button class="insist-btn primary" type="submit" :disabled="savingEdit">{{ savingEdit ? '保存中…' : '保存' }}</button>
+          </footer>
+        </form>
+      </div>
     </main>
   </div>
 </template>
@@ -258,4 +387,7 @@ onMounted(load)
 .chips button.on { border-color: #6a6a6a; color: #ededed; background: #111; }
 .dialog-err { color: #f85149; font-size: 0.74rem; margin: 0.3rem 0 0; }
 .dialog-foot { display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.4rem; }
+.head-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+.focus-badge { font-size: 0.62rem; color: #cfcfcf; border: 1px solid #3a3a3a; border-radius: 3px; padding: 0.02rem 0.32rem; }
+.field-hint { margin-top: 0.4rem; font-size: 0.66rem; color: #5f5f5f; line-height: 1.6; }
 </style>

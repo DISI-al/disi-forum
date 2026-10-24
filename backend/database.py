@@ -32,11 +32,25 @@ def get_db():
         db.close()
 
 
+def _ensure_insist_columns():
+    """老库补列：SQLite 没有自动迁移，这里按需 ALTER"""
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            cols = [row[1] for row in conn.execute(text("PRAGMA table_info(insist_skills)"))]
+            if cols and "is_focus" not in cols:
+                conn.execute(text("ALTER TABLE insist_skills ADD COLUMN is_focus BOOLEAN DEFAULT 0"))
+                conn.commit()
+    except Exception:
+        pass
+
+
 def init_db():
     """初始化数据库：创建所有表，并插入默认管理员账号"""
     from models import User  # 延迟导入避免循环引用
     import insist_models  # noqa: F401  注册 INSIST 相关表
     Base.metadata.create_all(bind=engine)
+    _ensure_insist_columns()
 
     # 首次建库时的管理员口令，可用环境变量覆盖（部署脚本会生成随机值）
     init_password = os.getenv("ADMIN_INIT_PASSWORD", "disi0001")

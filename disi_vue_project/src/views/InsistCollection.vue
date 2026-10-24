@@ -5,7 +5,7 @@
 import { ref, computed, onMounted } from 'vue'
 import InsistNav from '../components/InsistNav.vue'
 import { apiSkills, apiCreateSkill } from '../api/insist_api.js'
-import { TIERS, IMPORTANCE, stars, forgetClass } from '../insist/constants.js'
+import { TIERS, IMPORTANCE, LEVELS, LEVEL_MIN, stars, forgetClass } from '../insist/constants.js'
 
 const loading = ref(true)
 const error = ref('')
@@ -18,7 +18,7 @@ const sortBy = ref('proficiency')
 
 const showAdd = ref(false)
 const saving = ref(false)
-const draft = ref({ name: '', category: '', tier: 2, importance: 2 })
+const draft = ref({ name: '', category: '', tier: 2, importance: 2, level: 0 })
 
 const categories = computed(() => [...new Set(skills.value.map((s) => s.category))])
 
@@ -67,7 +67,7 @@ async function load() {
 }
 
 function openAdd() {
-  draft.value = { name: '', category: categories.value[0] || '编程语言', tier: 2, importance: 2 }
+  draft.value = { name: '', category: categories.value[0] || '编程语言', tier: 2, importance: 2, level: 0 }
   error.value = ''
   showAdd.value = true
 }
@@ -82,6 +82,8 @@ async function submitAdd() {
       category: draft.value.category.trim() || '未分类',
       tier: Number(draft.value.tier),
       importance: Number(draft.value.importance),
+      level: Number(draft.value.level),
+      xp: LEVEL_MIN[Number(draft.value.level)] || 0,
     })
     showAdd.value = false
     await load()
@@ -213,6 +215,17 @@ onMounted(load)
             </div>
           </div>
 
+          <div class="field">
+            <span>初始熟练度</span>
+            <div class="chips">
+              <button
+                v-for="(name, i) in LEVELS" :key="name" type="button"
+                :class="{ on: draft.level === i }" @click="draft.level = i"
+              >{{ name }}</button>
+            </div>
+            <p class="field-hint">已经有基础的技能直接选段位，XP 从该段位起点算；选「初识」就是从零开始。</p>
+          </div>
+
           <p v-if="error" class="dialog-err">{{ error }}</p>
 
           <footer class="dialog-foot">
@@ -261,6 +274,7 @@ select:focus { border-color: #444; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .chips button { background: transparent; border: 1px solid #222; color: #8a8a8a; font-size: 0.75rem; padding: 0.28rem 0.6rem; border-radius: 4px; cursor: pointer; }
 .chips button.on { border-color: #6a6a6a; color: #ededed; background: #111; }
+.field-hint { margin-top: 0.4rem; font-size: 0.66rem; color: #5f5f5f; line-height: 1.6; }
 .dialog-err { color: #f85149; font-size: 0.74rem; margin: 0.3rem 0 0; }
 .dialog-foot { display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.4rem; }
 </style>

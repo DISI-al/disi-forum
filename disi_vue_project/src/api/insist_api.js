@@ -34,6 +34,7 @@ export const apiSkill = (id) => request(`/skills/${id}`)
 export const apiCreateSkill = (data) => request('/skills', { method: 'POST', body: JSON.stringify(data) })
 export const apiPatchSkill = (id, data) => request(`/skills/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
 export const apiDeleteSkill = (id) => request(`/skills/${id}`, { method: 'DELETE' })
+export const apiSetFocus = (id) => request(`/skills/${id}/focus`, { method: 'POST' })
 
 // 卡片
 export const apiCards = (params) => request(`/cards${qs(params)}`)

@@ -450,7 +450,7 @@ onMounted(async () => {
 /* 只在触屏 / 窄屏上出现的静态小字 */
 .talent-word.legend { display: none; }
 
-/* 触屏 / 窄屏：静态两行，不做故障动效 */
+/* 触屏 / 窄屏：不依赖悬停，改成 TALENT ↔ INSIST 循环呼吸 */
 @media (max-width: 600px), (hover: none) {
   .talent-door {
     height: auto;
@@ -466,8 +466,23 @@ onMounted(async () => {
   .talent-word.legend {
     display: block;
     font-size: 26px;
+    animation: legend-breathe 5.2s ease-in-out infinite;
   }
-  .talent-word.bottom { font-size: 26px; opacity: 1; transform: none; }
+  .talent-word.bottom {
+    font-size: 26px;
+    opacity: 0.28;
+    transform: none;
+    animation: insist-breathe 5.2s ease-in-out infinite;
+  }
+}
+
+@keyframes legend-breathe {
+  0%, 40%, 100% { opacity: 1; }
+  52%, 88% { opacity: 0.28; }
+}
+@keyframes insist-breathe {
+  0%, 40%, 100% { opacity: 0.28; }
+  52%, 88% { opacity: 1; }
 }
 @media (max-width: 640px) {
   .user-card {
@@ -485,6 +500,10 @@ onMounted(async () => {
 
 /* 系统要求减少动效：改成淡入淡出，不做位移 */
 @media (prefers-reduced-motion: reduce) {
+  .talent-word.legend, .talent-word.bottom {
+    animation: none !important;
+    opacity: 1 !important;
+  }
   .slice { transition: opacity 0.2s linear; }
   .talent-door:hover .slice,
   .talent-door:focus-visible .slice {
