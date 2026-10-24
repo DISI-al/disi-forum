@@ -1,0 +1,121 @@
+/* ============================================================
+ * Markdown 正文样式（全局，供 v-html 渲染的内容使用）
+ * 深色主题，和论坛卡片配色保持一致
+ * ============================================================ */
+
+.md-body {
+  color: #c9d1d9;
+  font-size: 1rem;
+  line-height: 1.75;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+  cursor: text;
+}
+
+.md-body > *:first-child { margin-top: 0; }
+.md-body > *:last-child { margin-bottom: 0; }
+
+.md-body p { margin: 0 0 0.85em; }
+
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+  color: #e6edf3;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 1.4em 0 0.6em;
+}
+
+.md-body h1 { font-size: 1.5rem; padding-bottom: 0.3em; border-bottom: 1px solid #30363d; }
+.md-body h2 { font-size: 1.3rem; padding-bottom: 0.25em; border-bottom: 1px solid #30363d; }
+.md-body h3 { font-size: 1.15rem; }
+.md-body h4 { font-size: 1.05rem; }
+.md-body h5,
+.md-body h6 { font-size: 0.95rem; color: #7d8590; }
+
+.md-body strong { color: #f0f6fc; font-weight: 600; }
+.md-body em { font-style: italic; }
+.md-body del { color: #7d8590; }
+
+.md-body a {
+  color: #58a6ff;
+  text-decoration: none;
+  word-break: break-all;
+}
+.md-body a:hover { text-decoration: underline; }
+
+.md-body ul,
+.md-body ol {
+  margin: 0 0 0.85em;
+  padding-left: 1.5em;
+}
+.md-body li { margin: 0.25em 0; }
+.md-body li > p { margin: 0; }
+
+.md-body blockquote {
+  margin: 0 0 0.85em;
+  padding: 0.35em 0.9em;
+  border-left: 3px solid #30363d;
+  color: #7d8590;
+  background: rgba(88,166,255,0.04);
+  border-radius: 0 6px 6px 0;
+}
+.md-body blockquote p { margin: 0; }
+
+.md-body code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+  background: rgba(110,118,129,0.25);
+  padding: 0.15em 0.4em;
+  border-radius: 5px;
+  color: #e6edf3;
+}
+
+.md-body pre {
+  margin: 0 0 0.85em;
+  padding: 0.85em 1em;
+  overflow-x: auto;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.md-body pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.85em;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.md-body hr {
+  border: none;
+  border-top: 1px solid #30363d;
+  margin: 1.5em 0;
+}
+
+.md-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid #30363d;
+  margin: 0.4em 0;
+}
+
+.md-body table { border-collapse: collapse; margin-bottom: 0.85em; }
+.md-body th,
+.md-body td { border: 1px solid #30363d; padding: 0.4em 0.7em; }
+
+/* 小屏：正文略小一点，行高更紧凑，长链接不撑破布局 */
+@media (max-width: 768px) {
+  .md-body { font-size: 0.95rem; line-height: 1.7; }
+  .md-body pre { font-size: 0.8em; }
+  .md-body h1 { font-size: 1.3rem; }
+  .md-body h2 { font-size: 1.18rem; }
+}

@@ -12,7 +12,8 @@ async function request(url, options = {}) {
   const res = await fetch(`${API_BASE_URL}${url}`, { ...options, headers })
   const data = await res.json()
   if (!res.ok) {
-    throw new Error(data.message || '请求失败')
+    // 后端错误统一放在 detail 字段，这里优先用它，提示才有意义
+    throw new Error(data.detail || data.message || `请求失败（${res.status}）`)
   }
   return data
 }

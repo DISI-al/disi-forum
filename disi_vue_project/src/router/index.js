@@ -11,6 +11,9 @@ const routes = [
   { path: '/add', component: () => import('../views/Add.vue'), meta: { requiresAuth: true } },
   { path: '/post/:id', name: 'PostDetail', component: PostDetail, meta: { requiresAuth: true } },
   { path: '/user', name: 'User', component: User, meta: { requiresAuth: true } },
+  // 新空间入口（预留）：后续独立应用挂到 /dao 下时，删掉这两个占位路由即可
+  { path: '/dao', name: 'Dao', component: () => import('../views/Dao.vue') },
+  { path: '/dao/space', name: 'DaoSpace', component: () => import('../views/DaoSpace.vue') },
 ]
 
 const router = createRouter({

@@ -15,13 +15,18 @@ backend/**/__pycache__/
 *.egg-info/
 .pytest_cache/
 
-# ===== 数据库 =====
-backend/*.db
-backend/*.sqlite
-backend/*.sqlite3
+# ===== 数据库（含本地调试库：一律不上传）=====
+*.db
+*.sqlite
+*.sqlite3
 *.db-journal
 *.db-wal
 *.db-shm
+
+# ===== 本地运行 / 调试产物（只在本机，不提交）=====
+local_dev/
+_build_check/
+dev-*.log
 
 # ===== 用户上传文件（保留目录结构，忽略内容）=====
 backend/uploads/*

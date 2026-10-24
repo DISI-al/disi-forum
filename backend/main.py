@@ -5,6 +5,7 @@ DISI 技术论坛 — FastAPI 后端主程序
 import os
 import shutil
 import uuid
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -51,17 +52,22 @@ def on_startup():
 
 
 # ====================== 工具函数 ======================
-def build_post_response(post: Post, db: Session) -> dict:
-    """
-    将 Post ORM 对象转换为前端期望的 JSON 格式。
-    包含作者、统计、评论、媒体等所有嵌套数据。
-    """
-    author = db.query(User).filter(User.id == post.author_id).first()
-    comments = db.query(Comment).filter(Comment.post_id == post.id).all()
-    likes = db.query(Like).filter(Like.post_id == post.id).all()
-    favorites = db.query(Favorite).filter(Favorite.post_id == post.id).all()
-    media_items = db.query(Media).filter(Media.post_id == post.id).all()
+def _users_map(db: Session, user_ids) -> dict:
+    """一次查询取回一批用户，避免逐条查询"""
+    ids = [i for i in user_ids if i]
+    if not ids:
+        return {}
+    return {u.id: u for u in db.query(User).filter(User.id.in_(ids)).all()}
 
+
+def _chunked(seq: list, size: int = 400):
+    """SQLite 的 IN 参数有上限，分批查询"""
+    for i in range(0, len(seq), size):
+        yield seq[i:i + size]
+
+
+def _post_payload(post: Post, author, comments, likes, favorites, media_items, users) -> dict:
+    """把已经查好的关联数据组装成前端期望的 JSON 结构（不再自己查库）"""
     # 按类型分组媒体文件
     media_group = MediaGroup()
     for m in media_items:
@@ -76,13 +82,13 @@ def build_post_response(post: Post, db: Session) -> dict:
     # 评论列表
     comment_list = []
     for c in comments:
-        comment_user = db.query(User).filter(User.id == c.user_id).first()
+        comment_user = users.get(c.user_id)
         comment_list.append(CommentItem(
             id=c.id,
             userId=c.user_id,
             userName=comment_user.username if comment_user else "未知",
             content=c.content,
-            avatarUrl=comment_user.avatar_url or "" if comment_user else ""
+            avatarUrl=(comment_user.avatar_url or "") if comment_user else "",
         ).model_dump())
 
     return {
@@ -109,6 +115,74 @@ def build_post_response(post: Post, db: Session) -> dict:
         "media": media_group.model_dump(),
         "createdAt": post.created_at.isoformat() if post.created_at else None,
     }
+
+
+def build_post_response(post: Post, db: Session) -> dict:
+    """
+    将单个 Post ORM 对象转换为前端期望的 JSON 格式。
+    包含作者、统计、评论、媒体等所有嵌套数据。
+    """
+    comments = (
+        db.query(Comment)
+        .filter(Comment.post_id == post.id)
+        .order_by(Comment.created_at)
+        .all()
+    )
+    likes = db.query(Like).filter(Like.post_id == post.id).all()
+    favorites = db.query(Favorite).filter(Favorite.post_id == post.id).all()
+    media_items = db.query(Media).filter(Media.post_id == post.id).all()
+    users = _users_map(db, {post.author_id} | {c.user_id for c in comments})
+    return _post_payload(post, users.get(post.author_id), comments, likes, favorites, media_items, users)
+
+
+def build_posts_response(posts: list, db: Session) -> list:
+    """
+    批量转换帖子列表。
+
+    原实现每篇帖子都要查作者、评论、点赞、收藏、媒体各一次，
+    N 篇帖子 = 5N 次查询（N+1 问题）；现在固定 5 批查询，帖子越多差距越大。
+    """
+    if not posts:
+        return []
+
+    post_ids = [p.id for p in posts]
+    comments_by_post = defaultdict(list)
+    likes_by_post = defaultdict(list)
+    favorites_by_post = defaultdict(list)
+    media_by_post = defaultdict(list)
+
+    for chunk in _chunked(post_ids):
+        for c in (
+            db.query(Comment)
+            .filter(Comment.post_id.in_(chunk))
+            .order_by(Comment.created_at)
+            .all()
+        ):
+            comments_by_post[c.post_id].append(c)
+        for l in db.query(Like).filter(Like.post_id.in_(chunk)).all():
+            likes_by_post[l.post_id].append(l)
+        for f in db.query(Favorite).filter(Favorite.post_id.in_(chunk)).all():
+            favorites_by_post[f.post_id].append(f)
+        for m in db.query(Media).filter(Media.post_id.in_(chunk)).all():
+            media_by_post[m.post_id].append(m)
+
+    needed_user_ids = {p.author_id for p in posts}
+    for comment_list in comments_by_post.values():
+        needed_user_ids.update(c.user_id for c in comment_list)
+    users = _users_map(db, needed_user_ids)
+
+    return [
+        _post_payload(
+            post,
+            users.get(post.author_id),
+            comments_by_post.get(post.id, []),
+            likes_by_post.get(post.id, []),
+            favorites_by_post.get(post.id, []),
+            media_by_post.get(post.id, []),
+            users,
+        )
+        for post in posts
+    ]
 
 
 def build_user_response(user: User) -> dict:
@@ -258,7 +332,7 @@ def list_posts(
 ):
     """获取所有帖子列表（按置顶优先 + 时间倒序排列）"""
     posts = db.query(Post).order_by(Post.pinned.desc(), Post.created_at.desc()).all()
-    return [build_post_response(p, db) for p in posts]
+    return build_posts_response(posts, db)
 
 
 # ====================== 帖子详情 ======================
@@ -424,16 +498,22 @@ def list_comments(post_id: str, db: Session = Depends(get_db)):
     if not post:
         raise HTTPException(status_code=404, detail="帖子不存在")
 
-    comments = db.query(Comment).filter(Comment.post_id == post_id).all()
+    comments = (
+        db.query(Comment)
+        .filter(Comment.post_id == post_id)
+        .order_by(Comment.created_at)
+        .all()
+    )
+    users = _users_map(db, {c.user_id for c in comments})
     result = []
     for c in comments:
-        comment_user = db.query(User).filter(User.id == c.user_id).first()
+        comment_user = users.get(c.user_id)
         result.append(CommentItem(
             id=c.id,
             userId=c.user_id,
             userName=comment_user.username if comment_user else "未知",
             content=c.content,
-            avatarUrl=comment_user.avatar_url or "" if comment_user else ""
+            avatarUrl=(comment_user.avatar_url or "") if comment_user else "",
         ).model_dump())
     return result
 

@@ -36,10 +36,28 @@
             </div>
           </div>
         </div>
+
+        <!-- 入口：TALENT 被故障切片打散，露出红色 INSIST -->
+        <router-link to="/dao" class="talent-door" aria-label="Talent 还是 Insist？进入新空间">
+          <span class="talent-word legend" aria-hidden="true">TALENT</span>
+          <span class="talent-word bottom" aria-hidden="true">INSIST<span class="caret">&gt;</span></span>
+          <span class="glitch" aria-hidden="true">
+            <span
+              v-for="slice in slices"
+              :key="slice.i"
+              class="slice"
+              :style="{ top: slice.top, height: slice.height, '--i': slice.i, '--dx': slice.dx, '--d': slice.delay }"
+            >
+              <span class="slice-inner">
+                <span class="talent-word top">TALENT</span>
+              </span>
+            </span>
+          </span>
+        </router-link>
       </section>
 
-      <!-- 帖子列表 -->
-      <main class="container-xl mt-3">
+      <!-- 帖子列表：与上方个人信息卡片同宽 -->
+      <main class="forum-main">
         <div class="content">
           <h3 class="section-title">我的帖子</h3>
           <div v-for="post in userPosts" :key="post.id" class="post-card">
@@ -77,6 +95,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGetCurrentUser, apiGetPosts, apiDeletePost, apiUploadAvatar, apiGetLikesCount } from '../api/index_api.js'
+import { makePreview } from '../utils/markdown.js'
 
 const router = useRouter()
 const user = ref({ id: '', name: '', role: 'user', isAdmin: false, avatarUrl: '' })
@@ -95,10 +114,21 @@ const handleAvatarChange = async (e) => {
   }
 }
 
-const postPreview = (post) => {
-  if (!post.content) return ''
-  return post.content.length > 120 ? post.content.slice(0, 120) + '...' : post.content
-}
+const postPreview = (post) => makePreview(post.content, 120)
+
+/* TALENT 的故障切片：6 条横向切片，交替左右错位、依次淡出 */
+const SLICE_COUNT = 6
+const slices = Array.from({ length: SLICE_COUNT }, (_, i) => {
+  const h = 100 / SLICE_COUNT
+  const dir = i % 2 ? 1 : -1
+  return {
+    i,
+    top: `${(i * h).toFixed(3)}%`,
+    height: `${h}%`,
+    dx: `${dir * (8 + i * 3)}px`,
+    delay: `${i * 25}ms`,
+  }
+})
 
 const formatTime = (iso) => {
   if (!iso) return ''
@@ -112,21 +142,27 @@ const formatTime = (iso) => {
 }
 
 const handleDelete = async (postId) => {
-  if (window.confirm('确定删除这篇帖子？')) {
+  if (!window.confirm('确定删除这篇帖子？')) return
+  try {
     await apiDeletePost(postId)
-    const allPosts = await apiGetPosts()
-    userPosts.value = allPosts.filter(p => p.author?.id === user.value.id)
+    userPosts.value = userPosts.value.filter((p) => p.id !== postId)
+  } catch (err) {
+    alert('删除失败：' + (err.message || '网络异常'))
   }
 }
 
 onMounted(async () => {
-  user.value = await apiGetCurrentUser()
-  const allPosts = await apiGetPosts()
-  userPosts.value = allPosts.filter(p => p.author?.id === user.value.id)
-  try {
-    const res = await apiGetLikesCount()
-    totalLikes.value = res.likesCount || 0
-  } catch (e) { /* 忽略 */ }
+  // 三个请求彼此独立：用户信息失败也不该让帖子列表空掉
+  const [userRes, postsRes, likeRes] = await Promise.allSettled([
+    apiGetCurrentUser(),
+    apiGetPosts(),
+    apiGetLikesCount(),
+  ])
+  if (userRes.status === 'fulfilled') user.value = userRes.value
+  if (postsRes.status === 'fulfilled') {
+    userPosts.value = postsRes.value.filter((p) => p.author?.id === user.value.id)
+  }
+  if (likeRes.status === 'fulfilled') totalLikes.value = likeRes.value.likesCount || 0
 })
 </script>
 
@@ -159,6 +195,7 @@ onMounted(async () => {
 
 /* 用户卡片 */
 .user-card {
+  position: relative;
   background: #161b22;
   border: 1px solid #30363d;
   border-radius: 12px;
@@ -197,6 +234,143 @@ onMounted(async () => {
 .user-meta { flex: 1; min-width: 0; }
 .user-name { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.3rem; }
 .user-badges { margin-bottom: 0.75rem; }
+
+/* ===== 入口：TALENT 故障切片 → 红色 INSIST =====
+   没有门板、没有边框：只有一层被切成 6 条的 TALENT。
+   悬停时切片交替左右错位、依次淡出，露出下面的 INSIST。 */
+.talent-door {
+  --door-w: 200px;
+  --door-h: 80px;
+  --slice-count: 6;
+  position: relative;
+  flex: none;
+  width: var(--door-w);
+  height: var(--door-h);
+  margin-left: auto;
+  overflow: hidden;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.talent-door:focus-visible {
+  outline: 2px solid #58a6ff;
+  outline-offset: 4px;
+}
+
+.talent-word {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  white-space: nowrap;
+  user-select: none;
+  /* TALENT 与 INSIST 完全同一套字：同色、同字号、同字重，只有单词不同 */
+  color: #a3adb8;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-indent: 0.1em;
+}
+
+/* 真相：只换词，不换排版；加箭头后整体宽度仍与 TALENT 对齐 */
+.talent-word.bottom {
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1em;
+  opacity: 0;
+  transform: scale(0.94);
+  letter-spacing: 0.065em;
+  text-indent: 0;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+.caret {
+  flex: none;
+  opacity: 0.9;
+}
+
+/* 切片层：只覆盖文字那一行（30px），否则大部分切片切不到字 */
+.glitch {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 30px;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+.slice {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+.slice-inner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: calc(var(--slice-count) * 100%);
+  top: calc(-1 * var(--i) * 100%);
+  display: grid;
+  place-items: center;
+}
+
+/* 悬停 / 键盘聚焦：碎掉 */
+.talent-door:hover .slice,
+.talent-door:focus-visible .slice {
+  transform: translateX(var(--dx));
+  opacity: 0;
+  transition: transform 0.38s cubic-bezier(0.2, 0.9, 0.2, 1), opacity 0.3s ease;
+  transition-delay: var(--d);
+}
+.talent-door:hover .talent-word.bottom,
+.talent-door:focus-visible .talent-word.bottom {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.3s ease 0.16s, transform 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.14s;
+}
+
+/* 只在触屏 / 窄屏上出现的静态小字 */
+.talent-word.legend { display: none; }
+
+/* 触屏 / 窄屏：静态两行，不做故障动效 */
+@media (max-width: 600px), (hover: none) {
+  .talent-door {
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0 0.2rem;
+  }
+  .glitch { display: none; }
+  .talent-word { position: static; inset: auto; }
+  .talent-word.legend {
+    display: block;
+    font-size: 26px;
+  }
+  .talent-word.bottom { font-size: 26px; opacity: 1; transform: none; }
+}
+@media (max-width: 600px) {
+  .talent-door { width: 100%; flex-basis: 100%; margin: 0.5rem 0 0; }
+}
+
+/* 系统要求减少动效：改成淡入淡出，不做位移 */
+@media (prefers-reduced-motion: reduce) {
+  .slice { transition: opacity 0.2s linear; }
+  .talent-door:hover .slice,
+  .talent-door:focus-visible .slice {
+    transform: none;
+    transition: opacity 0.2s linear;
+    transition-delay: 0ms;
+  }
+  .talent-word.bottom { transition: opacity 0.2s linear; }
+  .talent-door:hover .talent-word.bottom,
+  .talent-door:focus-visible .talent-word.bottom { transition: opacity 0.2s linear; }
+}
 .badge {
   display: inline-block;
   font-size: 0.7rem;
@@ -214,6 +388,9 @@ onMounted(async () => {
 .stat-divider { width: 1px; height: 30px; background: #30363d; }
 
 .section-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #e6edf3; }
+
+/* 帖子区：与用户卡片共用容器宽度 */
+.forum-main { padding: 1rem 0 2rem; }
 
 /* 帖子 */
 .content {

@@ -31,8 +31,8 @@
         </div>
       </nav>
 
-      <!-- 帖子列表 -->
-      <main class="container-xl mt-3">
+      <!-- 帖子列表：与顶部导航同宽（同一容器内，不再额外收窄） -->
+      <main class="forum-main">
         <div class="content">
           <div v-for="post in filteredPosts" :key="post.id" class="post-card">
             <!-- 作者行 -->
@@ -46,15 +46,15 @@
             </div>
 
             <!-- 标题 -->
-            <router-link :to='/post/' + post.id class="post-title">{{ post.title }}</router-link>
+            <router-link :to="`/post/${post.id}`" class="post-title">{{ post.title }}</router-link>
 
             <!-- 标签 -->
             <div class="post-tags mb-2" v-if="post.tags?.length">
               <span v-for="tag in post.tags" :key="tag" class="post-tag">#{{ tag }}</span>
             </div>
 
-            <!-- 正文预览 -->
-            <router-link :to='/post/' + post.id class="post-content-preview mb-3">{{ postPreview(post) }}</router-link>
+            <!-- 正文预览（Markdown 压成纯文本，超长截断） -->
+            <router-link :to="`/post/${post.id}`" class="post-content-preview mb-3">{{ postPreview(post) }}</router-link>
 
             <!-- 媒体展示 -->
             <div class="media-block" v-if="post.media">
@@ -126,7 +126,16 @@
               </div>
             </div>
           </div>
-          <div v-if="!filteredPosts.length" class="empty-state">暂无帖子</div>
+          <div v-if="loading && !posts.length" class="empty-state">
+            帖子加载中…
+          </div>
+          <div v-else-if="errorMsg" class="empty-state">
+            <p class="error-text">{{ errorMsg }}</p>
+            <button class="action-btn" @click="loadPosts">重新加载</button>
+          </div>
+          <div v-else-if="!filteredPosts.length" class="empty-state">
+            {{ searchQuery.trim() ? '没有匹配的帖子' : '暂无帖子' }}
+          </div>
         </div>
       </main>
     </div>
@@ -145,6 +154,7 @@ import {
   apiGetPosts, apiLikePost, apiPinPost, apiDeletePost,
   apiAddComment, apiDeleteComment, apiGetCurrentUser, apiLogout
 } from '../api/index_api.js'
+import { makePreview } from '../utils/markdown.js'
 
 const router = useRouter()
 const posts = ref([])
@@ -152,6 +162,8 @@ const searchQuery = ref('')
 const commentPanels = ref({})
 const newComments = ref({})
 const lightboxUrl = ref('')
+const loading = ref(true)
+const errorMsg = ref('')
 const currentUser = ref({ id: '', name: '', role: 'user', isAdmin: false, avatarUrl: '' })
 
 const openLightbox = (url) => { lightboxUrl.value = url }
@@ -167,9 +179,7 @@ const filteredPosts = computed(() => {
   })
 })
 
-const postPreview = (post) => {
-  return post.content || ''
-}
+const postPreview = (post) => makePreview(post.content, 180)
 
 const formatTime = (iso) => {
   if (!iso) return ''
@@ -186,21 +196,47 @@ const isLiked = (post) => post.meta?.likedBy?.includes(currentUser.value.id)
 
 const handleSearch = () => {}
 
+const findPost = (postId) => posts.value.find((p) => p.id === postId)
+
+// 所有交互都只更新本地数据，不再每点一次就重拉整张列表（移动端流畅度的关键）
 const handleLike = async (postId) => {
-  await apiLikePost(postId)
-  posts.value = await apiGetPosts()
+  const post = findPost(postId)
+  if (!post) return
+  try {
+    await apiLikePost(postId)
+    if (!post.meta) post.meta = { likedBy: [], favoritedBy: [] }
+    if (!post.stats) post.stats = { likes: 0, comments: 0, favorites: 0 }
+    const likedBy = post.meta.likedBy || []
+    if (likedBy.includes(currentUser.value.id)) {
+      post.meta.likedBy = likedBy.filter((id) => id !== currentUser.value.id)
+      post.stats.likes = Math.max(0, (post.stats.likes || 0) - 1)
+    } else {
+      post.meta.likedBy = [...likedBy, currentUser.value.id]
+      post.stats.likes = (post.stats.likes || 0) + 1
+    }
+  } catch (err) {
+    alert('操作失败：' + (err.message || '网络异常'))
+  }
 }
 
 const handlePin = async (postId) => {
-  const post = posts.value.find(p => p.id === postId)
-  await apiPinPost(postId, !post.pinned)
-  posts.value = await apiGetPosts()
+  const post = findPost(postId)
+  if (!post) return
+  try {
+    await apiPinPost(postId, !post.pinned)
+    post.pinned = !post.pinned
+  } catch (err) {
+    alert('操作失败：' + (err.message || '网络异常'))
+  }
 }
 
 const handleDelete = async (postId) => {
-  if (window.confirm('确定删除这篇帖子？')) {
+  if (!window.confirm('确定删除这篇帖子？')) return
+  try {
     await apiDeletePost(postId)
-    posts.value = await apiGetPosts()
+    posts.value = posts.value.filter((p) => p.id !== postId)
+  } catch (err) {
+    alert('删除失败：' + (err.message || '网络异常'))
   }
 }
 
@@ -211,14 +247,30 @@ const toggleCommentPanel = (postId) => {
 const handleAddComment = async (postId) => {
   const content = newComments.value[postId]?.trim()
   if (!content) return
-  await apiAddComment(postId, content)
-  posts.value = await apiGetPosts()
-  newComments.value[postId] = ''
+  const post = findPost(postId)
+  try {
+    const created = await apiAddComment(postId, content)
+    if (post) {
+      post.comments = [...(post.comments || []), created]
+      if (post.stats) post.stats.comments = (post.stats.comments || 0) + 1
+    }
+    newComments.value[postId] = ''
+  } catch (err) {
+    alert('评论失败：' + (err.message || '网络异常'))
+  }
 }
 
 const handleDeleteComment = async (postId, commentId) => {
-  await apiDeleteComment(postId, commentId)
-  posts.value = await apiGetPosts()
+  const post = findPost(postId)
+  try {
+    await apiDeleteComment(postId, commentId)
+    if (post) {
+      post.comments = (post.comments || []).filter((c) => c.id !== commentId)
+      if (post.stats) post.stats.comments = Math.max(0, (post.stats.comments || 0) - 1)
+    }
+  } catch (err) {
+    alert('删除失败：' + (err.message || '网络异常'))
+  }
 }
 
 const handleLogout = () => {
@@ -226,10 +278,31 @@ const handleLogout = () => {
   router.push('/login')
 }
 
-onMounted(async () => {
-  const user = await apiGetCurrentUser()
-  currentUser.value = user
-  posts.value = await apiGetPosts()
+const loadUser = async () => {
+  try {
+    currentUser.value = await apiGetCurrentUser()
+  } catch (err) {
+    console.warn('获取当前用户失败，按游客处理', err)
+  }
+}
+
+const loadPosts = async () => {
+  loading.value = true
+  errorMsg.value = ''
+  try {
+    posts.value = await apiGetPosts()
+  } catch (err) {
+    errorMsg.value = '帖子加载失败：' + (err.message || '网络异常')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 关键修复：两个请求互不阻塞。之前 apiGetCurrentUser() 一旦抛异常，
+// 后面的 apiGetPosts() 就再也不会执行，页面只剩「暂无帖子」。
+onMounted(() => {
+  loadUser()
+  loadPosts()
 })
 </script>
 
@@ -275,14 +348,14 @@ onMounted(async () => {
   gap: 0.75rem;
 }
 
-/* Logo */
-.logo-wrapper { width: 140px; flex-shrink: 0; }
+/* Logo：图片已裁掉四周透明留白，左对齐贴住容器左边缘 */
+.logo-wrapper { width: 72px; flex-shrink: 0; }
 .site-logo {
   font-size: 0;
   display: block;
-  width: 140px;
+  width: 72px;
   height: 32px;
-  background: url('../assets/Trans02.png') center no-repeat;
+  background: url('../assets/Trans02-trimmed.png') left center no-repeat;
   background-size: contain;
   text-decoration: none;
 }
@@ -372,6 +445,9 @@ onMounted(async () => {
 .avatar-img { width: 100%; height: 100%; object-fit: cover; }
 .avatar-link { text-decoration: none; flex-shrink: 0; }
 
+/* 列表区：与导航栏共用 .forum-center-container 的宽度，不再自己收窄 */
+.forum-main { padding: 1rem 0 2rem; }
+
 .content {
   background: var(--gh-bg-secondary);
   border: 1px solid var(--gh-border);
@@ -384,6 +460,9 @@ onMounted(async () => {
 .post-card {
   border-bottom: 1px solid var(--gh-border);
   padding: 1.25rem 0;
+  /* 长列表优化：屏幕外的卡片跳过渲染，滚动时再绘制（移动端明显更顺） */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
 }
 .post-card:last-child { border-bottom: none; }
 
@@ -569,6 +648,7 @@ onMounted(async () => {
 .comment-send:hover { background: #2ea043; }
 
 .empty-state { text-align: center; color: var(--gh-text-secondary); padding: 4rem 0; }
+.error-text { color: #f85149; font-size: 0.9rem; margin-bottom: 0.75rem; }
 
 /* 响应式 */
 @media (max-width: 768px) {
