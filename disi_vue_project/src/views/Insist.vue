@@ -45,6 +45,16 @@ const chart = computed(() => {
 const weekXp = computed(() => dailyXp.slice(-7).reduce((a, b) => a + b, 0))
 const checkDays = computed(() => dailyXp.slice(-7).filter((v) => v > 0).length)
 
+/* 连续天数：从今天往回数，连续有记录的天数 */
+const streakDays = computed(() => {
+  let n = 0
+  for (let i = dailyXp.length - 1; i >= 0; i--) {
+    if (dailyXp[i] > 0) n++
+    else break
+  }
+  return n
+})
+
 const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 </script>
 
@@ -71,13 +81,19 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
           <span class="recent-range">每日获得 XP</span>
         </div>
         <div class="recent-body">
-          <svg class="spark" :viewBox="`0 0 ${chart.w} ${chart.h}`" preserveAspectRatio="none" aria-hidden="true">
-            <path :d="chart.points" />
-          </svg>
+          <div class="chart-wrap">
+            <svg class="spark" :viewBox="`0 0 ${chart.w} ${chart.h}`" preserveAspectRatio="none" aria-hidden="true">
+              <path :d="chart.points" />
+            </svg>
+            <div class="chart-axis">
+              <span>14 天前</span>
+              <span>今天</span>
+            </div>
+          </div>
           <div class="recent-stats">
             <div class="rs"><b class="mono">+{{ weekXp }}</b><span>本周 XP</span></div>
             <div class="rs"><b class="mono">{{ checkDays }}/7</b><span>打卡天数</span></div>
-            <div class="rs"><b class="mono">6</b><span>连续天数</span></div>
+            <div class="rs"><b class="mono">{{ streakDays }}</b><span>连续天数</span></div>
           </div>
         </div>
       </section>
@@ -98,7 +114,7 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
         </div>
         <div class="focus-foot">
           <span class="mono">{{ focus.xp }} / 700</span>
-          <span>本周 +{{ weekXp }} · 连续 6 天</span>
+          <span>本周 +{{ weekXp }} · 连续 {{ streakDays }} 天</span>
         </div>
       </section>
 
@@ -178,7 +194,7 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
 .marquee-track {
   display: flex;
   gap: 2.2rem;
-  padding-left: 14px;
+  padding-left: 90px;
   width: max-content;
   animation: marquee 32s linear infinite;
 }
@@ -212,10 +228,23 @@ const skillName = (id) => skills.find((s) => s.id === id)?.name || id
   gap: 1.4rem;
   margin-top: 0.5rem;
 }
-.spark {
+.chart-wrap {
   flex: 1;
-  height: 46px;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.spark {
+  width: 100%;
+  height: 46px;
+  display: block;
+}
+.chart-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.58rem;
+  color: #4a4a4a;
 }
 .spark path {
   fill: none;

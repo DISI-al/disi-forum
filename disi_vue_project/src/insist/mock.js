@@ -58,7 +58,7 @@ export const lockedAchievements = [
 ]
 
 /* ---------- 最近 14 天每日 XP ---------- */
-export const dailyXp = [18, 0, 22, 35, 12, 0, 0, 28, 41, 15, 30, 22, 0, 26]
+export const dailyXp = [18, 0, 22, 35, 12, 0, 0, 0, 41, 15, 30, 22, 18, 26]
 
 /* ---------- 工具 ---------- */
 export const levelName = (level) => LEVELS[level] || LEVELS[0]
