@@ -13,22 +13,22 @@ from sqlalchemy.orm import Session
 from auth import require_user
 from database import get_db
 from insist_ai import review_promotion, review_prompt_payload
-from insist_models import InsistCard, InsistHabitLog, InsistSkill, InsistXpEvent
+from insist_models import InsistCard, InsistHabitLog, InsistSetting, InsistSkill, InsistXpEvent
 from insist_rules import (
-    DAILY_XP, IMPORTANCE, LEVELS, LEVEL_MIN, STREAK_BONUS, TIERS,
-    apply_xp, checklist_done, checklist_for_level, day_decay, forget_percent,
-    promotion_checklist, segment_max, segment_start,
+    DAILY_XP, DEFAULT_CONFIG, IMPORTANCE, LEVELS, LEVEL_MIN, STREAK_BONUS, TIERS,
+    apply_xp, checklist_done, checklist_for_level, daily_xp, day_decay, forget_percent,
+    merge_config, promotion_checklist, segment_max, segment_start, streak_bonus,
 )
-from insist_schemas import AiReviewRequest, CardCreate, CardUpdate, SkillCreate, SkillUpdate
+from insist_schemas import AiReviewRequest, CardCreate, CardUpdate, SettingsUpdate, SkillCreate, SkillUpdate
 from models import User
 
 router = APIRouter(prefix="/api/insist", tags=["insist"])
 
 
 # ====================== 序列化 ======================
-def skill_payload(skill: InsistSkill, db: Session) -> dict:
-    cap = segment_max(skill.level)
-    start = segment_start(skill.level)
+def skill_payload(skill: InsistSkill, db: Session, cfg: dict | None = None) -> dict:
+    cap = segment_max(skill.level, cfg)
+    start = segment_start(skill.level, cfg)
     if cap:
         progress = max(0.0, min(100.0, (skill.xp - start) / (cap - start) * 100))
     else:
@@ -45,7 +45,7 @@ def skill_payload(skill: InsistSkill, db: Session) -> dict:
         "xp": round(skill.xp, 2),
         "overflow": round(skill.overflow or 0, 2),
         "saturated": bool(cap is not None and skill.xp >= cap),
-        "forget": forget_percent(skill),
+        "forget": forget_percent(skill, cfg=cfg),
         "progress": round(progress, 1),
         "nextNeed": round(max(0, cap - skill.xp), 1) if cap else 0,
         "daysAgo": (date.today() - last).days if last else 0,
@@ -88,6 +88,12 @@ def _card_or_404(db: Session, user: User, card_id: str) -> InsistCard:
     return card
 
 
+def _user_config(db: Session, user: User) -> dict:
+    """读取当前用户的规则配置（没存过就用默认值）"""
+    row = db.query(InsistSetting).filter(InsistSetting.user_id == user.id).first()
+    return merge_config(row.config if row else None)
+
+
 def _event(db: Session, user: User, skill_id: str, xp: float, source: str, note: str, card_id=None):
     db.add(InsistXpEvent(
         user_id=user.id, skill_id=skill_id, card_id=card_id,
@@ -99,7 +105,8 @@ def _event(db: Session, user: User, skill_id: str, xp: float, source: str, note:
 @router.get("/skills")
 def list_skills(current_user: User = Depends(require_user), db: Session = Depends(get_db)):
     rows = db.query(InsistSkill).filter(InsistSkill.user_id == current_user.id).order_by(InsistSkill.updated_at.desc()).all()
-    return [skill_payload(s, db) for s in rows]
+    cfg = _user_config(db, current_user)
+    return [skill_payload(s, db, cfg) for s in rows]
 
 
 @router.post("/skills")
@@ -122,12 +129,12 @@ def create_skill(req: SkillCreate, current_user: User = Depends(require_user), d
         skill.is_focus = True
     db.commit()
     db.refresh(skill)
-    return skill_payload(skill, db)
+    return skill_payload(skill, db, _user_config(db, current_user))
 
 
 @router.get("/skills/{skill_id}")
 def get_skill(skill_id: str, current_user: User = Depends(require_user), db: Session = Depends(get_db)):
-    return skill_payload(_skill_or_404(db, current_user, skill_id), db)
+    return skill_payload(_skill_or_404(db, current_user, skill_id), db, _user_config(db, current_user))
 
 
 @router.patch("/skills/{skill_id}")
@@ -147,8 +154,9 @@ def update_skill(skill_id: str, req: SkillUpdate, current_user: User = Depends(r
     if req.importance is not None:
         skill.importance = req.importance
     if req.level is not None:
+        cfg = _user_config(db, current_user)
         skill.level = req.level
-        skill.xp = float(LEVEL_MIN[req.level])
+        skill.xp = float(cfg["levelMin"][req.level])
         skill.overflow = 0
         skill.overflow_since = None
     if req.xp is not None:
@@ -157,7 +165,7 @@ def update_skill(skill_id: str, req: SkillUpdate, current_user: User = Depends(r
         skill.forget_manual = req.forget_manual
     db.commit()
     db.refresh(skill)
-    return skill_payload(skill, db)
+    return skill_payload(skill, db, _user_config(db, current_user))
 
 
 @router.post("/skills/{skill_id}/focus")
@@ -260,7 +268,7 @@ def checkin(card_id: str, current_user: User = Depends(require_user), db: Sessio
     card.total_days = (card.total_days or 0) + 1
     card.last_checkin = today
 
-    bonus = STREAK_BONUS.get(card.streak, 0)
+    bonus = streak_bonus(card.streak, cfg)
     total = round(gained + bonus, 3)
 
     log = InsistHabitLog(
@@ -323,8 +331,9 @@ def complete_card(card_id: str, current_user: User = Depends(require_user), db: 
 def promotion_status(skill_id: str, current_user: User = Depends(require_user), db: Session = Depends(get_db)):
     skill = _skill_or_404(db, current_user, skill_id)
     cards = db.query(InsistCard).filter(InsistCard.user_id == current_user.id, InsistCard.skill_id == skill.id).all()
+    cfg = _user_config(db, current_user)
     checklist = checklist_for_level(promotion_checklist(cards), skill.level)
-    cap = segment_max(skill.level)
+    cap = segment_max(skill.level, cfg)
     xp_ok = cap is None or skill.xp >= cap
     return {
         "level": skill.level,
@@ -366,7 +375,7 @@ def promote(skill_id: str, current_user: User = Depends(require_user), db: Sessi
     _event(db, current_user, skill.id, transferred, "promotion", f"晋升到{LEVELS[skill.level]}，转入溢出 {transferred}")
     db.commit()
     db.refresh(skill)
-    return {"skill": skill_payload(skill, db), "transferred": transferred}
+    return {"skill": skill_payload(skill, db, cfg), "transferred": transferred}
 
 
 # ====================== 统计 ======================
@@ -426,7 +435,7 @@ def overview(current_user: User = Depends(require_user), db: Session = Depends(g
         "skillCount": len(skills),
         "cardCount": len(cards),
         "totalXp": round(sum(s.xp or 0 for s in skills), 1),
-        "saturatedCount": sum(1 for s in skills if segment_max(s.level) is not None and s.xp >= segment_max(s.level)),
+        "saturatedCount": sum(1 for s in skills if segment_max(s.level, _user_config(db, current_user)) is not None and s.xp >= segment_max(s.level, _user_config(db, current_user))),
         "achievementCount": sum(1 for c in cards if c.kind == "achievement" and c.status == "done"),
         "todayCheckins": sum(1 for c in cards if c.kind == "habit" and c.last_checkin == today),
         "dailyXp": [round(v, 1) for v in daily.values()],
@@ -441,11 +450,43 @@ def ai_review(req: AiReviewRequest, current_user: User = Depends(require_user), 
         InsistCard.user_id == current_user.id, InsistCard.skill_id == skill.id
     ).all()
     checklist = checklist_for_level(promotion_checklist(cards), skill.level)
-    payload = review_prompt_payload(skill_payload(skill, db), [card_payload(c) for c in cards])
+    payload = review_prompt_payload(skill_payload(skill, db, _user_config(db, current_user)), [card_payload(c) for c in cards])
     payload["checklist"] = checklist
     payload["target_level"] = req.target_level
     payload["note"] = req.note
     return review_promotion(payload)
+
+
+# ====================== 设置 ======================
+@router.get("/settings")
+def get_settings(current_user: User = Depends(require_user), db: Session = Depends(get_db)):
+    row = db.query(InsistSetting).filter(InsistSetting.user_id == current_user.id).first()
+    return {
+        "config": _user_config(db, current_user),
+        "defaults": DEFAULT_CONFIG,
+        "customized": bool(row),
+    }
+
+
+@router.patch("/settings")
+def update_settings(req: SettingsUpdate, current_user: User = Depends(require_user), db: Session = Depends(get_db)):
+    cfg = merge_config(req.config)
+    row = db.query(InsistSetting).filter(InsistSetting.user_id == current_user.id).first()
+    if row:
+        row.config = cfg
+    else:
+        db.add(InsistSetting(user_id=current_user.id, config=cfg))
+    db.commit()
+    return {"config": _user_config(db, current_user), "defaults": DEFAULT_CONFIG, "customized": True}
+
+
+@router.delete("/settings")
+def reset_settings(current_user: User = Depends(require_user), db: Session = Depends(get_db)):
+    row = db.query(InsistSetting).filter(InsistSetting.user_id == current_user.id).first()
+    if row:
+        db.delete(row)
+        db.commit()
+    return {"config": DEFAULT_CONFIG, "customized": False}
 
 
 # ====================== 导出 ======================
@@ -471,7 +512,7 @@ def export_data(format: str = "json", current_user: User = Depends(require_user)
                 writer.writerow([
                     s.name, s.category, TIERS[s.tier - 1], IMPORTANCE[s.importance - 1],
                     LEVELS[s.level], round(s.xp or 0, 2), round(s.overflow or 0, 2),
-                    forget_percent(s), sum(1 for e in events if e.skill_id == s.id), last,
+                    forget_percent(s, cfg=_user_config(db, current_user)), sum(1 for e in events if e.skill_id == s.id), last,
                 ])
             filename = "insist-skills.csv"
         else:
@@ -493,7 +534,7 @@ def export_data(format: str = "json", current_user: User = Depends(require_user)
     payload = {
         "exportedAt": datetime.now(timezone.utc).isoformat(),
         "user": current_user.username,
-        "skills": [skill_payload(s, db) for s in skills],
+        "skills": [skill_payload(s, db, _user_config(db, current_user)) for s in skills],
         "cards": [card_payload(c) for c in cards],
         "habitLogs": [
             {"cardId": l.card_id, "day": l.day.isoformat(), "xp": round(l.xp or 0, 3)}

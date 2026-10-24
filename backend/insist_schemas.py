@@ -44,6 +44,10 @@ class CardUpdate(BaseModel):
     xp_value: Optional[float] = Field(None, ge=0)
 
 
+class SettingsUpdate(BaseModel):
+    config: dict = Field(default_factory=dict)
+
+
 class AiReviewRequest(BaseModel):
     skill_id: str
     target_level: Optional[int] = Field(None, ge=0, le=4)

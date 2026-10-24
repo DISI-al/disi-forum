@@ -1,55 +1,107 @@
 """
 INSIST 规则：段位、XP、递减、溢出、晋升清单、遗忘度
 所有计算集中在这里，接口层只负责读写。
+规则数值支持每用户配置（见 DEFAULT_CONFIG / merge_config）。
 """
 from datetime import datetime, date, timezone
 
+DEFAULT_CONFIG = {
+    "levelMin": [0, 100, 300, 700, 1300],
+    "dailyXp": {"1": 1.5, "2": 3.5, "3": 12.0, "4": 24.0},
+    "decay": [
+        {"days": 7, "factor": 1.0},
+        {"days": 30, "factor": 0.85},
+        {"days": 100, "factor": 0.62},
+        {"days": 200, "factor": 0.45},
+        {"days": None, "factor": 0.30},
+    ],
+    "overflow": [
+        {"days": 7, "rate": 0.10},
+        {"days": 30, "rate": 0.05},
+        {"days": None, "rate": 0.02},
+    ],
+    "reviewDays": {"1": 180, "2": 120, "3": 60, "4": 30},
+    "streakBonus": {"7": 20, "30": 80, "100": 300},
+}
+
 LEVELS = ['初识', '入门', '熟练', '精通', '专家']
-LEVEL_MIN = [0, 100, 300, 700, 1300]
+LEVEL_MIN = DEFAULT_CONFIG["levelMin"]
 TIERS = ['低阶', '中阶', '高阶', '臻阶']
 IMPORTANCE = ['次要', '一般', '重要', '核心']
 
-DAILY_XP = {1: 1.5, 2: 3.5, 3: 12.0, 4: 24.0}
-REVIEW_DAYS = {1: 180, 2: 120, 3: 60, 4: 30}     # 复习间隔（按重要程度）
-STREAK_BONUS = {7: 20.0, 30: 80.0, 100: 300.0}   # 连续里程碑一次奖励
+DAILY_XP = {int(k): v for k, v in DEFAULT_CONFIG["dailyXp"].items()}
+REVIEW_DAYS = {int(k): v for k, v in DEFAULT_CONFIG["reviewDays"].items()}
+STREAK_BONUS = {int(k): v for k, v in DEFAULT_CONFIG["streakBonus"].items()}
 
 
-def segment_max(level: int):
+def merge_config(custom: dict | None) -> dict:
+    """把用户配置合并到默认配置上（缺的字段用默认值）"""
+    cfg = {}
+    for key, value in DEFAULT_CONFIG.items():
+        if isinstance(value, dict):
+            cfg[key] = dict(value)
+        elif isinstance(value, list):
+            cfg[key] = [dict(x) if isinstance(x, dict) else x for x in value]
+        else:
+            cfg[key] = value
+    if not custom:
+        return cfg
+    for key, value in custom.items():
+        if key not in cfg:
+            continue
+        if isinstance(cfg[key], dict) and isinstance(value, dict):
+            cfg[key].update(value)
+        elif isinstance(cfg[key], list) and isinstance(value, list) and len(value) == len(cfg[key]):
+            cfg[key] = value
+        elif not isinstance(cfg[key], (dict, list)):
+            cfg[key] = value
+    return cfg
+
+
+def get_cfg(cfg: dict | None) -> dict:
+    return cfg or DEFAULT_CONFIG
+
+
+def segment_max(level: int, cfg: dict | None = None):
     """当前段位的 XP 上限；专家段没有上限"""
-    return LEVEL_MIN[level + 1] if level < len(LEVEL_MIN) - 1 else None
+    level_min = get_cfg(cfg)["levelMin"]
+    return level_min[level + 1] if level < len(level_min) - 1 else None
 
 
-def segment_start(level: int) -> int:
-    return LEVEL_MIN[level] if level < len(LEVEL_MIN) else LEVEL_MIN[-1]
+def segment_start(level: int, cfg: dict | None = None) -> int:
+    level_min = get_cfg(cfg)["levelMin"]
+    return level_min[level] if level < len(level_min) else level_min[-1]
 
 
-def day_decay(total_days: int) -> float:
+def day_decay(total_days: int, cfg: dict | None = None) -> float:
     """打卡天数的边际递减"""
-    if total_days < 7:
-        return 1.0
-    if total_days < 30:
-        return 0.85
-    if total_days < 100:
-        return 0.62
-    if total_days < 200:
-        return 0.45
-    return 0.30
+    for item in get_cfg(cfg)["decay"]:
+        if item["days"] is None or total_days < item["days"]:
+            return item["factor"]
+    return get_cfg(cfg)["decay"][-1]["factor"]
 
 
-def overflow_rate(days_saturated: int) -> float:
+def overflow_rate(days_saturated: int, cfg: dict | None = None) -> float:
     """爆满后的溢出倍率"""
-    if days_saturated < 7:
-        return 0.10
-    if days_saturated < 30:
-        return 0.05
-    return 0.02
+    for item in get_cfg(cfg)["overflow"]:
+        if item["days"] is None or days_saturated < item["days"]:
+            return item["rate"]
+    return get_cfg(cfg)["overflow"][-1]["rate"]
+
+
+def daily_xp(tier: int, cfg: dict | None = None) -> float:
+    return get_cfg(cfg)["dailyXp"].get(str(tier), 1.5)
+
+
+def streak_bonus(streak: int, cfg: dict | None = None) -> float:
+    return get_cfg(cfg)["streakBonus"].get(str(streak), 0)
 
 
 def days_between(a: date, b: date) -> int:
     return (b - a).days
 
 
-def forget_percent(skill, today: date | None = None) -> int:
+def forget_percent(skill, today: date | None = None, cfg: dict | None = None) -> int:
     """遗忘度：距上次活跃 / 复习间隔。手动值优先。"""
     if skill.forget_manual is not None:
         return int(skill.forget_manual)
@@ -58,7 +110,8 @@ def forget_percent(skill, today: date | None = None) -> int:
     today = today or date.today()
     last = skill.last_active.date() if isinstance(skill.last_active, datetime) else skill.last_active
     days = max(0, (today - last).days)
-    interval = REVIEW_DAYS.get(skill.importance, 120)
+    review = get_cfg(cfg)["reviewDays"]
+    interval = review.get(str(skill.importance), review.get("2", 120))
     return min(100, round(days / interval * 100))
 
 
@@ -110,7 +163,7 @@ def checklist_done(items) -> bool:
     return all(i["got"] >= i["need"] for i in items)
 
 
-def apply_xp(skill, amount: float) -> dict:
+def apply_xp(skill, amount: float, cfg: dict | None = None) -> dict:
     """
     把一笔 XP 写进技能：
     - 未满：加到段内，超出部分按溢出倍率
@@ -118,7 +171,7 @@ def apply_xp(skill, amount: float) -> dict:
     返回实际入账明细。
     """
     now = datetime.now(timezone.utc)
-    cap = segment_max(skill.level)
+    cap = segment_max(skill.level, cfg)
     result = {"progress": 0.0, "overflow": 0.0, "saturated": False}
 
     if cap is not None and skill.xp >= cap:
@@ -126,7 +179,7 @@ def apply_xp(skill, amount: float) -> dict:
         if not skill.overflow_since:
             skill.overflow_since = now
         days = max(0, (now.date() - skill.overflow_since.date()).days)
-        rate = overflow_rate(days)
+        rate = overflow_rate(days, cfg)
         gained = round(amount * rate, 3)
         skill.overflow = round((skill.overflow or 0) + gained, 3)
         result.update(overflow=gained, saturated=True)
@@ -149,12 +202,12 @@ def apply_xp(skill, amount: float) -> dict:
 
     # 低段位（初识 → 入门 → 熟练）可以靠打卡直接晋升，不等考核
     while skill.level < 2:
-        cap_now = segment_max(skill.level)
+        cap_now = segment_max(skill.level, cfg)
         if cap_now is None or skill.xp < cap_now:
             break
         transferred = skill.overflow or 0
         skill.level += 1
-        skill.xp = round(segment_start(skill.level) + transferred, 3)
+        skill.xp = round(segment_start(skill.level, cfg) + transferred, 3)
         skill.overflow = 0
         skill.overflow_since = None
         result["autoPromoted"] = True

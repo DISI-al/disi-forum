@@ -51,6 +51,11 @@ export const apiCompleteCard = (id) => request(`/cards/${id}/complete`, { method
 export const apiPromotion = (id) => request(`/skills/${id}/promotion`)
 export const apiPromote = (id) => request(`/skills/${id}/promote`, { method: 'POST' })
 
+// 设置
+export const apiSettings = () => request('/settings')
+export const apiSaveSettings = (config) => request('/settings', { method: 'PATCH', body: JSON.stringify({ config }) })
+export const apiResetSettings = () => request('/settings', { method: 'DELETE' })
+
 // 统计
 export const apiStats = (days = 14) => request(`/stats/checkins?days=${days}`)
 export const apiOverview = () => request('/overview')

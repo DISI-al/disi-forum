@@ -4,7 +4,7 @@ INSIST 数据模型
 """
 from datetime import datetime, timezone, date
 
-from sqlalchemy import Column, String, Text, Integer, Float, Boolean, Date, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, Text, Integer, Float, Boolean, Date, DateTime, ForeignKey, UniqueConstraint, JSON
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -96,3 +96,11 @@ class InsistXpEvent(Base):
     note = Column(String(200), default="")
     occurred_on = Column(Date, default=date.today)
     created_at = Column(DateTime, default=now)
+
+class InsistSetting(Base):
+    __tablename__ = "insist_settings"
+
+    id = Column(String(12), primary_key=True, default=gen_id)
+    user_id = Column(String(12), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    config = Column(JSON, default=dict)
+    updated_at = Column(DateTime, default=now, onupdate=now)
