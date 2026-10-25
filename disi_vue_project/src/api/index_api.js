@@ -32,6 +32,13 @@ export const apiLogin = (password) => {
   })
 }
 
+export const apiRegister = (username, password) => {
+  return request('/register', {
+    method: 'POST',
+    body: JSON.stringify({ username, password })
+  })
+}
+
 export const apiGetCurrentUser = () => request('/user/me')
 
 // ====================== 用户管理（管理员） ======================
