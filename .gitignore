@@ -57,3 +57,7 @@ backup_*.db
 
 # ÁÙÊ±½ØÍ¼
 /_*.png
+
+# ===== INSIST ç‹¬ç«‹å‰ç«¯ =====
+/insist_app/node_modules
+/insist_app/dist

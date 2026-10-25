@@ -1,0 +1,71 @@
+/* ============================================================
+ * 全局基础样式
+ *
+ * 这里替代了原来从 jsdelivr CDN 加载的 Bootstrap：
+ *   - Bootstrap 只用到少量工具类，CDN 在国内移动端经常十几秒才超时，
+ *     而且会阻塞首屏渲染，是「移动端卡顿」的主要原因之一；
+ *   - 卡片/胶囊/按钮等本来就是各视图里自己写的 scoped 样式。
+ * 下面保留同名工具类，页面观感不变，但不再有外部请求。
+ * ============================================================ */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #0d1117;
+}
+
+body {
+  color: #e6edf3;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", Helvetica, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+#app { min-height: 100vh; }
+
+img,
+video,
+svg { max-width: 100%; }
+
+a { color: #58a6ff; }
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button { cursor: pointer; }
+
+/* ---------- 原 Bootstrap 工具类（只保留项目实际用到的） ---------- */
+.mt-2 { margin-top: 0.5rem !important; }
+.mt-3 { margin-top: 1rem !important; }
+.mb-2 { margin-bottom: 0.5rem !important; }
+.mb-3 { margin-bottom: 1rem !important; }
+.mb-4 { margin-bottom: 1.5rem !important; }
+
+.d-flex { display: flex !important; }
+.justify-content-end { justify-content: flex-end !important; }
+
+.h4 { font-size: 1.25rem; font-weight: 600; }
+
+/* ---------- 无障碍 / 省电：系统开启减少动效时关掉过渡 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
