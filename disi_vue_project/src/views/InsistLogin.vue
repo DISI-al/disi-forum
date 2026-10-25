@@ -249,7 +249,7 @@ onMounted(() => pwdInput.value?.focus())
   border: none;
   border-bottom: 1px solid #4a4a4a;
   outline: none;
-  color: #ededed;
+  color: #8a8a8a;
   font-size: 16px;
   letter-spacing: 0.06em;
   text-align: center;
@@ -258,7 +258,7 @@ onMounted(() => pwdInput.value?.focus())
 }
 
 .line::placeholder { color: #5f5f5f; letter-spacing: 0.02em; }
-.line:focus { border-bottom-color: #ededed; }
+.line:focus { color: #ededed; border-bottom-color: #ededed; }
 .line:disabled { opacity: 0.5; }
 
 .line::-ms-reveal,
