@@ -101,9 +101,9 @@ import { makePreview } from '../utils/markdown.js'
 import { cached, peek } from '../utils/cache.js'
 
 const router = useRouter()
-const user = ref({ id: '', name: '', role: 'user', isAdmin: false, avatarUrl: '' })
+const user = ref(peek('forum:me') || { id: '', name: '', role: 'user', isAdmin: false, avatarUrl: '' })
 const userPosts = ref([])
-const totalLikes = ref(0)
+const totalLikes = ref(peek('forum:likes') || 0)
 const avatarInput = ref(null)
 
 /* ---------- 修改自己的昵称 ---------- */
@@ -193,17 +193,18 @@ const handleDelete = async (postId) => {
 }
 
 onMounted(async () => {
-  // 三个请求彼此独立：用户信息失败也不该让帖子列表空掉
-  const [userRes, postsRes, likeRes] = await Promise.allSettled([
+  // 用户信息和帖子列表先拿（走缓存，命中就是同步的），点赞数不阻塞渲染
+  const [userRes, postsRes] = await Promise.allSettled([
     cached('forum:me', apiGetCurrentUser),
     cached('forum:myPosts', apiGetPosts),
-    apiGetLikesCount(),
   ])
   if (userRes.status === 'fulfilled') user.value = userRes.value
   if (postsRes.status === 'fulfilled') {
     userPosts.value = postsRes.value.filter((p) => p.author?.id === user.value.id)
   }
-  if (likeRes.status === 'fulfilled') totalLikes.value = likeRes.value.likesCount || 0
+  cached('forum:likes', apiGetLikesCount)
+    .then((res) => { totalLikes.value = res.likesCount || 0 })
+    .catch(() => {})
 })
 </script>
 
