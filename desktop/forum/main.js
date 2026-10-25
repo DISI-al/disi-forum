@@ -52,6 +52,12 @@ try {
 }
 log('[start] safeMode=', safeMode)
 
+// 手动切换渲染模式：set DISI_RENDER=software 再启动（排版优先时用）
+if (process.env.DISI_RENDER === 'software') {
+  app.disableHardwareAcceleration()
+  app.commandLine.appendSwitch('disable-gpu')
+}
+
 if (safeMode) {
   app.disableHardwareAcceleration()
   app.commandLine.appendSwitch('no-sandbox')
@@ -130,6 +136,12 @@ function createWindow(port) {
     log('[ready]')
     markSafeMode(false)
     win.show()
+  })
+  // 隐藏滚动条 + 预留滚动槽，避免出现/消失时布局跳动
+  win.webContents.on('dom-ready', () => {
+    win.webContents
+      .insertCSS('html{scrollbar-width:none;-ms-overflow-style:none;overflow-y:scroll}::-webkit-scrollbar{width:0;height:0;display:none}')
+      .catch(() => {})
   })
   win.webContents.on('did-finish-load', () => log('[loaded]', win.webContents.getURL()))
   win.webContents.on('did-fail-load', (e, code, desc, u) => log('[fail-load]', code, desc, u))

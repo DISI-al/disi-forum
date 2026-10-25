@@ -66,6 +66,19 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 - `[protocol-error]`：本地文件读取失败；
 - `[console]`：页面里的 console 输出。
 
+## 卡顿 / 画面跳动
+
+- 桌面端已隐藏滚动条并预留滚动槽，避免出现/消失时布局抖动；
+- 论坛列表的 `content-visibility: auto` 已去掉（Electron 里滚动时卡片会跳变）；
+- 如果仍然卡，可对比软件渲染：
+
+```powershell
+set DISI_RENDER=software
+"<解压目录>\INSIST.exe"
+```
+
+两种模式哪个更顺，就用哪个（可以在快捷方式里固定环境变量）。
+
 ## 运行
 
 ```powershell

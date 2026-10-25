@@ -10,7 +10,8 @@ async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, { ...options, headers })
   if (res.status === 401) {
     ;['disi_token', 'disi_role', 'disi_user_id', 'disi_user_name'].forEach((k) => localStorage.removeItem(k))
-    if (!location.pathname.startsWith('/login')) location.href = '/login'
+    if (import.meta.env.VITE_ROUTER_MODE === 'hash') { if (location.hash !== '#/login') location.hash = '#/login' }
+    else if (!location.pathname.startsWith('/login')) location.href = '/login'
     throw new Error('登录已失效，请重新登录')
   }
   const text = await res.text()

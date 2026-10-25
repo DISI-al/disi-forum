@@ -515,7 +515,6 @@ onMounted(() => {
   border-bottom: 1px solid var(--gh-border);
   padding: 1.25rem 0;
   /* 长列表优化：屏幕外的卡片跳过渲染，滚动时再绘制（移动端明显更顺） */
-  content-visibility: auto;
   contain-intrinsic-size: auto 240px;
 }
 .post-card:last-child { border-bottom: none; }
