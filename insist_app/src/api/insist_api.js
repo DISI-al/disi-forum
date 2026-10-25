@@ -1,4 +1,6 @@
 /** INSIST 接口封装 */
+import { clearAll } from '../insist/cache.js'
+
 const API_ORIGIN = (typeof window !== 'undefined' && window.__DISI_API_BASE__) || ''
 const BASE = API_ORIGIN + '/api/insist'
 
@@ -10,24 +12,38 @@ async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, { ...options, headers })
   if (res.status === 401) {
     ;['disi_token', 'disi_role', 'disi_user_id', 'disi_user_name'].forEach((k) => localStorage.removeItem(k))
-    if (import.meta.env.VITE_ROUTER_MODE === 'hash') { if (location.hash !== '#/login') location.hash = '#/login' }
-    else if (!location.pathname.startsWith('/login')) location.href = '/login'
+    if (import.meta.env.VITE_ROUTER_MODE === 'hash') {
+      if (location.hash !== '#/login') location.hash = '#/login'
+    } else if (!location.pathname.startsWith('/login')) {
+      location.href = '/login'
+    }
     throw new Error('登录已失效，请重新登录')
   }
+
   const text = await res.text()
   let data = null
-  try { data = text ? JSON.parse(text) : null } catch { data = null }
-  if (!res.ok) {
-    throw new Error((data && (data.detail || data.message)) || `请求失败（${res.status}）`)
+  try {
+    data = text ? JSON.parse(text) : null
+  } catch (e) {
+    data = null
   }
+
+  if (!res.ok) {
+    throw new Error((data && (data.detail || data.message)) || '请求失败（' + res.status + '）')
+  }
+
+  // 写操作后清空缓存，保证下次进页面读到最新数据
+  if (options.method && options.method !== 'GET') clearAll()
   return data
 }
 
 const qs = (params = {}) => {
   const s = new URLSearchParams()
-  Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') s.set(k, v) })
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') s.set(k, v)
+  })
   const str = s.toString()
-  return str ? `?${str}` : ''
+  return str ? '?' + str : ''
 }
 
 // 技能
@@ -39,7 +55,7 @@ export const apiDeleteSkill = (id) => request(`/skills/${id}`, { method: 'DELETE
 export const apiSetFocus = (id) => request(`/skills/${id}/focus`, { method: 'POST' })
 
 // 卡片
-export const apiCards = (params) => request(`/cards${qs(params)}`)
+export const apiCards = (params) => request('/cards' + qs(params))
 export const apiCard = (id) => request(`/cards/${id}`)
 export const apiCreateCard = (data) => request('/cards', { method: 'POST', body: JSON.stringify(data) })
 export const apiPatchCard = (id, data) => request(`/cards/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
@@ -69,7 +85,7 @@ export const apiAiReview = (skillId, targetLevel, note = '') =>
 // 导出：直接触发浏览器下载
 export async function apiExport(format = 'json') {
   const token = localStorage.getItem('disi_token')
-  const res = await fetch(`/api/insist/export?format=${format}`, {
+  const res = await fetch(`${BASE}/export?format=${format}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
   if (!res.ok) throw new Error('导出失败')

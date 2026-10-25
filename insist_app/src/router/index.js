@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
+import { prefetch } from '../insist/cache.js'
+import { apiOverview, apiSkills, apiCards, apiStats, apiSettings } from '../api/insist_api.js'
 import InsistLogin from '../views/InsistLogin.vue'
 import InsistCollection from '../views/InsistCollection.vue'
 import InsistSkill from '../views/InsistSkill.vue'
@@ -7,7 +9,6 @@ import InsistCardDetail from '../views/InsistCardDetail.vue'
 import InsistAchievements from '../views/InsistAchievements.vue'
 import InsistStats from '../views/InsistStats.vue'
 import InsistSettings from '../views/InsistSettings.vue'
-
 import InsistHome from '../views/Insist.vue'
 
 const routes = [
@@ -29,13 +30,46 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, from, next) => {
+// 换页前先把目标页数据取好（旧页面继续显示），新页面直接用缓存渲染，避免空壳闪烁
+const preloaders = {
+  '/': () => Promise.allSettled([
+    prefetch('overview', apiOverview),
+    prefetch('skills', apiSkills),
+    prefetch('cards', apiCards),
+  ]),
+  '/collection': () => prefetch('skills', apiSkills),
+  '/cards': () => Promise.allSettled([prefetch('cards', apiCards), prefetch('skills', apiSkills)]),
+  '/achievements': () => Promise.allSettled([
+    prefetch('ach', () => apiCards({ kind: 'achievement' })),
+    prefetch('skills', apiSkills),
+  ]),
+  '/stats': () => Promise.allSettled([
+    prefetch('stats', () => apiStats(14)),
+    prefetch('skills', apiSkills),
+  ]),
+  '/settings': () => prefetch('settings', apiSettings),
+}
+
+router.beforeEach(async (to, from, next) => {
   const hasToken = !!localStorage.getItem('disi_token')
   if (to.path === '/login') {
     hasToken ? next('/') : next()
     return
   }
-  hasToken ? next() : next('/login')
+  if (!hasToken) {
+    next('/login')
+    return
+  }
+
+  const loader = preloaders[to.path]
+  if (loader) {
+    try {
+      await loader()
+    } catch (e) {
+      // 预取失败交给页面自己处理
+    }
+  }
+  next()
 })
 
 export default router

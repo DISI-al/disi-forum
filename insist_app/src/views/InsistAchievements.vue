@@ -6,13 +6,14 @@
 import { ref, computed, onMounted } from 'vue'
 import InsistNav from '../components/InsistNav.vue'
 import { apiCards, apiSkills, apiCreateCard, apiDeleteCard } from '../api/insist_api.js'
+import { cached, peek, invalidate } from '../insist/cache.js'
 import { TIERS, tierName } from '../insist/constants.js'
 
-const loading = ref(true)
+const loading = ref(!peek('ach'))
 const error = ref('')
 const notice = ref('')
-const cards = ref([])
-const skills = ref([])
+const cards = ref(peek('ach') || [])
+const skills = ref(peek('skills') || [])
 
 const showAdd = ref(false)
 const saving = ref(false)
@@ -27,7 +28,10 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [cs, sk] = await Promise.all([apiCards({ kind: 'achievement' }), apiSkills()])
+    const [cs, sk] = await Promise.all([
+      cached('ach', () => apiCards({ kind: 'achievement' })),
+      cached('skills', apiSkills),
+    ])
     cards.value = cs
     skills.value = sk
   } catch (e) {

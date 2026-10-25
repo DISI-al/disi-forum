@@ -5,13 +5,14 @@
 import { ref, computed, onMounted } from 'vue'
 import InsistNav from '../components/InsistNav.vue'
 import { apiStats, apiSkills } from '../api/insist_api.js'
+import { cached, peek } from '../insist/cache.js'
 import { tierName } from '../insist/constants.js'
 
-const loading = ref(true)
+const loading = ref(!peek('stats'))
 const error = ref('')
-const items = ref([])
+const items = ref(peek('stats') || [])
 const days = ref(14)
-const skills = ref([])
+const skills = ref(peek('skills') || [])
 
 const todayDone = computed(() => items.value.filter((i) => i.todayDone).length)
 const weekRate = computed(() => {
@@ -27,7 +28,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [st, sk] = await Promise.all([apiStats(days.value), apiSkills()])
+    const [st, sk] = await Promise.all([cached('stats', () => apiStats(days.value)), cached('skills', apiSkills)])
     items.value = st.items.map((i) => ({ ...i }))
     skills.value = sk
   } catch (e) {

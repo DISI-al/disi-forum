@@ -6,13 +6,14 @@
 import { ref, computed, onMounted } from 'vue'
 import InsistNav from '../components/InsistNav.vue'
 import { apiCards, apiSkills, apiCreateCard, apiCompleteCard, apiDeleteCard } from '../api/insist_api.js'
+import { cached, peek } from '../insist/cache.js'
 import { TIERS, kindLabel, tierName, statusLabel } from '../insist/constants.js'
 
-const loading = ref(true)
+const loading = ref(!peek('cards'))
 const error = ref('')
 const notice = ref('')
-const cards = ref([])
-const skills = ref([])
+const cards = ref(peek('cards') || [])
+const skills = ref(peek('skills') || [])
 
 const tabs = [
   { key: 'task', label: '任务卡' },
@@ -40,7 +41,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [cs, sk] = await Promise.all([apiCards(), apiSkills()])
+    const [cs, sk] = await Promise.all([cached('cards', apiCards), cached('skills', apiSkills)])
     cards.value = cs
     skills.value = sk
   } catch (e) {

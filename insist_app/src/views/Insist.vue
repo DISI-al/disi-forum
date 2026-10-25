@@ -6,16 +6,17 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import InsistNav from '../components/InsistNav.vue'
 import { apiOverview, apiSkills, apiCards, apiCheckin } from '../api/insist_api.js'
+import { cached, peek } from '../insist/cache.js'
 import { apiCreatePost, apiUpdatePost } from '../api/index_api.js'
 import { levelName, tierName, stars, forgetClass, kindLabel } from '../insist/constants.js'
 
 const router = useRouter()
 
-const loading = ref(true)
+const loading = ref(!peek('skills'))
 const error = ref('')
-const overview = ref({ skillCount: 0, totalXp: 0, saturatedCount: 0, dailyXp: [], todayCheckins: 0 })
-const skills = ref([])
-const cards = ref([])
+const overview = ref(peek('overview') || { skillCount: 0, totalXp: 0, saturatedCount: 0, dailyXp: [], todayCheckins: 0 })
+const skills = ref(peek('skills') || [])
+const cards = ref(peek('cards') || [])
 const busyId = ref('')
 const notice = ref('')
 
@@ -59,7 +60,11 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [ov, sk, cs] = await Promise.all([apiOverview(), apiSkills(), apiCards()])
+    const [ov, sk, cs] = await Promise.all([
+      cached('overview', apiOverview),
+      cached('skills', apiSkills),
+      cached('cards', apiCards),
+    ])
     overview.value = ov
     skills.value = sk
     cards.value = cs

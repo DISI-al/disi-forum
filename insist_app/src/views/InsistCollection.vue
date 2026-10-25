@@ -5,11 +5,12 @@
 import { ref, computed, onMounted } from 'vue'
 import InsistNav from '../components/InsistNav.vue'
 import { apiSkills, apiCreateSkill } from '../api/insist_api.js'
+import { cached, peek } from '../insist/cache.js'
 import { TIERS, IMPORTANCE, LEVELS, LEVEL_MIN, stars, forgetClass } from '../insist/constants.js'
 
-const loading = ref(true)
+const loading = ref(!peek('skills'))
 const error = ref('')
-const skills = ref([])
+const skills = ref(peek('skills') || [])
 
 const groupBy = ref('importance')
 const filterCategory = ref('all')
@@ -58,7 +59,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    skills.value = await apiSkills()
+    skills.value = await cached('skills', apiSkills)
   } catch (e) {
     error.value = e.message || '加载失败'
   } finally {
