@@ -79,6 +79,22 @@ set DISI_RENDER=software
 
 两种模式哪个更顺，就用哪个（可以在快捷方式里固定环境变量）。
 
+## 安装到系统（免管理员，替代 NSIS）
+
+不打开开发者模式也能装：脚本把文件复制到本用户目录、建开始菜单/桌面快捷方式、写入「设置 → 应用」列表和卸载入口。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\desktop\install-windows.ps1 -App forum
+powershell -ExecutionPolicy Bypass -File .\desktop\install-windows.ps1 -App insist
+```
+
+- 安装位置：`%LOCALAPPDATA%\Programs\DISI 论坛`、`%LOCALAPPDATA%\Programs\INSIST`
+- 卸载：设置 → 应用 → 卸载，或 `desktop\uninstall-windows.ps1 -App insist`
+- 只写 `HKCU`，不碰系统级注册表，不需要提权
+
+> NSIS 安装包（`-Installer`）仍然保留，需要开发者模式才能打包；效果一致，区别是带标准安装向导。
+> 注意：这些 PowerShell 脚本必须保存成 **UTF-8 with BOM**，否则 PowerShell 5.1 会把中文读成乱码、直接语法报错。
+
 ## 运行
 
 ```powershell

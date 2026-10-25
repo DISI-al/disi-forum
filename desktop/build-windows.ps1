@@ -1,4 +1,4 @@
-# Build Windows apps (ASCII only, works on PowerShell 5.1)
+﻿# Build Windows apps (ASCII only, works on PowerShell 5.1)
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File .\desktop\build-windows.ps1
 #   powershell -ExecutionPolicy Bypass -File .\desktop\build-windows.ps1 -Installer
