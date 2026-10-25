@@ -8,9 +8,10 @@
  */
 import { ref, onMounted } from 'vue'
 import { apiListUsers, apiCreateUser, apiUpdateUserName, apiDeleteUser } from '../api/index_api.js'
+import { cached, peek } from '../utils/cache.js'
 
-const users = ref([])
-const loading = ref(true)
+const users = ref(peek('forum:users') || [])
+const loading = ref(!peek('forum:users'))
 const busy = ref(false)
 const error = ref('')
 const notice = ref('')
@@ -35,7 +36,7 @@ async function load() {
   loading.value = true
   clearMsg()
   try {
-    const list = await apiListUsers()
+    const list = await cached('forum:users', apiListUsers)
     users.value = list
     draft.value = Object.fromEntries(list.map((u) => [u.id, u.name]))
   } catch (e) {

@@ -259,7 +259,7 @@ onMounted(async () => {
 
 .avatar-section { position: relative; flex-shrink: 0; }
 .avatar-main {
-  width: 80px; height: 80px;
+  width: 96px; height: 96px;
   border-radius: 50%;
   background: #21262d;
   display: flex; align-items: center; justify-content: center;
@@ -282,7 +282,12 @@ onMounted(async () => {
   border-radius: 50%;
 }
 
-.user-meta { flex: 1; min-width: 0; }
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-self: stretch;
+  padding: 2px 0; flex: 1; min-width: 0; }
 .user-name {
   font-size: 1.5rem;
   font-weight: 700;
@@ -479,7 +484,12 @@ onMounted(async () => {
     padding: 1.5rem 1.1rem;
     gap: 1rem;
   }
-  .user-meta { align-items: center; width: 100%; }
+  .user-meta {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-self: stretch;
+  padding: 2px 0; align-items: center; width: 100%; }
   .user-name { justify-content: center; }
   .user-stats { justify-content: center; }
   .talent-door { width: 100%; flex-basis: 100%; margin: 0.9rem 0 0; }
@@ -578,7 +588,12 @@ onMounted(async () => {
 
 @media (max-width: 600px) {
   .user-card { padding: 1.5rem; gap: 1rem; justify-content: center; text-align: center; }
-  .user-meta { flex-basis: 100%; }
+  .user-meta {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-self: stretch;
+  padding: 2px 0; flex-basis: 100%; }
   .user-stats { justify-content: center; }
   .content { padding: 1rem; border-radius: 0; }
 }

@@ -38,6 +38,27 @@ namespace DisiInstaller
         [STAThread]
         private static void Main(string[] args)
         {
+            try
+            {
+                Run(args);
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "setup-error.log"), DateTime.Now.ToString("s") + " " + ex + "\r\n");
+                }
+                catch { }
+                try
+                {
+                    MessageBox.Show("安装程序启动失败：\n" + ex.Message, "DISI Setup", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                catch { }
+            }
+        }
+
+        private static void Run(string[] args)
+        {
             var testDir = Environment.GetEnvironmentVariable("DISI_TEST_INSTALL");
             if (!string.IsNullOrEmpty(testDir))
             {
@@ -122,7 +143,7 @@ namespace DisiInstaller
 
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(620, 360);
+            ClientSize = new Size(640, 420);
             BackColor = Theme.Bg;
             DoubleBuffered = true;
             Font = new Font("Microsoft YaHei UI", 9.5F);
@@ -130,8 +151,8 @@ namespace DisiInstaller
 
             var logo = new PictureBox
             {
-                Location = new Point(28, 26),
-                Size = new Size(48, 48),
+                Location = new Point(32, 30),
+                Size = new Size(44, 44),
                 SizeMode = PictureBoxSizeMode.StretchImage
             };
             try
@@ -144,7 +165,7 @@ namespace DisiInstaller
             _title.Text = Info.ProductName;
             _title.Font = new Font("Microsoft YaHei UI", 17F, FontStyle.Bold);
             _title.ForeColor = Theme.Text;
-            _title.Location = new Point(90, 22);
+            _title.Location = new Point(88, 30);
             _title.AutoSize = true;
 
 
@@ -152,27 +173,27 @@ namespace DisiInstaller
             _close.Text = "✕";
             _close.FlatStyle = FlatStyle.Flat;
             _close.FlatAppearance.BorderSize = 0;
-            _close.Size = new Size(36, 32);
-            _close.Location = new Point(ClientSize.Width - 46, 10);
+            _close.Size = new Size(36, 28);
+            _close.Location = new Point(ClientSize.Width - 68, 12);
             _close.ForeColor = Theme.Muted;
             _close.BackColor = Theme.Bg;
             _close.TabStop = false;
             _close.Click += (s, e) => { if (!_busy) Close(); };
 
-            var line = new Panel { BackColor = Theme.Border, Location = new Point(28, 96), Size = new Size(ClientSize.Width - 56, 1) };
+            var line = new Panel { BackColor = Theme.Border, Location = new Point(32, 92), Size = new Size(ClientSize.Width - 64, 1) };
 
-            var pathLabel = new Label { Text = "安装位置", ForeColor = Theme.Muted, Location = new Point(28, 116), AutoSize = true };
+            var pathLabel = new Label { Text = "安装位置", ForeColor = Theme.Muted, Location = new Point(32, 112), AutoSize = true };
 
-            _pathBox.Location = new Point(28, 140);
-            _pathBox.Size = new Size(468, 30);
+            _pathBox.Location = new Point(32, 136);
+            _pathBox.AutoSize = false;
             _pathBox.BorderStyle = BorderStyle.FixedSingle;
             _pathBox.BackColor = Theme.Panel;
             _pathBox.ForeColor = Theme.Text;
             _pathBox.Text = DefaultDir();
 
             _browse.Text = "浏览";
-            _browse.Location = new Point(506, 140);
-            _browse.Size = new Size(86, 30);
+            _browse.Location = new Point(508, 136);
+            _browse.Size = new Size(100, 34);
             StyleSecondary(_browse);
             _browse.Click += (s, e) =>
             {
@@ -180,8 +201,8 @@ namespace DisiInstaller
                 if (dlg.ShowDialog(this) == DialogResult.OK) _pathBox.Text = dlg.SelectedPath;
             };
 
-            _progressTrack.Location = new Point(28, 198);
-            _progressTrack.Size = new Size(ClientSize.Width - 56, 6);
+            _progressTrack.Location = new Point(32, 200);
+            _progressTrack.Size = new Size(ClientSize.Width - 64, 6);
             _progressTrack.BackColor = Theme.Panel;
             _progressFill.Location = new Point(0, 0);
             _progressFill.Size = new Size(0, 6);
@@ -190,25 +211,25 @@ namespace DisiInstaller
 
             _status.Text = "准备就绪";
             _status.ForeColor = Theme.Muted;
-            _status.Location = new Point(28, 212);
+            _status.Location = new Point(32, 214);
             _status.Size = new Size(400, 22);
 
             _launch.Text = "安装完成后运行";
             _launch.ForeColor = Theme.Text;
             _launch.BackColor = Theme.Bg;
-            _launch.Location = new Point(28, 258);
+            _launch.Location = new Point(32, 256);
             _launch.AutoSize = true;
             _launch.Checked = true;
 
             _cancel.Text = "取消";
-            _cancel.Size = new Size(104, 38);
-            _cancel.Location = new Point(ClientSize.Width - 140, 300);
+            _cancel.Size = new Size(120, 40);
+            _cancel.Location = new Point(ClientSize.Width - 152, 348);
             StyleSecondary(_cancel);
             _cancel.Click += (s, e) => { if (!_busy) Close(); };
 
             _install.Text = "安装";
-            _install.Size = new Size(104, 38);
-            _install.Location = new Point(ClientSize.Width - 256, 300);
+            _install.Size = new Size(120, 40);
+            _install.Location = new Point(ClientSize.Width - 284, 348);
             _install.FlatStyle = FlatStyle.Flat;
             _install.FlatAppearance.BorderSize = 0;
             _install.BackColor = Theme.Accent;

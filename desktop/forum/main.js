@@ -134,7 +134,7 @@ function setupTray(win) {
 
   const buildMenu = () =>
     Menu.buildFromTemplate([
-      { label: '显示 ' + APP_TITLE, click: () => { win.show(); win.focus(); } },
+      { label: '打开论坛', click: () => { win.show(); win.focus(); } },
       { type: 'separator' },
       {
         label: '开机自启',
@@ -146,7 +146,7 @@ function setupTray(win) {
         },
       },
       { type: 'separator' },
-      { label: '退出', click: () => { app.isQuitting = true; app.quit(); } },
+      { label: '退出论坛', click: () => { app.isQuitting = true; app.quit(); } },
     ])
 
   tray.setContextMenu(buildMenu())
@@ -177,7 +177,7 @@ function createWindow(port) {
     },
   })
 
-  const url = 'http://127.0.0.1:' + port + '/index.html'
+  const url = 'http://127.0.0.1:' + port + '/index.html#/login'
   log('[boot] title=', APP_TITLE, 'url=', url)
 
   win.webContents.on('dom-ready', () => {

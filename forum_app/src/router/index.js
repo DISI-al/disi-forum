@@ -7,7 +7,7 @@ import Index from '../views/Index.vue'
 import User from '../views/User.vue'
 import PostDetail from '../views/PostDetail.vue'
 import { prefetch } from '../utils/cache.js'
-import { apiGetPosts, apiGetCurrentUser, apiGetPostDetail, apiGetLikesCount } from '../api/index_api.js'
+import { apiGetPosts, apiGetCurrentUser, apiGetPostDetail, apiGetLikesCount, apiListUsers } from '../api/index_api.js'
 
 const routes = [
   { path: '/', redirect: '/index' },
@@ -48,6 +48,8 @@ router.beforeEach(async (to, from, next) => {
         prefetch('forum:myPosts', apiGetPosts),
         prefetch('forum:likes', apiGetLikesCount),
       ])
+    } else if (to.path === '/users') {
+      await prefetch('forum:users', apiListUsers)
     } else if (to.name === 'PostDetail') {
       await prefetch('forum:post:' + to.params.id, () => apiGetPostDetail(to.params.id))
     }
