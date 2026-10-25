@@ -1,10 +1,11 @@
 <script setup>
 /**
- * 登录页 —— 图标墙 + 单口令
- * 顶部一排常用工具/框架图标（黑白），悬停放大，点击在新标签打开官网。
+ * INSIST · 登录 / 注册
+ * 版式与论坛登录一致：图标墙 + 大字标 + 下划线输入 + 按钮。
+ * 配色换成 INSIST 的黑白（白字、灰色线、白色按钮）。
  */
-import { ref, onMounted, nextTick } from 'vue'
-import { apiLogin } from '../api/index_api.js'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { apiLogin, apiRegister } from '../api/index_api.js'
 
 import arduino from '../assets/logos/arduino.png'
 import python from '../assets/logos/python.png'
@@ -38,39 +39,66 @@ const LOGOS = [
   { name: 'Node.js', src: nodejs, href: 'https://nodejs.org' },
 ]
 
-const input = ref(null)
+const mode = ref('login')
+const username = ref('')
+const password = ref('')
 const loading = ref(false)
-const pwd = ref('')
 const error = ref('')
+const pwdInput = ref(null)
 
-async function doLogin() {
-  if (loading.value) return
-  const value = pwd.value.trim()
-  if (!value) {
-    input.value?.focus()
-    return
-  }
-  loading.value = true
+const isRegister = computed(() => mode.value === 'register')
+const buttonText = computed(() => {
+  if (loading.value) return isRegister.value ? '创建中…' : '进入中…'
+  return isRegister.value ? '创建账号' : '进入'
+})
+
+function switchMode() {
+  mode.value = isRegister.value ? 'login' : 'register'
   error.value = ''
+  nextTick(() => pwdInput.value?.focus())
+}
+
+function store(res) {
+  localStorage.setItem('disi_token', res.token)
+  localStorage.setItem('disi_role', res.user.role)
+  localStorage.setItem('disi_user_id', res.user.id)
+  localStorage.setItem('disi_user_name', res.user.name)
+  window.location.href = '/insist'
+}
+
+async function submit() {
+  if (loading.value) return
+  error.value = ''
+
+  if (isRegister.value) {
+    if (password.value.length < 4) { error.value = '口令至少 4 个字符'; return }
+    const name = username.value.trim()
+    if (name.length < 2) { error.value = '用户名至少 2 个字符'; return }
+    loading.value = true
+    try {
+      return store(await apiRegister(name, password.value))
+    } catch (e) {
+      error.value = e?.message || '注册失败'
+      loading.value = false
+      return
+    }
+  }
+
+  const pwd = password.value.trim()
+  if (!pwd) { pwdInput.value?.focus(); return }
+  loading.value = true
   try {
-    const res = await apiLogin(value)
-    localStorage.setItem('disi_token', res.token)
-    localStorage.setItem('disi_role', res.user.role)
-    localStorage.setItem('disi_user_id', res.user.id)
-    localStorage.setItem('disi_user_name', res.user.name)
-    window.location.href = '/insist'
-  } catch (err) {
-    error.value = err?.message || '口令错误，请重试'
-    pwd.value = ''
+    return store(await apiLogin(pwd))
+  } catch (e) {
+    error.value = e?.message || '口令错误，请重试'
+    password.value = ''
     loading.value = false
     await nextTick()
-    input.value?.focus()
+    pwdInput.value?.focus()
   }
 }
 
-onMounted(() => {
-  input.value?.focus()
-})
+onMounted(() => pwdInput.value?.focus())
 </script>
 
 <template>
@@ -91,20 +119,38 @@ onMounted(() => {
 
     <h1 class="wordmark">INSIST</h1>
 
-    <form class="form" @submit.prevent="doLogin">
+    <form class="form" :class="{ wide: isRegister }" @submit.prevent="submit">
       <input
-        ref="input"
-        v-model="pwd"
-        class="pw"
-        :class="{ busy: loading }"
+        ref="pwdInput"
+        v-model="password"
+        class="line"
         type="password"
-        autocomplete="current-password"
-        autocapitalize="off"
-        spellcheck="false"
+        :autocomplete="isRegister ? 'new-password' : 'current-password'"
+        :placeholder="isRegister ? '设置口令（至少 4 位）' : ''"
         :disabled="loading"
         aria-label="口令"
       />
+      <input
+        v-if="isRegister"
+        v-model="username"
+        class="line"
+        type="text"
+        autocomplete="username"
+        maxlength="20"
+        placeholder="用户名（2–20 个字符）"
+        autocapitalize="off"
+        spellcheck="false"
+        :disabled="loading"
+        aria-label="用户名"
+      />
+
+      <button class="btn" type="submit" :disabled="loading">{{ buttonText }}</button>
+
       <p class="err" :class="{ show: !!error }">{{ error || '\u00a0' }}</p>
+
+      <p class="switch">
+        <a href="#" @click.prevent="switchMode">{{ isRegister ? '去登录' : '注册' }}</a>
+      </p>
     </form>
   </div>
 </template>
@@ -115,8 +161,8 @@ onMounted(() => {
 .page {
   position: relative;
   min-height: 100vh;
-  background: #0d1117;
-  color: #e6edf3;
+  background: #050505;
+  color: #ededed;
   font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   overflow: hidden;
 }
@@ -147,7 +193,7 @@ onMounted(() => {
 .logo img {
   width: 26px;
   height: 26px;
-  opacity: 0.45;
+  opacity: 0.35;
   transform: scale(1);
   transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.18s ease;
   will-change: transform;
@@ -161,9 +207,7 @@ onMounted(() => {
   transform: scale(1.5);
 }
 
-.logo:active img {
-  transform: scale(1.32);
-}
+.logo:active img { transform: scale(1.32); }
 
 /* ---------- 字标 ---------- */
 .wordmark {
@@ -171,70 +215,103 @@ onMounted(() => {
   left: 50%;
   top: 38vh;
   transform: translate(-50%, -50%);
-  font-size: clamp(64px, 9.2vw, 120px);
+  font-size: clamp(46px, 6.6vw, 86px);
   font-weight: 600;
-  letter-spacing: 0.3em;
-  margin-right: -0.3em;
+  letter-spacing: 0.2em;
+  margin-right: -0.2em;
   line-height: 1;
-  color: #e6edf3;
+  color: #ededed;
   user-select: none;
   white-space: nowrap;
 }
 
-/* ---------- 输入 ---------- */
+/* ---------- 表单 ---------- */
 .form {
   position: absolute;
   left: 50%;
-  top: 66vh;
+  top: 61vh;
   transform: translateX(-50%);
-  width: 360px;
+  width: 380px;
   max-width: calc(100vw - 48px);
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.pw {
+.form.wide { top: 56vh; }
+
+.line {
   width: 100%;
-  height: 40px;
-  padding: 0 4px 6px;
+  height: 42px;
+  padding: 0 4px 8px;
+  margin-bottom: 20px;
   background: transparent;
   border: none;
-  border-bottom: 1px solid #21262d;
+  border-bottom: 1px solid #4a4a4a;
   outline: none;
-  color: #e6edf3;
-  font-size: 18px;
-  letter-spacing: 0.32em;
+  color: #ededed;
+  font-size: 16px;
+  letter-spacing: 0.06em;
   text-align: center;
-  caret-color: #e6edf3;
+  caret-color: #ededed;
   transition: border-color 0.2s ease;
 }
 
-.pw:focus { border-bottom-color: #484f58; }
-.pw.busy { opacity: 0.5; }
+.line::placeholder { color: #5f5f5f; letter-spacing: 0.02em; }
+.line:focus { border-bottom-color: #ededed; }
+.line:disabled { opacity: 0.5; }
 
-.pw::-ms-reveal,
-.pw::-webkit-password-toggle-button { display: none !important; }
+.line::-ms-reveal,
+.line::-webkit-password-toggle-button { display: none !important; }
+
+.btn {
+  width: 100%;
+  height: 40px;
+  margin-top: 6px;
+  border: 1px solid #ededed;
+  border-radius: 6px;
+  background: #ededed;
+  color: #050505;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn:hover:not(:disabled) { background: #fff; }
+.btn:active:not(:disabled) { background: #d8d8d8; }
+.btn:disabled { opacity: 0.55; cursor: default; }
 
 .err {
-  margin-top: 14px;
+  margin-top: 12px;
   height: 16px;
   font: 12px/1.3 ui-monospace, Consolas, monospace;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: #f85149;
   opacity: 0;
   transition: opacity 0.2s ease;
 }
 .err.show { opacity: 1; }
 
+.switch {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: #8a8a8a;
+  text-align: center;
+}
+
+.switch a { color: #8a8a8a; text-decoration: none; }
+.switch a:hover { color: #ededed; text-decoration: underline; }
+
 @media (max-width: 720px) {
   .wall { padding: 28px 16px 0; gap: 18px 20px; }
   .logo { width: 30px; height: 30px; }
   .logo img { width: 22px; height: 22px; }
   .logo:hover img { transform: scale(1.32); }
-  .wordmark { top: 34vh; }
-  .form { top: 64vh; width: 260px; }
-  .pw { font-size: 16px; }
+  .wordmark { top: 36vh; font-size: clamp(34px, 9vw, 52px); letter-spacing: 0.12em; margin-right: -0.12em; }
+  .form { top: 58vh; width: 300px; }
+  .form.wide { top: 52vh; }
+  .line { height: 38px; font-size: 15px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
