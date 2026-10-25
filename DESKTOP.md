@@ -11,6 +11,10 @@
 
 ## 架构
 
+- 渲染方式：主进程起一个只监听 `127.0.0.1` 的微型静态服务器，`loadURL` 加载本地 `dist`（避免 `file://` 下 ES module 的 CORS 问题）；
+- 桌面构建使用 **hash 路由**（`VITE_ROUTER_MODE=hash`），网页构建仍是 history 路由；
+- 已关闭硬件加速与 Chromium 沙箱：部分 Windows（管理员运行 / 杀软 / 虚拟机）下渲染进程会 `launch-failed`（exitCode 18）导致白屏闪退；
+
 - Electron 壳只负责窗口与本地渲染；
 - 前端产物（`forum_app/dist`、`insist_app/dist`）打进安装包，打开不联网也能出界面；
 - 数据全部走 `https://disi-al.com/api/*`（可用环境变量 `DISI_API` 覆盖）；

@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import ForumLogin from '../views/ForumLogin.vue'
 import Index from '../views/Index.vue'
 import User from '../views/User.vue'
@@ -14,8 +14,10 @@ const routes = [
   { path: '/users', name: 'Users', component: () => import('../views/Users.vue'), meta: { requiresAuth: true } },
 ]
 
+const history = import.meta.env.VITE_ROUTER_MODE === 'hash' ? createWebHashHistory() : createWebHistory()
+
 const router = createRouter({
-  history: createWebHistory(),
+  history,
   routes,
 })
 

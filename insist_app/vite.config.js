@@ -3,6 +3,8 @@ import vue from '@vitejs/plugin-vue'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // 桌面端用 file:// 加载，必须相对路径
+  base: './',
   plugins: [vue()],
   server: {
     proxy: {

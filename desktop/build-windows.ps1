@@ -1,9 +1,7 @@
 # Build Windows apps (ASCII only, works on PowerShell 5.1)
-# Usage (bypass execution policy for this run):
-#   powershell -ExecutionPolicy Bypass -File desktop\build-windows.ps1
-#   powershell -ExecutionPolicy Bypass -File desktop\build-windows.ps1 -Installer
-#
-# Why npm.cmd: npm.ps1 is blocked by the default execution policy.
+# Usage:
+#   powershell -ExecutionPolicy Bypass -File .\desktop\build-windows.ps1
+#   powershell -ExecutionPolicy Bypass -File .\desktop\build-windows.ps1 -Installer
 param(
   [switch]$Installer
 )
@@ -19,7 +17,7 @@ $env:ELECTRON_BUILDER_CACHE = Join-Path $cacheRoot 'eb-cache'
 New-Item -ItemType Directory -Force -Path $env:ELECTRON_CACHE, $env:ELECTRON_BUILDER_CACHE | Out-Null
 
 $apps = @(
-  @{ name = 'forum';  web = 'forum_app';  product = 'Fourth Forum' },
+  @{ name = 'forum';  web = 'forum_app';  product = 'DISI-Forum' },
   @{ name = 'insist'; web = 'insist_app'; product = 'INSIST' }
 )
 
@@ -28,9 +26,12 @@ foreach ($app in $apps) {
   $dir = Join-Path $PSScriptRoot $app.name
   $web = Join-Path $root $app.web
 
+  # Desktop build uses hash routing so file:// works without a custom protocol
+  $env:VITE_ROUTER_MODE = 'hash'
   Push-Location $web
   node node_modules/vite/bin/vite.js build
   Pop-Location
+  Remove-Item Env:VITE_ROUTER_MODE -ErrorAction SilentlyContinue
 
   Push-Location $dir
   if (-not (Test-Path 'node_modules')) {
@@ -45,6 +46,13 @@ foreach ($app in $apps) {
     & $builder '--win' 'nsis' 'portable'
   } else {
     & $builder '--win' 'dir' '--config.win.signAndEditExecutable=false'
+    $unpacked = Join-Path $dir 'release\win-unpacked'
+    if (Test-Path $unpacked) {
+      $zip = Join-Path $dir ('release\' + $app.product + '-win-x64.zip')
+      if (Test-Path $zip) { Remove-Item $zip -Force }
+      Compress-Archive -Path (Join-Path $unpacked '*') -DestinationPath $zip -CompressionLevel Optimal
+      Write-Host "  zip -> $zip" -ForegroundColor Green
+    }
   }
   Pop-Location
 
@@ -53,4 +61,4 @@ foreach ($app in $apps) {
 }
 
 Write-Host 'Done.' -ForegroundColor Green
-Write-Host 'Tip: NSIS installer needs symlink privilege (Developer Mode or admin shell).'
+Write-Host 'Run: desktop\<app>\release\win-unpacked\<App>.exe  (or unzip the portable zip)'

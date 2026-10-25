@@ -1,11 +1,18 @@
-const { app, BrowserWindow, protocol, shell } = require('electron')
+const { app, BrowserWindow, shell } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
+const http = require('node:http')
 
 const APP_TITLE = 'DISI 论坛'
-const APP_SCHEME = 'disi'
 const DIST = path.join(__dirname, 'dist')
 const API_BASE = process.env.DISI_API || 'https://disi-al.com'
+
+// 部分 Windows 环境（管理员运行 / 杀软 / 虚拟机）下 Chromium 沙箱或 GPU 进程会启动失败，
+// 表现为白屏 + 闪退（render-gone: launch-failed / exitCode 18）
+app.disableHardwareAcceleration()
+app.commandLine.appendSwitch('no-sandbox')
+app.commandLine.appendSwitch('disable-gpu')
+app.commandLine.appendSwitch('disable-software-rasterizer')
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -36,32 +43,36 @@ function log(...args) {
 process.on('uncaughtException', (err) => log('[uncaught]', err && err.stack ? err.stack : String(err)))
 process.on('unhandledRejection', (err) => log('[unhandled]', err && err.stack ? err.stack : String(err)))
 
-protocol.registerSchemesAsPrivileged([
-  {
-    scheme: APP_SCHEME,
-    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true },
-  },
-])
-
-function resolveFile(requestUrl) {
-  const url = new URL(requestUrl)
-  let pathname = decodeURIComponent(url.pathname)
-  if (!pathname || pathname === '/') pathname = '/index.html'
-
-  let filePath = path.join(DIST, pathname)
+function createServer() {
   const distRoot = path.resolve(DIST) + path.sep
-  if (!path.resolve(filePath).startsWith(distRoot)) return null
+  const server = http.createServer((req, res) => {
+    try {
+      const pathname = decodeURIComponent(new URL(req.url, 'http://127.0.0.1').pathname)
+      let filePath = path.join(DIST, pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, ''))
+      if (!path.resolve(filePath).startsWith(distRoot)) {
+        res.writeHead(403)
+        res.end('forbidden')
+        return
+      }
+      if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+        filePath = path.join(DIST, 'index.html')
+      }
+      res.writeHead(200, { 'content-type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream' })
+      fs.createReadStream(filePath).pipe(res)
+    } catch (err) {
+      log('[http-error]', err && err.stack ? err.stack : String(err))
+      res.writeHead(500)
+      res.end('error')
+    }
+  })
 
-  try {
-    if (fs.statSync(filePath).isDirectory()) filePath = path.join(filePath, 'index.html')
-  } catch (e) {
-    return path.join(DIST, 'index.html')
-  }
-  if (!fs.existsSync(filePath)) return path.join(DIST, 'index.html')
-  return filePath
+  return new Promise((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', () => resolve(server.address().port))
+  })
 }
 
-function createWindow() {
+function createWindow(port) {
   const win = new BrowserWindow({
     width: 1280,
     height: 860,
@@ -81,43 +92,39 @@ function createWindow() {
     },
   })
 
-  win.once('ready-to-show', () => win.show())
+  const url = 'http://127.0.0.1:' + port + '/index.html#/login'
+  log('[boot] title=', APP_TITLE, 'url=', url, 'indexExists=', fs.existsSync(path.join(DIST, 'index.html')))
 
-  win.webContents.on('did-fail-load', (e, code, desc, url) => log('[fail-load]', code, desc, url))
+  win.once('ready-to-show', () => {
+    log('[ready]')
+    win.show()
+  })
+  win.webContents.on('did-finish-load', () => log('[loaded]', win.webContents.getURL()))
+  win.webContents.on('did-fail-load', (e, code, desc, u) => log('[fail-load]', code, desc, u))
   win.webContents.on('render-process-gone', (e, details) => log('[render-gone]', JSON.stringify(details)))
   win.webContents.on('console-message', (e, level, message) => log('[console]', message))
 
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http://') || url.startsWith('https://')) shell.openExternal(url)
+  win.webContents.setWindowOpenHandler(({ url: target }) => {
+    if (target.startsWith('http://') || target.startsWith('https://')) shell.openExternal(target)
     return { action: 'deny' }
   })
 
-  const target = `${APP_SCHEME}://app/index.html`
-  log('[boot] dist=', DIST, 'target=', target, 'indexExists=', fs.existsSync(path.join(DIST, 'index.html')))
-  win.loadURL(target)
+  win.loadURL(url)
   return win
 }
 
-app.whenReady().then(() => {
-  protocol.handle(APP_SCHEME, async (request) => {
-    try {
-      const filePath = resolveFile(request.url)
-      if (!filePath) return new Response('forbidden', { status: 403 })
-      const data = await fs.promises.readFile(filePath)
-      const ext = path.extname(filePath).toLowerCase()
-      return new Response(data, {
-        status: 200,
-        headers: { 'content-type': MIME[ext] || 'application/octet-stream' },
-      })
-    } catch (err) {
-      log('[protocol-error]', request.url, err && err.stack ? err.stack : String(err))
-      return new Response('not found', { status: 404 })
-    }
-  })
+app.whenReady().then(async () => {
+  try {
+    const port = await createServer()
+    log('[server] port=', port, 'dist=', DIST)
+    createWindow(port)
+  } catch (err) {
+    log('[fatal]', err && err.stack ? err.stack : String(err))
+    app.quit()
+  }
 
-  createWindow()
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(0)
   })
 })
 

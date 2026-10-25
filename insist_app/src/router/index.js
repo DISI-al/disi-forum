@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import InsistHome from '../views/Insist.vue'
 
 const routes = [
@@ -13,8 +13,10 @@ const routes = [
   { path: '/settings', name: 'Settings', component: () => import('../views/InsistSettings.vue'), meta: { requiresAuth: true } },
 ]
 
+const history = import.meta.env.VITE_ROUTER_MODE === 'hash' ? createWebHashHistory() : createWebHistory()
+
 const router = createRouter({
-  history: createWebHistory(),
+  history,
   routes,
 })
 
