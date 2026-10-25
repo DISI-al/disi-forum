@@ -61,3 +61,7 @@ backup_*.db
 # ===== INSIST 独立前端 =====
 /insist_app/node_modules
 /insist_app/dist
+
+# ===== 论坛独立前端 =====
+/forum_app/node_modules
+/forum_app/dist
