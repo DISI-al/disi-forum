@@ -231,7 +231,7 @@ onMounted(() => pwdInput.value?.focus())
   left: 50%;
   top: 61vh;
   transform: translateX(-50%);
-  width: 300px;
+  width: 380px;
   max-width: calc(100vw - 48px);
   display: flex;
   flex-direction: column;
@@ -244,10 +244,10 @@ onMounted(() => pwdInput.value?.focus())
   width: 100%;
   height: 42px;
   padding: 0 4px 8px;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
   background: transparent;
   border: none;
-  border-bottom: 1px solid #30363d;
+  border-bottom: 1px solid #6e7681;
   outline: none;
   color: #e6edf3;
   font-size: 16px;
@@ -266,7 +266,7 @@ onMounted(() => pwdInput.value?.focus())
 
 .btn {
   width: 100%;
-  height: 38px;
+  height: 40px;
   margin-top: 6px;
   border: 1px solid rgba(240, 246, 252, 0.1);
   border-radius: 6px;
@@ -309,7 +309,7 @@ onMounted(() => pwdInput.value?.focus())
   .logo img { width: 22px; height: 22px; }
   .logo:hover img { transform: scale(1.32); }
   .wordmark { top: 36vh; font-size: clamp(38px, 11vw, 60px); letter-spacing: 0.14em; margin-right: -0.14em; }
-  .form { top: 58vh; width: 240px; }
+  .form { top: 58vh; width: 300px; }
   .form.wide { top: 52vh; }
   .line { height: 38px; font-size: 15px; }
 }
