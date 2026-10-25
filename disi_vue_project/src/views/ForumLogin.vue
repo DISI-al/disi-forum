@@ -117,7 +117,7 @@ onMounted(() => pwdInput.value?.focus())
       </a>
     </nav>
 
-    <h1 class="wordmark">第四论坛</h1>
+    <h1 class="wordmark">DISI</h1>
 
     <form class="form" :class="{ wide: isRegister }" @submit.prevent="submit">
       <input
@@ -126,7 +126,7 @@ onMounted(() => pwdInput.value?.focus())
         class="line"
         type="password"
         :autocomplete="isRegister ? 'new-password' : 'current-password'"
-        :placeholder="isRegister ? '设置口令（至少 4 位）' : '输入口令'"
+        :placeholder="isRegister ? '设置口令（至少 4 位）' : ''"
         :disabled="loading"
         aria-label="口令"
       />
@@ -144,14 +144,13 @@ onMounted(() => pwdInput.value?.focus())
         aria-label="用户名"
       />
 
+      <p class="switch">
+        <a href="#" @click.prevent="switchMode">{{ isRegister ? '去登录' : '注册' }}</a>
+      </p>
+
       <button class="btn" type="submit" :disabled="loading">{{ buttonText }}</button>
 
       <p class="err" :class="{ show: !!error }">{{ error || '\u00a0' }}</p>
-
-      <p class="switch">
-        <template v-if="isRegister">已有账号？<a href="#" @click.prevent="switchMode">去登录</a></template>
-        <template v-else>没有账号？<a href="#" @click.prevent="switchMode">注册</a></template>
-      </p>
     </form>
   </div>
 </template>
@@ -221,7 +220,7 @@ onMounted(() => pwdInput.value?.focus())
   letter-spacing: 0.22em;
   margin-right: -0.22em;
   line-height: 1;
-  color: #e6edf3;
+  color: #2ea043;
   user-select: none;
   white-space: nowrap;
 }
@@ -295,14 +294,15 @@ onMounted(() => pwdInput.value?.focus())
 .err.show { opacity: 1; }
 
 .switch {
-  margin-top: 10px;
+  margin-top: 2px;
+  margin-bottom: 10px;
   font-size: 12.5px;
   color: #8b949e;
   text-align: center;
 }
 
-.switch a { color: #58a6ff; text-decoration: none; }
-.switch a:hover { text-decoration: underline; }
+.switch a { color: #8b949e; text-decoration: none; }
+.switch a:hover { color: #c9d1d9; text-decoration: underline; }
 
 @media (max-width: 720px) {
   .wall { padding: 28px 16px 0; gap: 18px 20px; }
