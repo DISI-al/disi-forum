@@ -1,5 +1,6 @@
 <template>
   <div class="disi-forum">
+    <div v-if="loading" class="loading-bar" aria-hidden="true"></div>
     <div class="forum-center-container">
       <!-- 顶部导航 -->
       <nav class="navbar-main">
@@ -334,6 +335,22 @@ onMounted(() => {
   --gh-text-secondary: #7d8590;
   --gh-text-link: #58a6ff;
   --gh-accent: #1f6feb;
+}
+
+/* 顶部加载条：换页/取数时给一个明确的反馈 */
+.loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 999;
+  background: linear-gradient(90deg, rgba(46, 160, 67, 0), #2ea043, rgba(46, 160, 67, 0));
+  animation: loading-slide 1.1s linear infinite;
+}
+@keyframes loading-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
 }
 </style>
 
@@ -712,5 +729,21 @@ onMounted(() => {
   .post-title { font-size: 1rem; }
   .media-img { width: 90px; height: 60px; }
   .btn-add-post, .btn-logout { padding: 0.35rem 0.8rem; font-size: 0.8rem; }
+}
+
+/* 顶部加载条：换页/取数时给一个明确的反馈 */
+.loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 999;
+  background: linear-gradient(90deg, rgba(46, 160, 67, 0), #2ea043, rgba(46, 160, 67, 0));
+  animation: loading-slide 1.1s linear infinite;
+}
+@keyframes loading-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
 }
 </style>

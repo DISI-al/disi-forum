@@ -1,5 +1,6 @@
 <template>
   <div class="disi-forum">
+    <div v-if="loading" class="loading-bar" aria-hidden="true"></div>
     <div class="forum-center-container">
       <!-- 返回导航 -->
       <nav class="sub-nav">
@@ -101,6 +102,7 @@ import { makePreview } from '../utils/markdown.js'
 import { cached, peek } from '../utils/cache.js'
 
 const router = useRouter()
+const loading = ref(!peek('forum:me'))
 const user = ref(peek('forum:me') || { id: '', name: '', role: 'user', isAdmin: false, avatarUrl: '' })
 const userPosts = ref([])
 const totalLikes = ref(peek('forum:likes') || 0)
@@ -202,6 +204,7 @@ onMounted(async () => {
   if (postsRes.status === 'fulfilled') {
     userPosts.value = postsRes.value.filter((p) => p.author?.id === user.value.id)
   }
+  loading.value = false
   cached('forum:likes', apiGetLikesCount)
     .then((res) => { totalLikes.value = res.likesCount || 0 })
     .catch(() => {})
@@ -572,5 +575,21 @@ onMounted(async () => {
   .user-meta { flex-basis: 100%; }
   .user-stats { justify-content: center; }
   .content { padding: 1rem; border-radius: 0; }
+}
+
+/* 顶部加载条：换页/取数时给一个明确的反馈 */
+.loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 999;
+  background: linear-gradient(90deg, rgba(46, 160, 67, 0), #2ea043, rgba(46, 160, 67, 0));
+  animation: loading-slide 1.1s linear infinite;
+}
+@keyframes loading-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
 }
 </style>
