@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell } = require('electron')
+const { app, BrowserWindow, shell, Tray, Menu, nativeImage } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 const http = require('node:http')
@@ -25,13 +25,12 @@ const MIME = {
   '.ttf': 'font/ttf',
 }
 
+let mainWindow = null
+let tray = null
+
 function log(...args) {
   const line = new Date().toISOString() + ' ' + args.join(' ') + '\n'
-  const targets = [
-    path.join(app.getPath('userData'), 'desktop.log'),
-    path.join(path.dirname(process.execPath), 'desktop.log'),
-  ]
-  for (const file of targets) {
+  for (const file of [path.join(app.getPath('userData'), 'desktop.log'), path.join(path.dirname(process.execPath), 'desktop.log')]) {
     try {
       fs.appendFileSync(file, line)
     } catch (e) {
@@ -43,7 +42,6 @@ function log(...args) {
 process.on('uncaughtException', (err) => log('[uncaught]', err && err.stack ? err.stack : String(err)))
 process.on('unhandledRejection', (err) => log('[unhandled]', err && err.stack ? err.stack : String(err)))
 
-// 上次启动渲染进程崩溃过（launch-failed / exitCode 18）→ 这次用安全模式
 let safeMode = false
 try {
   safeMode = fs.existsSync(SAFE_FLAG)
@@ -52,17 +50,28 @@ try {
 }
 log('[start] safeMode=', safeMode)
 
-// 手动切换渲染模式：set DISI_RENDER=software 再启动（排版优先时用）
-if (process.env.DISI_RENDER === 'software') {
-  app.disableHardwareAcceleration()
-  app.commandLine.appendSwitch('disable-gpu')
-}
-
-if (safeMode) {
+// 手动切换渲染模式：set DISI_RENDER=software 再启动
+if (process.env.DISI_RENDER === 'software' || safeMode) {
   app.disableHardwareAcceleration()
   app.commandLine.appendSwitch('no-sandbox')
   app.commandLine.appendSwitch('disable-gpu')
-  app.commandLine.appendSwitch('disable-software-rasterizer')
+}
+
+function iconFile() {
+  const dir = path.dirname(process.execPath)
+  const candidates = [
+    path.join(dir, 'app.ico'),
+    path.join(__dirname, 'build', 'icon.ico'),
+    path.join(process.resourcesPath || '', 'app.ico'),
+  ]
+  for (const c of candidates) {
+    try {
+      if (fs.existsSync(c)) return c
+    } catch (e) {
+      // ignore
+    }
+  }
+  return candidates[1]
 }
 
 function markSafeMode(on) {
@@ -109,6 +118,42 @@ function createServer() {
   })
 }
 
+function setupTray(win) {
+  try {
+    const image = nativeImage.createFromPath(iconFile())
+    tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image)
+  } catch (err) {
+    log('[tray-error]', String(err))
+    return
+  }
+
+  tray.setToolTip(APP_TITLE)
+
+  const buildMenu = () =>
+    Menu.buildFromTemplate([
+      { label: '显示 ' + APP_TITLE, click: () => { win.show(); win.focus(); } },
+      { type: 'separator' },
+      {
+        label: '开机自启',
+        type: 'checkbox',
+        checked: app.getLoginItemSettings().openAtLogin,
+        click: (item) => {
+          app.setLoginItemSettings({ openAtLogin: item.checked, path: process.execPath })
+          tray.setContextMenu(buildMenu())
+        },
+      },
+      { type: 'separator' },
+      { label: '退出', click: () => { app.isQuitting = true; app.quit(); } },
+    ])
+
+  tray.setContextMenu(buildMenu())
+  tray.on('click', () => {
+    if (win.isVisible()) win.hide()
+    else { win.show(); win.focus(); }
+  })
+  tray.on('right-click', () => tray.setContextMenu(buildMenu()))
+}
+
 function createWindow(port) {
   const win = new BrowserWindow({
     width: 1280,
@@ -117,7 +162,7 @@ function createWindow(port) {
     minHeight: 640,
     backgroundColor: '#0d1117',
     title: APP_TITLE,
-    icon: path.join(__dirname, 'build', 'icon.ico'),
+    icon: iconFile(),
     autoHideMenuBar: true,
     show: false,
     webPreferences: {
@@ -137,11 +182,12 @@ function createWindow(port) {
     markSafeMode(false)
     win.show()
   })
-  // 隐藏滚动条 + 预留滚动槽，避免出现/消失时布局跳动
-  win.webContents.on('dom-ready', () => {
-    win.webContents
-      .insertCSS('html{scrollbar-width:none;-ms-overflow-style:none;overflow-y:scroll}::-webkit-scrollbar{width:0;height:0;display:none}')
-      .catch(() => {})
+  win.on('close', (e) => {
+    if (!app.isQuitting) {
+      e.preventDefault()
+      win.hide()
+      log('[close] hide to tray')
+    }
   })
   win.webContents.on('did-finish-load', () => log('[loaded]', win.webContents.getURL()))
   win.webContents.on('did-fail-load', (e, code, desc, u) => log('[fail-load]', code, desc, u))
@@ -160,21 +206,38 @@ function createWindow(port) {
   return win
 }
 
-app.whenReady().then(async () => {
-  try {
-    const port = await createServer()
-    log('[server] port=', port, 'dist=', DIST)
-    createWindow(port)
-  } catch (err) {
-    log('[fatal]', err && err.stack ? err.stack : String(err))
-    app.quit()
-  }
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow(PORT)
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      mainWindow.show()
+      mainWindow.focus()
+    }
   })
+
+  app.whenReady().then(async () => {
+    try {
+      const port = await createServer()
+      log('[server] port=', port, 'dist=', DIST)
+      mainWindow = createWindow(port)
+      setupTray(mainWindow)
+    } catch (err) {
+      log('[fatal]', err && err.stack ? err.stack : String(err))
+      app.quit()
+    }
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow(PORT)
+    })
+  })
+}
+
+app.on('before-quit', () => {
+  app.isQuitting = true
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  // 托盘常驻：关闭窗口不退出，从托盘菜单退出
 })

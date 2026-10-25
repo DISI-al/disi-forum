@@ -33,6 +33,7 @@ $payload = Join-Path $staging 'payload.zip'
 Write-Host '== 打包应用文件 ==' -ForegroundColor Cyan
 Compress-Archive -Path (Join-Path $unpacked '*') -DestinationPath $payload -CompressionLevel Optimal
 Copy-Item $icon (Join-Path $staging 'appicon.ico') -Force
+Copy-Item (Join-Path $PSScriptRoot 'installer\app.manifest') (Join-Path $staging 'app.manifest') -Force
 
 # 源码 + 占位符替换
 $version = '0.1.0'
