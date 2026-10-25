@@ -1,23 +1,54 @@
 <script setup>
 /**
  * 第四论坛 · 登录 / 注册
- * 登录：只要口令
- * 注册：先填新口令，再填用户名
+ * 版式沿用旧的登录页：顶部图标墙、大字标、下划线输入框。
+ * 登录：口令；注册：口令 + 用户名。
  */
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { apiLogin, apiRegister } from '../api/index_api.js'
 
-const mode = ref('login') // login | register
+import arduino from '../assets/logos/arduino.png'
+import python from '../assets/logos/python.png'
+import linux from '../assets/logos/tux.png'
+import cpp from '../assets/logos/cpp.png'
+import ros from '../assets/logos/ros.png'
+import claude from '../assets/logos/claude.png'
+import github from '../assets/logos/github.png'
+import deepseek from '../assets/logos/deepseek.png'
+import opencv from '../assets/logos/opencv.png'
+import vue from '../assets/logos/vue.png'
+import easyx from '../assets/logos/easyx.png'
+import ubuntu from '../assets/logos/ubuntu.png'
+import c from '../assets/logos/c.png'
+import nodejs from '../assets/logos/nodejs.png'
+
+const LOGOS = [
+  { name: 'Arduino', src: arduino, href: 'https://www.arduino.cc' },
+  { name: 'Python', src: python, href: 'https://www.python.org' },
+  { name: 'Linux', src: linux, href: 'https://www.kernel.org' },
+  { name: 'C++', src: cpp, href: 'https://isocpp.org' },
+  { name: 'ROS', src: ros, href: 'https://www.ros.org' },
+  { name: 'Claude', src: claude, href: 'https://claude.ai' },
+  { name: 'GitHub', src: github, href: 'https://github.com' },
+  { name: 'DeepSeek', src: deepseek, href: 'https://www.deepseek.com' },
+  { name: 'OpenCV', src: opencv, href: 'https://opencv.org' },
+  { name: 'Vue', src: vue, href: 'https://vuejs.org' },
+  { name: 'EasyX', src: easyx, href: 'https://easyx.cn' },
+  { name: 'Ubuntu', src: ubuntu, href: 'https://ubuntu.com' },
+  { name: 'C', src: c, href: 'https://en.cppreference.com/w/c' },
+  { name: 'Node.js', src: nodejs, href: 'https://nodejs.org' },
+]
+
+const mode = ref('login')
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
-const userInput = ref(null)
 const pwdInput = ref(null)
 
 const isRegister = computed(() => mode.value === 'register')
 const buttonText = computed(() => {
-  if (loading.value) return isRegister.value ? '创建中…' : '验证中…'
+  if (loading.value) return isRegister.value ? '创建中…' : '进入中…'
   return isRegister.value ? '创建账号' : '进入'
 })
 
@@ -72,188 +103,199 @@ onMounted(() => pwdInput.value?.focus())
 
 <template>
   <div class="page">
-    <div class="glow" aria-hidden="true"></div>
+    <nav class="wall" aria-label="常用工具与库">
+      <a
+        v-for="logo in LOGOS"
+        :key="logo.name"
+        class="logo"
+        :href="logo.href"
+        target="_blank"
+        rel="noopener noreferrer"
+        :aria-label="logo.name"
+      >
+        <img :src="logo.src" :alt="logo.name" draggable="false" />
+      </a>
+    </nav>
 
-    <main class="wrap">
-      <img class="mark" src="/icon.png" alt="第四论坛" draggable="false" />
-      <h1 class="title">第四论坛</h1>
-      <p class="sub">{{ isRegister ? '设置口令和名字，加入这个私密社区' : '输入口令进入' }}</p>
+    <h1 class="wordmark">第四论坛</h1>
 
-      <form class="card" @submit.prevent="submit">
-        <div v-if="error" class="alert">{{ error }}</div>
+    <form class="form" :class="{ wide: isRegister }" @submit.prevent="submit">
+      <input
+        ref="pwdInput"
+        v-model="password"
+        class="line"
+        type="password"
+        :autocomplete="isRegister ? 'new-password' : 'current-password'"
+        :placeholder="isRegister ? '设置口令（至少 4 位）' : '输入口令'"
+        :disabled="loading"
+        aria-label="口令"
+      />
+      <input
+        v-if="isRegister"
+        v-model="username"
+        class="line"
+        type="text"
+        autocomplete="username"
+        maxlength="20"
+        placeholder="用户名（2–20 个字符）"
+        autocapitalize="off"
+        spellcheck="false"
+        :disabled="loading"
+        aria-label="用户名"
+      />
 
-        <label class="field">
-          <span>口令</span>
-          <input
-            ref="pwdInput"
-            v-model="password"
-            type="password"
-            :autocomplete="isRegister ? 'new-password' : 'current-password'"
-            :placeholder="isRegister ? '至少 4 位' : ''"
-            :disabled="loading"
-          />
-        </label>
+      <button class="btn" type="submit" :disabled="loading">{{ buttonText }}</button>
 
-        <label v-if="isRegister" class="field">
-          <span>用户名</span>
-          <input
-            ref="userInput"
-            v-model="username"
-            type="text"
-            autocomplete="username"
-            maxlength="20"
-            placeholder="2–20 个字符"
-            autocapitalize="off"
-            spellcheck="false"
-            :disabled="loading"
-          />
-        </label>
+      <p class="err" :class="{ show: !!error }">{{ error || '\u00a0' }}</p>
 
-        <button class="btn" type="submit" :disabled="loading">{{ buttonText }}</button>
-
-        <p class="switch">
-          <template v-if="isRegister">已有账号？<a href="#" @click.prevent="switchMode">去登录</a></template>
-          <template v-else>没有账号？<a href="#" @click.prevent="switchMode">注册</a></template>
-        </p>
-      </form>
-
-      <p class="foot">私密社区 · 仅限受邀成员 · 忘记口令联系管理员</p>
-    </main>
+      <p class="switch">
+        <template v-if="isRegister">已有账号？<a href="#" @click.prevent="switchMode">去登录</a></template>
+        <template v-else>没有账号？<a href="#" @click.prevent="switchMode">注册</a></template>
+      </p>
+    </form>
   </div>
 </template>
 
 <style scoped>
-* { box-sizing: border-box; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 .page {
   position: relative;
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  background: #0a0b0d;
-  color: #e9edf2;
+  background: #0d1117;
+  color: #e6edf3;
   font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   overflow: hidden;
 }
 
-/* 背景一点点光，不至于纯黑发闷 */
-.glow {
+/* ---------- 图标墙 ---------- */
+.wall {
   position: absolute;
-  top: -20%;
-  left: 50%;
-  width: 720px;
-  height: 720px;
-  transform: translateX(-50%);
-  background: radial-gradient(circle, rgba(63, 185, 80, 0.10), rgba(63, 185, 80, 0) 62%);
-  pointer-events: none;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 46px 24px 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 22px 26px;
 }
 
-.wrap {
-  position: relative;
-  width: 100%;
-  max-width: 380px;
+.logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  outline: none;
+}
+
+.logo img {
+  width: 26px;
+  height: 26px;
+  opacity: 0.45;
+  transform: scale(1);
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.18s ease;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.logo:hover img,
+.logo:focus-visible img {
+  opacity: 1;
+  transform: scale(1.5);
+}
+
+.logo:active img { transform: scale(1.32); }
+
+/* ---------- 字标 ---------- */
+.wordmark {
+  position: absolute;
+  left: 50%;
+  top: 38vh;
+  transform: translate(-50%, -50%);
+  font-size: clamp(48px, 7.4vw, 96px);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  margin-right: -0.22em;
+  line-height: 1;
+  color: #e6edf3;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* ---------- 表单 ---------- */
+.form {
+  position: absolute;
+  left: 50%;
+  top: 61vh;
+  transform: translateX(-50%);
+  width: 300px;
+  max-width: calc(100vw - 48px);
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.mark {
-  width: 84px;
-  height: 84px;
-  border-radius: 20px;
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.55);
-  user-select: none;
-}
+.form.wide { top: 56vh; }
 
-.title {
-  margin: 20px 0 6px;
-  font-size: 26px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-}
-
-.sub {
-  margin: 0 0 22px;
-  font-size: 13px;
-  color: #8b949e;
-  text-align: center;
-}
-
-.card {
-  width: 100%;
-  padding: 22px 22px 18px;
-  background: rgba(22, 27, 34, 0.92);
-  border: 1px solid #262c36;
-  border-radius: 14px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(6px);
-}
-
-.alert {
-  margin-bottom: 14px;
-  padding: 9px 12px;
-  border: 1px solid rgba(248, 81, 73, 0.4);
-  border-radius: 8px;
-  background: rgba(248, 81, 73, 0.09);
-  color: #f85149;
-  font-size: 12.5px;
-  line-height: 1.5;
-}
-
-.field { display: block; margin-bottom: 15px; }
-
-.field > span {
-  display: block;
-  margin-bottom: 7px;
-  font-size: 12.5px;
-  letter-spacing: 0.06em;
-  color: #9aa4b2;
-}
-
-.field input {
+.line {
   width: 100%;
   height: 42px;
-  padding: 0 12px;
-  background: #0d1117;
-  border: 1px solid #2b323c;
-  border-radius: 9px;
-  color: #e9edf2;
-  font-size: 15px;
+  padding: 0 4px 8px;
+  margin-bottom: 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #30363d;
   outline: none;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  color: #e6edf3;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  caret-color: #3fb950;
+  transition: border-color 0.2s ease;
 }
 
-.field input::placeholder { color: #4d5763; }
+.line::placeholder { color: #4d5763; letter-spacing: 0.02em; }
+.line:focus { border-bottom-color: #3fb950; }
+.line:disabled { opacity: 0.5; }
 
-.field input:focus {
-  border-color: #3fb950;
-  box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.16);
-}
-
-.field input:disabled { opacity: 0.6; }
+.line::-ms-reveal,
+.line::-webkit-password-toggle-button { display: none !important; }
 
 .btn {
   width: 100%;
-  height: 42px;
+  height: 38px;
   margin-top: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 9px;
-  background: linear-gradient(180deg, #2ea043, #238636);
+  border: 1px solid rgba(240, 246, 252, 0.1);
+  border-radius: 6px;
+  background: #238636;
   color: #fff;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: filter 0.15s ease, transform 0.08s ease;
+  transition: background 0.15s ease;
 }
 
-.btn:hover:not(:disabled) { filter: brightness(1.08); }
-.btn:active:not(:disabled) { transform: translateY(1px); }
-.btn:disabled { opacity: 0.65; cursor: default; }
+.btn:hover:not(:disabled) { background: #2ea043; }
+.btn:active:not(:disabled) { background: #1f7a30; }
+.btn:disabled { opacity: 0.6; cursor: default; }
+
+.err {
+  margin-top: 12px;
+  height: 16px;
+  font: 12px/1.3 ui-monospace, Consolas, monospace;
+  letter-spacing: 0.06em;
+  color: #f85149;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.err.show { opacity: 1; }
 
 .switch {
-  margin: 15px 0 0;
+  margin-top: 10px;
   font-size: 12.5px;
   color: #8b949e;
   text-align: center;
@@ -262,17 +304,19 @@ onMounted(() => pwdInput.value?.focus())
 .switch a { color: #58a6ff; text-decoration: none; }
 .switch a:hover { text-decoration: underline; }
 
-.foot {
-  margin-top: 22px;
-  font-size: 11.5px;
-  letter-spacing: 0.04em;
-  color: #5a636f;
-  text-align: center;
+@media (max-width: 720px) {
+  .wall { padding: 28px 16px 0; gap: 18px 20px; }
+  .logo { width: 30px; height: 30px; }
+  .logo img { width: 22px; height: 22px; }
+  .logo:hover img { transform: scale(1.32); }
+  .wordmark { top: 36vh; font-size: clamp(38px, 11vw, 60px); letter-spacing: 0.14em; margin-right: -0.14em; }
+  .form { top: 58vh; width: 240px; }
+  .form.wide { top: 52vh; }
+  .line { height: 38px; font-size: 15px; }
 }
 
-@media (max-width: 400px) {
-  .mark { width: 72px; height: 72px; border-radius: 18px; }
-  .title { font-size: 23px; }
-  .card { padding: 18px 16px 14px; }
+@media (prefers-reduced-motion: reduce) {
+  .logo img { transition: opacity 0.18s ease; }
+  .logo:hover img, .logo:focus-visible img { transform: none; }
 }
 </style>
