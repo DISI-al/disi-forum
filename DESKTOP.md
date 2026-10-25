@@ -18,11 +18,21 @@
 
 ```powershell
 # 免安装目录（release/win-unpacked/*.exe）
-powershell -ExecutionPolicy Bypass -File desktop\build-windows.ps1
+powershell -ExecutionPolicy Bypass -File .\desktop\build-windows.ps1
 
 # 安装包 + 免安装单文件（需要符号链接权限）
-powershell -ExecutionPolicy Bypass -File desktop\build-windows.ps1 -Installer
+powershell -ExecutionPolicy Bypass -File .\desktop\build-windows.ps1 -Installer
 ```
+
+如果不想每次都带参数，先放开当前窗口的执行策略：
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\desktop\build-windows.ps1
+```
+
+> 注意：Windows 没有 `sudo`（默认禁用），提权请右键 PowerShell「以管理员身份运行」。
+> 脚本内部用 `npm.cmd`，避免默认执行策略拦截 `npm.ps1`。
 
 脚本会自动：构建对应前端 → 复制 `dist` → 用 electron-builder 打包。
 

@@ -1,7 +1,9 @@
 # Build Windows apps (ASCII only, works on PowerShell 5.1)
-# Usage:
+# Usage (bypass execution policy for this run):
 #   powershell -ExecutionPolicy Bypass -File desktop\build-windows.ps1
 #   powershell -ExecutionPolicy Bypass -File desktop\build-windows.ps1 -Installer
+#
+# Why npm.cmd: npm.ps1 is blocked by the default execution policy.
 param(
   [switch]$Installer
 )
@@ -17,7 +19,7 @@ $env:ELECTRON_BUILDER_CACHE = Join-Path $cacheRoot 'eb-cache'
 New-Item -ItemType Directory -Force -Path $env:ELECTRON_CACHE, $env:ELECTRON_BUILDER_CACHE | Out-Null
 
 $apps = @(
-  @{ name = 'forum';  web = 'forum_app';  product = '第四论坛' },
+  @{ name = 'forum';  web = 'forum_app';  product = 'Fourth Forum' },
   @{ name = 'insist'; web = 'insist_app'; product = 'INSIST' }
 )
 
@@ -32,14 +34,17 @@ foreach ($app in $apps) {
 
   Push-Location $dir
   if (-not (Test-Path 'node_modules')) {
-    npm install --registry=https://registry.npmmirror.com --no-audit --no-fund
+    & npm.cmd install --registry=https://registry.npmmirror.com --no-audit --no-fund
   }
-  npm run copy:web
+  & npm.cmd run copy:web
+
+  $builder = Join-Path $dir 'node_modules\.bin\electron-builder.cmd'
+  if (-not (Test-Path $builder)) { throw "electron-builder not installed in $dir" }
 
   if ($Installer) {
-    npx electron-builder --win nsis portable
+    & $builder '--win' 'nsis' 'portable'
   } else {
-    npx electron-builder --win dir -c.win.signAndEditExecutable=false
+    & $builder '--win' 'dir' '--config.win.signAndEditExecutable=false'
   }
   Pop-Location
 
