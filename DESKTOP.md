@@ -92,7 +92,7 @@ powershell -ExecutionPolicy Bypass -File .\desktop\install-windows.ps1 -App insi
 - 卸载：设置 → 应用 → 卸载，或 `desktop\uninstall-windows.ps1 -App insist`
 - 只写 `HKCU`，不碰系统级注册表，不需要提权
 
-> NSIS 安装包（`-Installer`）仍然保留，需要开发者模式才能打包；效果一致，区别是带标准安装向导。
+> NSIS 安装包（`-Installer`）不需要开发者模式也能打包：脚本跳过 electron-builder 的签名/改资源步骤，改用自带的 `desktop\bin\rcedit-x64.exe` 给 exe 和 Setup 打图标。安装到 `C:\Program Files\DISI 论坛`（perMachine），带安装向导、可选目录、开始菜单/桌面图标、应用列表和卸载入口。
 > 注意：这些 PowerShell 脚本必须保存成 **UTF-8 with BOM**，否则 PowerShell 5.1 会把中文读成乱码、直接语法报错。
 
 ## 运行

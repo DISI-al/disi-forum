@@ -16,9 +16,12 @@ $env:ELECTRON_CACHE = Join-Path $cacheRoot 'electron-cache'
 $env:ELECTRON_BUILDER_CACHE = Join-Path $cacheRoot 'eb-cache'
 New-Item -ItemType Directory -Force -Path $env:ELECTRON_CACHE, $env:ELECTRON_BUILDER_CACHE | Out-Null
 
+$rcedit = Join-Path $PSScriptRoot 'bin\rcedit-x64.exe'
+$hasRcedit = Test-Path $rcedit
+
 $apps = @(
-  @{ name = 'forum';  web = 'forum_app';  product = 'DISI-Forum' },
-  @{ name = 'insist'; web = 'insist_app'; product = 'INSIST' }
+  @{ name = 'forum';  web = 'forum_app';  product = 'DISI-Forum'; label = 'DISI Forum' },
+  @{ name = 'insist'; web = 'insist_app'; product = 'INSIST';     label = 'INSIST' }
 )
 
 foreach ($app in $apps) {
@@ -42,11 +45,33 @@ foreach ($app in $apps) {
   $builder = Join-Path $dir 'node_modules\.bin\electron-builder.cmd'
   if (-not (Test-Path $builder)) { throw "electron-builder not installed in $dir" }
 
+  $icon = Join-Path $dir 'build\icon.ico'
+  $exeName = (& node -e "process.stdout.write(require('./package.json').build.productName)")
+
   if ($Installer) {
-    & $builder '--win' 'nsis' 'portable'
+    # signAndEditExecutable=false: skip electron-builder's signing tool download,
+    # we embed the icon ourselves with rcedit below.
+    & $builder '--win' 'nsis' 'portable' '--config.win.signAndEditExecutable=false'
   } else {
     & $builder '--win' 'dir' '--config.win.signAndEditExecutable=false'
-    $unpacked = Join-Path $dir 'release\win-unpacked'
+  }
+
+  if (-not (Test-Path $icon)) { throw "icon missing: $icon" }
+
+  $unpacked = Join-Path $dir 'release\win-unpacked'
+  $appExe = Join-Path $unpacked ($exeName + '.exe')
+  if ($hasRcedit -and (Test-Path $appExe)) {
+    & $rcedit $appExe '--set-icon' $icon
+    Write-Host "  icon -> $appExe" -ForegroundColor Green
+  }
+
+  if ($Installer) {
+    $setup = Get-ChildItem (Join-Path $dir 'release') -Filter '*Setup*.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($hasRcedit -and $setup) {
+      & $rcedit $setup.FullName '--set-icon' $icon
+      Write-Host "  icon -> $($setup.Name)" -ForegroundColor Green
+    }
+  } else {
     if (Test-Path $unpacked) {
       $zip = Join-Path $dir ('release\' + $app.product + '-win-x64.zip')
       if (Test-Path $zip) { Remove-Item $zip -Force }
@@ -61,4 +86,4 @@ foreach ($app in $apps) {
 }
 
 Write-Host 'Done.' -ForegroundColor Green
-Write-Host 'Run: desktop\<app>\release\win-unpacked\<App>.exe  (or unzip the portable zip)'
+Write-Host 'Run: desktop\<app>\release\win-unpacked\<App>.exe  (or the Setup exe / portable zip)'
