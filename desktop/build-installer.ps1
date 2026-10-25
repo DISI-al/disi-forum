@@ -49,7 +49,7 @@ Write-Host '== 编译安装器（首次会慢一点）==' -ForegroundColor Cyan
 $outDir = Join-Path $staging 'out'
 & dotnet publish (Join-Path $staging 'installer.csproj') -c Release -r win-x64 --self-contained true `
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=false -p:IncludeAllContentForSelfExtract=false `
-  -p:EnableCompressionInSingleFile=true -o $outDir
+  -p:EnableCompressionInSingleFile=false -o $outDir
 if ($LASTEXITCODE -ne 0) { throw 'dotnet publish 失败' }
 
 $setupSrc = Join-Path $outDir 'setup.exe'

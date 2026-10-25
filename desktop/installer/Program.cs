@@ -80,7 +80,81 @@ namespace DisiInstaller
 
     internal static class Shortcuts
     {
+        [System.Runtime.InteropServices.ComImport]
+        [System.Runtime.InteropServices.Guid("000214F9-0000-0000-C000-000000000046")]
+        [System.Runtime.InteropServices.InterfaceType(System.Runtime.InteropServices.ComInterfaceType.InterfaceIsIUnknown)]
+        private interface IShellLinkW
+        {
+            void GetPath(System.Text.StringBuilder pszFile, int cch, IntPtr pfd, uint fFlags);
+            void GetIDList(out IntPtr ppidl);
+            void SetIDList(IntPtr pidl);
+            void GetDescription(System.Text.StringBuilder pszName, int cch);
+            void SetDescription(string pszName);
+            void GetWorkingDirectory(System.Text.StringBuilder pszDir, int cch);
+            void SetWorkingDirectory(string pszDir);
+            void GetArguments(System.Text.StringBuilder pszArgs, int cch);
+            void SetArguments(string pszArgs);
+            void GetHotkey(out short pwHotkey);
+            void SetHotkey(short wHotkey);
+            void GetShowCmd(out int piShowCmd);
+            void SetShowCmd(int iShowCmd);
+            void GetIconLocation(System.Text.StringBuilder pszIconPath, int cch, out int piIcon);
+            void SetIconLocation(string pszIconPath, int iIcon);
+            void SetRelativePath(string pszPathRel, uint dwReserved);
+            void Resolve(IntPtr hwnd, uint fFlags);
+            void SetPath(string pszFile);
+        }
+
+        [System.Runtime.InteropServices.ComImport]
+        [System.Runtime.InteropServices.Guid("0000010b-0000-0000-C000-000000000046")]
+        [System.Runtime.InteropServices.InterfaceType(System.Runtime.InteropServices.ComInterfaceType.InterfaceIsIUnknown)]
+        private interface IPersistFile
+        {
+            void GetClassID(out Guid pClassID);
+            void IsDirty();
+            void Load(string pszFileName, uint dwMode);
+            void Save(string pszFileName, bool fRemember);
+            void SaveCompleted(string pszFileName);
+            void GetCurFile(out string ppszFileName);
+        }
+
+        [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        private static extern int CoCreateInstance(
+            ref Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, ref Guid riid, out IntPtr ppv);
+
+        private static readonly Guid CLSID_ShellLink = new Guid("00021401-0000-0000-C000-000000000046");
+
+        /// <summary>进程内直接写 .lnk，失败时回落到 cscript。</summary>
         public static void Create(string linkPath, string targetExe, string workDir, string description, string? iconPath = null)
+        {
+            try
+            {
+                var iidShellLink = new Guid("000214F9-0000-0000-C000-000000000046");
+                var iidPersist = new Guid("0000010b-0000-0000-C000-000000000046");
+                var clsid = CLSID_ShellLink;
+                var hr = CoCreateInstance(ref clsid, IntPtr.Zero, 1, ref iidShellLink, out var linkPtr);
+                if (hr == 0 && linkPtr != IntPtr.Zero)
+                {
+                    var link = (IShellLinkW)System.Runtime.InteropServices.Marshal.GetObjectForIUnknown(linkPtr);
+                    link.SetPath(targetExe);
+                    link.SetWorkingDirectory(workDir);
+                    link.SetDescription(description);
+                    link.SetIconLocation(iconPath ?? targetExe, 0);
+                    var persist = (IPersistFile)link;
+                    persist.Save(linkPath, true);
+                    System.Runtime.InteropServices.Marshal.Release(linkPtr);
+                }
+            }
+            catch
+            {
+                // 落到 cscript
+            }
+
+            if (File.Exists(linkPath)) return;
+            CreateWithCscript(linkPath, targetExe, workDir, description, iconPath);
+        }
+
+        private static void CreateWithCscript(string linkPath, string targetExe, string workDir, string description, string? iconPath)
         {
             var baseDir = Directory.Exists(workDir) ? workDir : Path.GetTempPath();
             var vbs = Path.Combine(baseDir, "mklnk-" + Guid.NewGuid().ToString("N") + ".vbs");
@@ -110,10 +184,7 @@ namespace DisiInstaller
                 try { File.Delete(vbs); } catch { }
             }
 
-            if (!File.Exists(linkPath))
-            {
-                throw new IOException("创建快捷方式失败：" + linkPath);
-            }
+
         }
 
         public static void Delete(string linkPath)
@@ -377,7 +448,8 @@ namespace DisiInstaller
             var userPrograms = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
             try { Shortcuts.Create(Path.Combine(desktop, Info.ProductName + ".lnk"), exePath, dir, Info.ProductName, iconForShortcut); }
             catch (Exception ex) { try { File.AppendAllText(Path.Combine(dir, "install.log"), "desktop-shortcut: " + ex.Message + "\r\n"); } catch { } }
-            Shortcuts.Create(Path.Combine(userPrograms, Info.ProductName + ".lnk"), exePath, dir, Info.ProductName, iconForShortcut);
+            try { Shortcuts.Create(Path.Combine(userPrograms, Info.ProductName + ".lnk"), exePath, dir, Info.ProductName, iconForShortcut); }
+            catch (Exception ex) { try { File.AppendAllText(Path.Combine(dir, "install.log"), "startmenu-shortcut: " + ex.Message + "\r\n"); } catch { } }
             // 再放一个英文名别名，方便开始菜单用英文搜索
             var alias = Info.Style == "green" ? "DISI Forum" : "INSIST App";
             try { Shortcuts.Create(Path.Combine(userPrograms, alias + ".lnk"), exePath, dir, Info.ProductName); } catch { }
