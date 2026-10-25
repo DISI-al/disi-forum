@@ -1,4 +1,7 @@
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
+import Add from '../views/Add.vue'
+import Users from '../views/Users.vue'
+
 import ForumLogin from '../views/ForumLogin.vue'
 import Index from '../views/Index.vue'
 import User from '../views/User.vue'
@@ -8,10 +11,10 @@ const routes = [
   { path: '/', redirect: '/index' },
   { path: '/login', name: 'Login', component: ForumLogin, meta: { public: true } },
   { path: '/index', name: 'Index', component: Index, meta: { requiresAuth: true } },
-  { path: '/add', component: () => import('../views/Add.vue'), meta: { requiresAuth: true } },
+  { path: '/add', component: Add, meta: { requiresAuth: true } },
   { path: '/post/:id', name: 'PostDetail', component: PostDetail, meta: { requiresAuth: true } },
   { path: '/user', name: 'User', component: User, meta: { requiresAuth: true } },
-  { path: '/users', name: 'Users', component: () => import('../views/Users.vue'), meta: { requiresAuth: true } },
+  { path: '/users', name: 'Users', component: Users, meta: { requiresAuth: true } },
 ]
 
 const history = import.meta.env.VITE_ROUTER_MODE === 'hash' ? createWebHashHistory('/') : createWebHistory('/')

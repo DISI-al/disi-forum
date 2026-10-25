@@ -149,7 +149,7 @@ function createWindow(port) {
     log('[render-gone]', JSON.stringify(details))
     if (details && details.reason === 'launch-failed') markSafeMode(true)
   })
-  win.webContents.on('console-message', (e, level, message) => log('[console]', message))
+  win.webContents.on('console-message', (e, level, message, line, source) => log('[console]', message, '@', source + ':' + line))
 
   win.webContents.setWindowOpenHandler(({ url: target }) => {
     if (target.startsWith('http://') || target.startsWith('https://')) shell.openExternal(target)

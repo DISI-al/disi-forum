@@ -1,16 +1,25 @@
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
+import InsistLogin from '../views/InsistLogin.vue'
+import InsistCollection from '../views/InsistCollection.vue'
+import InsistSkill from '../views/InsistSkill.vue'
+import InsistCards from '../views/InsistCards.vue'
+import InsistCardDetail from '../views/InsistCardDetail.vue'
+import InsistAchievements from '../views/InsistAchievements.vue'
+import InsistStats from '../views/InsistStats.vue'
+import InsistSettings from '../views/InsistSettings.vue'
+
 import InsistHome from '../views/Insist.vue'
 
 const routes = [
   { path: '/', name: 'Home', component: InsistHome, meta: { requiresAuth: true } },
-  { path: '/login', name: 'Login', component: () => import('../views/InsistLogin.vue'), meta: { public: true } },
-  { path: '/collection', name: 'Collection', component: () => import('../views/InsistCollection.vue'), meta: { requiresAuth: true } },
-  { path: '/skill/:id', name: 'Skill', component: () => import('../views/InsistSkill.vue'), meta: { requiresAuth: true } },
-  { path: '/cards', name: 'Cards', component: () => import('../views/InsistCards.vue'), meta: { requiresAuth: true } },
-  { path: '/card/:id', name: 'CardDetail', component: () => import('../views/InsistCardDetail.vue'), meta: { requiresAuth: true } },
-  { path: '/achievements', name: 'Achievements', component: () => import('../views/InsistAchievements.vue'), meta: { requiresAuth: true } },
-  { path: '/stats', name: 'Stats', component: () => import('../views/InsistStats.vue'), meta: { requiresAuth: true } },
-  { path: '/settings', name: 'Settings', component: () => import('../views/InsistSettings.vue'), meta: { requiresAuth: true } },
+  { path: '/login', name: 'Login', component: InsistLogin, meta: { public: true } },
+  { path: '/collection', name: 'Collection', component: InsistCollection, meta: { requiresAuth: true } },
+  { path: '/skill/:id', name: 'Skill', component: InsistSkill, meta: { requiresAuth: true } },
+  { path: '/cards', name: 'Cards', component: InsistCards, meta: { requiresAuth: true } },
+  { path: '/card/:id', name: 'CardDetail', component: InsistCardDetail, meta: { requiresAuth: true } },
+  { path: '/achievements', name: 'Achievements', component: InsistAchievements, meta: { requiresAuth: true } },
+  { path: '/stats', name: 'Stats', component: InsistStats, meta: { requiresAuth: true } },
+  { path: '/settings', name: 'Settings', component: InsistSettings, meta: { requiresAuth: true } },
 ]
 
 const history = import.meta.env.VITE_ROUTER_MODE === 'hash' ? createWebHashHistory('/') : createWebHistory('/')
