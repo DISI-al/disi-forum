@@ -1,5 +1,7 @@
 # 桌面端（Windows）
 
+> 应用名：DISI 论坛（`desktop/forum`）、INSIST（`desktop/insist`）
+
 两个独立应用，共用同一后端：
 
 | 应用 | 工程 | 产物 |
@@ -43,6 +45,22 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
   2. 用管理员身份运行 PowerShell 再打包。
 - **缓存目录**：脚本把 electron/electron-builder 缓存放到 `local_dev/` 下，避免写入 `AppData` 被拦。
 - 首次打包会下载 Electron 运行时（约 115MB），已用 npmmirror 镜像加速。
+
+## 排查白屏 / 闪退
+
+桌面端会把日志写到用户目录：
+
+```
+%APPDATA%\insist-desktop\desktop.log      （INSIST）
+%APPDATA%\forum-desktop\desktop.log       （DISI 论坛）
+```
+
+换成打包后的应用名时目录可能不同，日志里会记录：
+
+- `[boot]`：dist 路径、加载的 `app://` 地址、index.html 是否存在；
+- `[fail-load]` / `[render-gone]`：加载失败或渲染进程崩溃；
+- `[protocol-error]`：本地文件读取失败；
+- `[console]`：页面里的 console 输出。
 
 ## 运行
 
