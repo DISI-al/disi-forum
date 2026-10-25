@@ -19,7 +19,7 @@ from models import User, Post, Comment, Like, Favorite, Media
 from auth import get_current_user, require_user, create_access_token
 from insist_api import router as insist_router
 from schemas import (
-    LoginRequest, LoginResponse, UserInfo,
+    LoginRequest, LoginResponse, RegisterRequest, UserInfo,
     PostResponse, PostAuthor, PostStats, PostMeta,
     CommentItem, MediaGroup,
     PostCreateRequest, PostUpdateRequest, PinRequest,
@@ -232,9 +232,37 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         if not user:
             raise HTTPException(status_code=401, detail="密码错误")
 
-    # 每次登录更新 login_version，旧设备自动失效（单设备登录）
-    user.login_version = uuid.uuid4().hex[:12]
+    # 多端登录：不再失效其他设备；想强制下线所有设备时手动改 login_version 即可
+
+    token = create_access_token(user.id, user.login_version)
+    return LoginResponse(
+        token=token,
+        user=UserInfo(**build_user_response(user))
+    )
+
+
+@app.post("/api/posts/register", response_model=LoginResponse)
+def register(req: RegisterRequest, db: Session = Depends(get_db)):
+    """自助注册：用户名 + 口令，注册成功直接返回登录态"""
+    username = (req.username or "").strip()
+    if len(username) < 2:
+        raise HTTPException(status_code=400, detail="用户名至少 2 个字符")
+    if len(req.password) < 4:
+        raise HTTPException(status_code=400, detail="口令至少 4 个字符")
+
+    exists = db.query(User).filter(User.username == username).first()
+    if exists:
+        raise HTTPException(status_code=400, detail="用户名已被占用")
+
+    user = User(
+        username=username,
+        hashed_password=User.hash_password(req.password),
+        role="user",
+        login_version=uuid.uuid4().hex[:12],
+    )
+    db.add(user)
     db.commit()
+    db.refresh(user)
 
     token = create_access_token(user.id, user.login_version)
     return LoginResponse(

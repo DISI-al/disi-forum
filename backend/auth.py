@@ -12,7 +12,7 @@ from models import User
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "disi-secret-key-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 24
+ACCESS_TOKEN_EXPIRE_HOURS = 24 * 30  # 多端使用，有效期放到 30 天
 
 security = HTTPBearer(auto_error=False)
 
