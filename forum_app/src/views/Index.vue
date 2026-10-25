@@ -165,16 +165,17 @@ import {
   apiAddComment, apiDeleteComment, apiGetCurrentUser, apiLogout
 } from '../api/index_api.js'
 import { makePreview } from '../utils/markdown.js'
+import { cached, peek } from '../utils/cache.js'
 
 const router = useRouter()
-const posts = ref([])
+const posts = ref(peek('forum:posts') || [])
 const searchQuery = ref('')
 const commentPanels = ref({})
 const newComments = ref({})
 const lightboxUrl = ref('')
-const loading = ref(true)
+const loading = ref(!peek('forum:posts'))
 const errorMsg = ref('')
-const currentUser = ref({ id: '', name: '', role: 'user', isAdmin: false, avatarUrl: '' })
+const currentUser = ref(peek('forum:me') || { id: '', name: '', role: 'user', isAdmin: false, avatarUrl: '' })
 
 const openLightbox = (url) => { lightboxUrl.value = url }
 const closeLightbox = () => { lightboxUrl.value = '' }
@@ -290,7 +291,7 @@ const handleLogout = () => {
 
 const loadUser = async () => {
   try {
-    const u = await apiGetCurrentUser()
+    const u = await cached('forum:me', apiGetCurrentUser)
     // 后端在 token 失效时会返回 guest 身份，这里直接请回登录页，避免「变成游客」
     if (!u || u.id === 'guest') {
       ;['disi_token', 'disi_role', 'disi_user_id', 'disi_user_name'].forEach((k) => localStorage.removeItem(k))
@@ -307,7 +308,7 @@ const loadPosts = async () => {
   loading.value = true
   errorMsg.value = ''
   try {
-    posts.value = await apiGetPosts()
+    posts.value = await cached('forum:posts', apiGetPosts)
   } catch (err) {
     errorMsg.value = '帖子加载失败：' + (err.message || '网络异常')
   } finally {

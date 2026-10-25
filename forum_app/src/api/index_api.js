@@ -1,4 +1,6 @@
 const API_ORIGIN = (typeof window !== 'undefined' && window.__DISI_API_BASE__) || ''
+import { clearAll } from '../utils/cache.js'
+
 const API_BASE_URL = API_ORIGIN + '/api/posts'
 
 // 桌面端 API 在别的域名上，后端的 /uploads/xxx 需要拼成绝对地址
@@ -40,6 +42,7 @@ async function request(url, options = {}) {
     // 后端错误统一放在 detail 字段，这里优先用它，提示才有意义
     throw new Error(data.detail || data.message || `请求失败（${res.status}）`)
   }
+  if (options.method && options.method !== 'GET') clearAll()
   return absoluteMedia(data)
 }
 

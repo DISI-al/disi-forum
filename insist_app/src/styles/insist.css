@@ -253,3 +253,6 @@
 .insist-crumb a { color: #7a7a7a; text-decoration: none; }
 .insist-crumb a:hover { color: #ededed; }
 .insist-crumb span { color: #3f3f3f; }
+
+.insist-btn.danger { border-color: rgba(248, 81, 73, 0.45); color: #f85149; }
+.insist-btn.danger:hover { background: rgba(248, 81, 73, 0.1); }

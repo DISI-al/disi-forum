@@ -7,11 +7,20 @@ import { ref, onMounted } from 'vue'
 import InsistNav from '../components/InsistNav.vue'
 import { LEVELS, TIERS, IMPORTANCE } from '../insist/constants.js'
 import { apiSettings, apiSaveSettings, apiResetSettings, apiExport } from '../api/insist_api.js'
+import { clearAll } from '../insist/cache.js'
 
 const loading = ref(true)
 const saving = ref(false)
 const msg = ref('')
 const error = ref('')
+const userName = ref(localStorage.getItem('disi_user_name') || '')
+
+function logout() {
+  clearAll()
+  ;['disi_token', 'disi_role', 'disi_user_id', 'disi_user_name'].forEach((k) => localStorage.removeItem(k))
+  if (import.meta.env.VITE_ROUTER_MODE === 'hash') location.hash = '#/login'
+  else location.href = '/login'
+}
 
 const config = ref(null)
 const defaults = ref(null)
@@ -227,6 +236,15 @@ onMounted(load)
           <button class="insist-btn" type="button" :disabled="saving" @click="reset">恢复默认</button>
           <span v-if="msg" class="notice inline">{{ msg }}</span>
         </div>
+
+        <!-- 账号 -->
+        <section class="insist-block">
+          <div class="insist-block-head"><h2>账号</h2><span class="insist-block-sub">{{ userName || '已登录' }}</span></div>
+          <p class="hint">退出后需要重新输入口令登录，数据都保存在服务器，不会丢失。</p>
+          <div class="actions">
+            <button class="insist-btn danger" type="button" @click="logout">退出登录</button>
+          </div>
+        </section>
 
         <!-- 数据导出 -->
         <section class="insist-block">

@@ -98,6 +98,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiGetCurrentUser, apiGetPosts, apiDeletePost, apiUploadAvatar, apiGetLikesCount, apiUpdateUserName } from '../api/index_api.js'
 import { makePreview } from '../utils/markdown.js'
+import { cached, peek } from '../utils/cache.js'
 
 const router = useRouter()
 const user = ref({ id: '', name: '', role: 'user', isAdmin: false, avatarUrl: '' })
@@ -194,8 +195,8 @@ const handleDelete = async (postId) => {
 onMounted(async () => {
   // 三个请求彼此独立：用户信息失败也不该让帖子列表空掉
   const [userRes, postsRes, likeRes] = await Promise.allSettled([
-    apiGetCurrentUser(),
-    apiGetPosts(),
+    cached('forum:me', apiGetCurrentUser),
+    cached('forum:myPosts', apiGetPosts),
     apiGetLikesCount(),
   ])
   if (userRes.status === 'fulfilled') user.value = userRes.value
