@@ -6,7 +6,7 @@
         <div class="nav-row">
           <!-- Logo -->
           <div class="logo-wrapper">
-            <router-link to="/" class="site-logo">帝DISI</router-link>
+            <router-link to="/" class="site-logo">第四论坛</router-link>
           </div>
 
           <!-- 搜索框（桌面：中间  /  手机：独占第二行） -->
