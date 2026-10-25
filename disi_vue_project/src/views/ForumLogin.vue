@@ -144,13 +144,13 @@ onMounted(() => pwdInput.value?.focus())
         aria-label="用户名"
       />
 
-      <p class="switch">
-        <a href="#" @click.prevent="switchMode">{{ isRegister ? '去登录' : '注册' }}</a>
-      </p>
-
       <button class="btn" type="submit" :disabled="loading">{{ buttonText }}</button>
 
       <p class="err" :class="{ show: !!error }">{{ error || '\u00a0' }}</p>
+
+      <p class="switch">
+        <a href="#" @click.prevent="switchMode">{{ isRegister ? '去登录' : '注册' }}</a>
+      </p>
     </form>
   </div>
 </template>
@@ -215,10 +215,10 @@ onMounted(() => pwdInput.value?.focus())
   left: 50%;
   top: 38vh;
   transform: translate(-50%, -50%);
-  font-size: clamp(48px, 7.4vw, 96px);
+  font-size: clamp(64px, 9.2vw, 120px);
   font-weight: 600;
-  letter-spacing: 0.22em;
-  margin-right: -0.22em;
+  letter-spacing: 0.3em;
+  margin-right: -0.3em;
   line-height: 1;
   color: #2ea043;
   user-select: none;
@@ -294,8 +294,7 @@ onMounted(() => pwdInput.value?.focus())
 .err.show { opacity: 1; }
 
 .switch {
-  margin-top: 2px;
-  margin-bottom: 10px;
+  margin-top: 12px;
   font-size: 12.5px;
   color: #8b949e;
   text-align: center;
