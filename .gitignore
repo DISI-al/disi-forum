@@ -55,7 +55,7 @@ desktop.ini
 *.bak
 backup_*.db
 
-# ��ʱ��ͼ
+# ��ʱ��ͼ
 /_*.png
 
 # ===== INSIST 独立前端 =====
@@ -70,3 +70,6 @@ backup_*.db
 /desktop/*/node_modules
 /desktop/*/dist
 /desktop/*/release
+
+# ===== 安装器编译产物 =====
+/desktop/installer/.build

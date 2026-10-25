@@ -79,7 +79,41 @@ set DISI_RENDER=software
 
 两种模式哪个更顺，就用哪个（可以在快捷方式里固定环境变量）。
 
-## 安装到系统（免管理员，替代 NSIS）
+## 安装包（自定义安装器，两种风格）
+
+不依赖 NSIS / 开发者模式，用 .NET 写的安装器，界面跟产品走：
+
+| 产品 | 安装器界面 |
+|---|---|
+| DISI 论坛 | GitHub 深色 + 绿按钮 |
+| INSIST | 纯黑白 + 白按钮 |
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\desktop\build-installer.ps1 -App forum
+powershell -ExecutionPolicy Bypass -File .\desktop\build-installer.ps1 -App insist
+```
+
+产出：
+
+```
+desktop\forum\release\DISI 论坛 Setup.exe    约 157 MB
+desktop\insist\release\INSIST Setup.exe      约 157 MB
+```
+
+安装器能力：
+
+- 小窗口，可浏览选择安装目录（默认 `%LOCALAPPDATA%\Programs\<产品名>`）
+- 解压进度条 + 状态文字
+- 创建桌面 / 开始菜单快捷方式（图标取自安装后的 exe）
+- 写入「设置 → 应用」列表（`HKCU\...\Uninstall\<appid>`），带卸载命令
+- 安装目录内生成 `uninstall.exe`，双击即可卸载（删快捷方式、注册表项、程序目录）
+- 安装完成可选立即运行
+- 免管理员；要装到 `Program Files` 就用管理员运行安装器、手动选目录
+
+> 应用目录压进安装器 exe（单文件 + 自包含 .NET 运行时），所以体积约 157 MB；
+> exe 与窗口图标通过 `<ApplicationIcon>` 嵌入。
+
+## 安装到系统（免管理员脚本，备用）
 
 不打开开发者模式也能装：脚本把文件复制到本用户目录、建开始菜单/桌面快捷方式、写入「设置 → 应用」列表和卸载入口。
 
