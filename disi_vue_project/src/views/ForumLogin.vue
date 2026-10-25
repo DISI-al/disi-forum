@@ -249,7 +249,7 @@ onMounted(() => pwdInput.value?.focus())
   border: none;
   border-bottom: 1px solid #6e7681;
   outline: none;
-  color: #e6edf3;
+  color: #2ea043;
   font-size: 16px;
   letter-spacing: 0.06em;
   text-align: center;
