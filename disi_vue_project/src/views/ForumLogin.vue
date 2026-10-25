@@ -229,7 +229,7 @@ onMounted(() => pwdInput.value?.focus())
 .form {
   position: absolute;
   left: 50%;
-  top: 61vh;
+  top: 66vh;
   transform: translateX(-50%);
   width: 380px;
   max-width: calc(100vw - 48px);
@@ -238,7 +238,7 @@ onMounted(() => pwdInput.value?.focus())
   align-items: center;
 }
 
-.form.wide { top: 56vh; }
+.form.wide { top: 62vh; }
 
 .line {
   width: 100%;
@@ -309,8 +309,8 @@ onMounted(() => pwdInput.value?.focus())
   .logo img { width: 22px; height: 22px; }
   .logo:hover img { transform: scale(1.32); }
   .wordmark { top: 36vh; font-size: clamp(38px, 11vw, 60px); letter-spacing: 0.14em; margin-right: -0.14em; }
-  .form { top: 58vh; width: 300px; }
-  .form.wide { top: 52vh; }
+  .form { top: 64vh; width: 300px; }
+  .form.wide { top: 58vh; }
   .line { height: 38px; font-size: 15px; }
 }
 
