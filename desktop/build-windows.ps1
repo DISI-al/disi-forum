@@ -62,6 +62,12 @@ foreach ($app in $apps) {
   $appExe = Join-Path $unpacked ($exeName + '.exe')
   if ($hasRcedit -and (Test-Path $appExe)) {
     & $rcedit $appExe '--set-icon' $icon
+    & $rcedit $appExe '--set-version-string' 'ProductName' $exeName
+    & $rcedit $appExe '--set-version-string' 'FileDescription' $exeName
+    & $rcedit $appExe '--set-version-string' 'CompanyName' 'DISI'
+    & $rcedit $appExe '--set-version-string' 'LegalCopyright' 'DISI'
+    & $rcedit $appExe '--set-file-version' '0.1.0.0'
+    & $rcedit $appExe '--set-product-version' '0.1.0.0'
     Write-Host "  icon -> $appExe" -ForegroundColor Green
   }
 

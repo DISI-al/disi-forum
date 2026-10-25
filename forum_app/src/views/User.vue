@@ -1,7 +1,13 @@
 <template>
   <div class="disi-forum">
     <div v-if="loading" class="loading-bar" aria-hidden="true"></div>
-    <div class="forum-center-container">
+    <div v-if="loading" class="loading-shell" aria-hidden="true">
+      <div class="skeleton skeleton-card"></div>
+      <div class="skeleton skeleton-line"></div>
+      <div class="skeleton skeleton-line short"></div>
+      <div class="skeleton skeleton-card small"></div>
+    </div>
+    <div class="forum-center-container" v-show="!loading">
       <!-- 返回导航 -->
       <nav class="sub-nav">
         <router-link to="/index" class="back-link">← 返回论坛</router-link>
@@ -591,5 +597,28 @@ onMounted(async () => {
 @keyframes loading-slide {
   from { transform: translateX(-100%); }
   to { transform: translateX(100%); }
+}
+
+.loading-shell {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 4.5rem 1rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.skeleton {
+  background: linear-gradient(90deg, #161b22 25%, #1f2630 50%, #161b22 75%);
+  background-size: 200% 100%;
+  animation: skeleton-flow 1.2s ease-in-out infinite;
+  border-radius: 8px;
+}
+.skeleton-card { height: 150px; }
+.skeleton-card.small { height: 72px; }
+.skeleton-line { height: 14px; width: 100%; }
+.skeleton-line.short { width: 55%; }
+@keyframes skeleton-flow {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
 }
 </style>

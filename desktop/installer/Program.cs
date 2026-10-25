@@ -147,13 +147,7 @@ namespace DisiInstaller
             _title.Location = new Point(90, 22);
             _title.AutoSize = true;
 
-            var subtitle = new Label
-            {
-                Text = "版本 " + Info.Version + " · 安装后可在「设置 → 应用」中卸载",
-                ForeColor = Theme.Muted,
-                Location = new Point(92, 56),
-                AutoSize = true
-            };
+
 
             _close.Text = "✕";
             _close.FlatStyle = FlatStyle.Flat;
@@ -177,8 +171,8 @@ namespace DisiInstaller
             _pathBox.Text = DefaultDir();
 
             _browse.Text = "浏览";
-            _browse.Location = new Point(506, 139);
-            _browse.Size = new Size(86, 32);
+            _browse.Location = new Point(506, 140);
+            _browse.Size = new Size(86, 30);
             StyleSecondary(_browse);
             _browse.Click += (s, e) =>
             {
@@ -224,7 +218,7 @@ namespace DisiInstaller
 
             Controls.AddRange(new Control[]
             {
-                logo, _title, subtitle, _close, line, pathLabel, _pathBox, _browse,
+                logo, _title, _close, line, pathLabel, _pathBox, _browse,
                 _progressTrack, _status, _launch, _install, _cancel
             });
 
@@ -260,7 +254,7 @@ namespace DisiInstaller
         private static Icon? LoadIcon()
         {
             using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("appicon.ico");
-            return stream == null ? null : new Icon(stream);
+            return stream == null ? null : new Icon(stream, 64, 64);
         }
 
         private void SetProgress(int percent, string message)
@@ -297,7 +291,7 @@ namespace DisiInstaller
                     try { Process.Start(new ProcessStartInfo(Path.Combine(dir, Info.AppExe)) { UseShellExecute = true }); } catch { }
                 }
 
-                MessageBox.Show(this, "安装完成。\n\n开始菜单、桌面快捷方式和「设置 → 应用」里都能找到它。", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                await Task.Delay(350);
                 Close();
             }
             catch (Exception ex)
@@ -379,6 +373,28 @@ namespace DisiInstaller
             catch { }
 
             report(93, "写入卸载信息…");
+
+            // 卸载器：用脚本实现，避免复制 exe 失败导致卸载入口失效
+            var uninstallPs1 = Path.Combine(dir, "uninstall.ps1");
+            var ps1 = string.Join("\r\n", new[]
+            {
+                "$ErrorActionPreference = 'SilentlyContinue'",
+                "$dir = '" + dir.Replace("'", "''") + "'",
+                "$name = '" + Info.ProductName.Replace("'", "''") + "'",
+                "$alias = '" + (Info.Style == "green" ? "DISI Forum" : "INSIST App") + "'",
+                "$key = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\" + Info.AppId + "'",
+                "Get-Process | Where-Object { $_.Path -like \"$dir\\*\" } | Stop-Process -Force",
+                "foreach ($d in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'), [Environment]::GetFolderPath('CommonPrograms'))) {",
+                "  foreach ($n in @($name, $alias)) { Remove-Item (Join-Path $d ($n + '.lnk')) -Force }",
+                "}",
+                "Remove-Item $key -Recurse -Force",
+                "$cmd = Join-Path $env:TEMP ('disi-clean-' + [guid]::NewGuid().ToString('N') + '.cmd')",
+                "Set-Content -Path $cmd -Encoding ASCII -Value ('@echo off' + [Environment]::NewLine + 'timeout /t 2 /nobreak >nul' + [Environment]::NewLine + 'rmdir /s /q \"' + $dir + '\"' + [Environment]::NewLine + 'del /f /q \"%~f0\"')",
+                "Start-Process -FilePath 'cmd.exe' -ArgumentList ('/c \"' + $cmd + '\"') -WindowStyle Hidden",
+                "",
+            });
+            File.WriteAllText(uninstallPs1, ps1, new System.Text.UTF8Encoding(true));
+
             var uninstallExe = Path.Combine(dir, "uninstall.exe");
             var self = Process.GetCurrentProcess().MainModule?.FileName;
             if (!string.IsNullOrEmpty(self) && !string.Equals(self, uninstallExe, StringComparison.OrdinalIgnoreCase))
@@ -396,8 +412,8 @@ namespace DisiInstaller
                     key.SetValue("Publisher", Info.Publisher);
                     key.SetValue("InstallLocation", dir);
                     key.SetValue("DisplayIcon", iconForShortcut);
-                    key.SetValue("UninstallString", "\"" + uninstallExe + "\" /uninstall");
-                    key.SetValue("QuietUninstallString", "\"" + uninstallExe + "\" /uninstall /S");
+                    key.SetValue("UninstallString", File.Exists(uninstallExe) ? ("\"" + uninstallExe + "\" /uninstall") : ("powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" + uninstallPs1 + "\""));
+                    key.SetValue("QuietUninstallString", File.Exists(uninstallExe) ? ("\"" + uninstallExe + "\" /uninstall /S") : ("powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" + uninstallPs1 + "\""));
                     key.SetValue("NoModify", 1, RegistryValueKind.DWord);
                     key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
                 }

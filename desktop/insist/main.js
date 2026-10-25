@@ -9,6 +9,9 @@ const API_BASE = process.env.DISI_API || 'https://disi-al.com'
 const PORT = 18765
 const SAFE_FLAG = path.join(app.getPath('userData'), 'safe-mode.flag')
 
+// 任务栏/跳转列表显示应用名而不是 Electron
+try { app.setAppUserModelId('com.disi.insist') } catch (e) {}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -176,6 +179,12 @@ function createWindow(port) {
 
   const url = 'http://127.0.0.1:' + port + '/index.html'
   log('[boot] title=', APP_TITLE, 'url=', url)
+
+  win.webContents.on('dom-ready', () => {
+    win.webContents
+      .insertCSS('html{scrollbar-width:none;-ms-overflow-style:none;overflow-y:scroll}::-webkit-scrollbar{width:0;height:0;display:none}')
+      .catch(() => {})
+  })
 
   win.once('ready-to-show', () => {
     log('[ready]')
