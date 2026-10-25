@@ -65,3 +65,8 @@ backup_*.db
 # ===== 论坛独立前端 =====
 /forum_app/node_modules
 /forum_app/dist
+
+# ===== Windows 桌面壳 =====
+/desktop/*/node_modules
+/desktop/*/dist
+/desktop/*/release

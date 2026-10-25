@@ -1,0 +1,42 @@
+{
+  "name": "insist-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "INSIST 技能进度条 · Windows 客户端",
+  "main": "main.js",
+  "scripts": {
+    "copy:web": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});require('fs').cpSync('../../insist_app/dist','dist',{recursive:true})\"",
+    "start": "npm run copy:web && electron .",
+    "package": "npm run copy:web && electron-builder --win nsis portable"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.disi.insist",
+    "productName": "INSIST",
+    "directories": { "output": "release", "buildResources": "build" },
+    "files": [
+      "main.js",
+      "preload.js",
+      "build/icon.ico",
+      "dist/**/*"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "INSIST"
+    }
+  }
+}

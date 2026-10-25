@@ -1,4 +1,5 @@
-const API_BASE_URL = '/api/posts'
+const API_ORIGIN = (typeof window !== 'undefined' && window.__DISI_API_BASE__) || ''
+const API_BASE_URL = API_ORIGIN + '/api/posts'
 
 async function request(url, options = {}) {
   const token = localStorage.getItem('disi_token')

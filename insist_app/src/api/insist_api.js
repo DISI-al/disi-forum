@@ -1,5 +1,6 @@
 /** INSIST 接口封装 */
-const BASE = '/api/insist'
+const API_ORIGIN = (typeof window !== 'undefined' && window.__DISI_API_BASE__) || ''
+const BASE = API_ORIGIN + '/api/insist'
 
 async function request(path, options = {}) {
   const token = localStorage.getItem('disi_token')
