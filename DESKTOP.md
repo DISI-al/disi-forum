@@ -11,9 +11,9 @@
 
 ## 架构
 
-- 渲染方式：主进程起一个只监听 `127.0.0.1` 的微型静态服务器，`loadURL` 加载本地 `dist`（避免 `file://` 下 ES module 的 CORS 问题）；
+- 渲染方式：主进程起一个只监听 `127.0.0.1:18765` 的微型静态服务器，`loadURL` 加载本地 `dist`（固定端口，登录态才能持久化）；
 - 桌面构建使用 **hash 路由**（`VITE_ROUTER_MODE=hash`），网页构建仍是 history 路由；
-- 已关闭硬件加速与 Chromium 沙箱：部分 Windows（管理员运行 / 杀软 / 虚拟机）下渲染进程会 `launch-failed`（exitCode 18）导致白屏闪退；
+- 默认开启硬件加速；如果上次渲染进程 `launch-failed`（exitCode 18），会自动写入 `safe-mode.flag`，下次启动用安全模式（关 GPU / 关沙箱），成功显示后自动清除；
 
 - Electron 壳只负责窗口与本地渲染；
 - 前端产物（`forum_app/dist`、`insist_app/dist`）打进安装包，打开不联网也能出界面；

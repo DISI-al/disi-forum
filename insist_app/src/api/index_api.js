@@ -1,6 +1,23 @@
 const API_ORIGIN = (typeof window !== 'undefined' && window.__DISI_API_BASE__) || ''
 const API_BASE_URL = API_ORIGIN + '/api/posts'
 
+// 桌面端 API 在别的域名上，后端的 /uploads/xxx 需要拼成绝对地址
+function absoluteMedia(data) {
+  if (!API_ORIGIN || !data) return data
+  const walk = (v) => {
+    if (Array.isArray(v)) return v.map(walk)
+    if (v && typeof v === 'object') {
+      for (const k of Object.keys(v)) {
+        const val = v[k]
+        if (typeof val === 'string' && val.startsWith('/uploads/')) v[k] = API_ORIGIN + val
+        else if (val && typeof val === 'object') v[k] = walk(val)
+      }
+    }
+    return v
+  }
+  return walk(data)
+}
+
 async function request(url, options = {}) {
   const token = localStorage.getItem('disi_token')
   const headers = {
@@ -22,7 +39,7 @@ async function request(url, options = {}) {
     // 后端错误统一放在 detail 字段，这里优先用它，提示才有意义
     throw new Error(data.detail || data.message || `请求失败（${res.status}）`)
   }
-  return data
+  return absoluteMedia(data)
 }
 
 // ====================== 登录 & 用户 ======================
@@ -78,7 +95,7 @@ export const apiUploadAvatar = async (file) => {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData
   })
-  return res.json()
+  return absoluteMedia(await res.json())
 }
 
 // ====================== 获赞统计 ======================
@@ -147,7 +164,7 @@ export const apiUploadFile = async (file, postId) => {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData
   })
-  return res.json()
+  return absoluteMedia(await res.json())
 }
 
 // ====================== 发布帖子 ======================

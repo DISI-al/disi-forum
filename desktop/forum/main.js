@@ -6,13 +6,8 @@ const http = require('node:http')
 const APP_TITLE = 'DISI 论坛'
 const DIST = path.join(__dirname, 'dist')
 const API_BASE = process.env.DISI_API || 'https://disi-al.com'
-
-// 部分 Windows 环境（管理员运行 / 杀软 / 虚拟机）下 Chromium 沙箱或 GPU 进程会启动失败，
-// 表现为白屏 + 闪退（render-gone: launch-failed / exitCode 18）
-app.disableHardwareAcceleration()
-app.commandLine.appendSwitch('no-sandbox')
-app.commandLine.appendSwitch('disable-gpu')
-app.commandLine.appendSwitch('disable-software-rasterizer')
+const PORT = 18765
+const SAFE_FLAG = path.join(app.getPath('userData'), 'safe-mode.flag')
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -30,18 +25,48 @@ const MIME = {
   '.ttf': 'font/ttf',
 }
 
-let logFile = null
 function log(...args) {
-  try {
-    if (!logFile) logFile = path.join(app.getPath('userData'), 'desktop.log')
-    fs.appendFileSync(logFile, new Date().toISOString() + ' ' + args.join(' ') + '\n')
-  } catch (e) {
-    // ignore logging failures
+  const line = new Date().toISOString() + ' ' + args.join(' ') + '\n'
+  const targets = [
+    path.join(app.getPath('userData'), 'desktop.log'),
+    path.join(path.dirname(process.execPath), 'desktop.log'),
+  ]
+  for (const file of targets) {
+    try {
+      fs.appendFileSync(file, line)
+    } catch (e) {
+      // ignore
+    }
   }
 }
 
 process.on('uncaughtException', (err) => log('[uncaught]', err && err.stack ? err.stack : String(err)))
 process.on('unhandledRejection', (err) => log('[unhandled]', err && err.stack ? err.stack : String(err)))
+
+// 上次启动渲染进程崩溃过（launch-failed / exitCode 18）→ 这次用安全模式
+let safeMode = false
+try {
+  safeMode = fs.existsSync(SAFE_FLAG)
+} catch (e) {
+  safeMode = false
+}
+log('[start] safeMode=', safeMode)
+
+if (safeMode) {
+  app.disableHardwareAcceleration()
+  app.commandLine.appendSwitch('no-sandbox')
+  app.commandLine.appendSwitch('disable-gpu')
+  app.commandLine.appendSwitch('disable-software-rasterizer')
+}
+
+function markSafeMode(on) {
+  try {
+    if (on) fs.writeFileSync(SAFE_FLAG, String(Date.now()))
+    else if (fs.existsSync(SAFE_FLAG)) fs.unlinkSync(SAFE_FLAG)
+  } catch (e) {
+    // ignore
+  }
+}
 
 function createServer() {
   const distRoot = path.resolve(DIST) + path.sep
@@ -67,8 +92,14 @@ function createServer() {
   })
 
   return new Promise((resolve, reject) => {
-    server.once('error', reject)
-    server.listen(0, '127.0.0.1', () => resolve(server.address().port))
+    server.once('error', (err) => {
+      if (err && err.code === 'EADDRINUSE') {
+        server.listen(0, '127.0.0.1', () => resolve(server.address().port))
+        return
+      }
+      reject(err)
+    })
+    server.listen(PORT, '127.0.0.1', () => resolve(server.address().port))
   })
 }
 
@@ -92,16 +123,20 @@ function createWindow(port) {
     },
   })
 
-  const url = 'http://127.0.0.1:' + port + '/index.html#/login'
-  log('[boot] title=', APP_TITLE, 'url=', url, 'indexExists=', fs.existsSync(path.join(DIST, 'index.html')))
+  const url = 'http://127.0.0.1:' + port + '/index.html'
+  log('[boot] title=', APP_TITLE, 'url=', url)
 
   win.once('ready-to-show', () => {
     log('[ready]')
+    markSafeMode(false)
     win.show()
   })
   win.webContents.on('did-finish-load', () => log('[loaded]', win.webContents.getURL()))
   win.webContents.on('did-fail-load', (e, code, desc, u) => log('[fail-load]', code, desc, u))
-  win.webContents.on('render-process-gone', (e, details) => log('[render-gone]', JSON.stringify(details)))
+  win.webContents.on('render-process-gone', (e, details) => {
+    log('[render-gone]', JSON.stringify(details))
+    if (details && details.reason === 'launch-failed') markSafeMode(true)
+  })
   win.webContents.on('console-message', (e, level, message) => log('[console]', message))
 
   win.webContents.setWindowOpenHandler(({ url: target }) => {
@@ -124,7 +159,7 @@ app.whenReady().then(async () => {
   }
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow(0)
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(PORT)
   })
 })
 

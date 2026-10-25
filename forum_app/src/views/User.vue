@@ -56,23 +56,7 @@
         </div>
 
         <!-- 入口：TALENT 被故障切片打散，露出红色 INSIST -->
-        <a :href="insistUrl" class="talent-door" aria-label="Talent 还是 Insist？进入新空间">
-          <span class="talent-word legend" aria-hidden="true">TALENT</span>
-          <span class="talent-word bottom" aria-hidden="true">INSIST<span class="caret">&gt;</span></span>
-          <span class="glitch" aria-hidden="true">
-            <span
-              v-for="slice in slices"
-              :key="slice.i"
-              class="slice"
-              :style="{ top: slice.top, height: slice.height, '--i': slice.i, '--dx': slice.dx, '--d': slice.delay }"
-            >
-              <span class="slice-inner">
-                <span class="talent-word top">TALENT</span>
-              </span>
-            </span>
-          </span>
-        </a>
-      </section>
+        </section>
 
       <!-- 帖子列表：与上方个人信息卡片同宽 -->
       <main class="forum-main">
