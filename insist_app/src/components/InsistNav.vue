@@ -8,7 +8,7 @@
       <router-link to="/cards" :class="{ active: active === 'cards' }">卡片</router-link>
       <router-link to="/achievements" :class="{ active: active === 'achievements' }">成就</router-link>
       <router-link to="/settings" :class="{ active: active === 'settings' }">设置</router-link>
-      <a :href="forumUrl" target="_blank" rel="noopener">返回论坛</a>
+      <a :href="forumUrl" target="_blank" rel="noopener">前往论坛</a>
     </nav>
   </header>
 </template>

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DISI · 第四论坛与 INSIST</title>
-<meta name="description" content="DISI —— 一个私人论坛（第四论坛）与一个技能进度工具（INSIST）。Windows 客户端可下载。">
+<title>DISI</title>
+<meta name="description" content="DISI — DISI_FORUM 与 DISI_INSIST。Windows 客户端可下载。">
 <link rel="icon" href="/favicon.ico">
 <link rel="icon" type="image/png" href="/icon.png">
 <link rel="apple-touch-icon" href="/icon.png">
@@ -14,14 +14,10 @@
 
 <header class="nav">
   <div class="nav-inner">
-    <a class="brand" href="/">
-      <span class="brand-mark">DI</span>
-      <span class="brand-name">DISI</span>
-    </a>
+    <a class="brand" href="/">DISI</a>
     <nav class="nav-links">
       <a href="#products">产品</a>
       <a href="#download">下载</a>
-      <a href="#about">关于</a>
       <a href="https://github.com/DISI-al/disi-forum" target="_blank" rel="noopener">源码</a>
     </nav>
   </div>
@@ -29,136 +25,54 @@
 
 <main>
   <section class="hero">
-    <p class="hero-kicker">私有 · 自建 · 无广告</p>
-    <h1 class="hero-title">DISI</h1>
-    <p class="hero-sub">一个给朋友用的论坛，和一个把技能练成进度条的工具。</p>
-    <div class="hero-actions">
-      <a class="btn btn-primary" href="https://forum.disi-al.com">进入论坛</a>
-      <a class="btn" href="https://insist.disi-al.com">进入 INSIST</a>
-      <a class="btn btn-ghost" href="#download">下载 Windows 客户端</a>
-    </div>
-    <div class="hero-strip">
-      <span>Windows 客户端</span>
-      <span class="dot"></span>
-      <span>网页端免安装</span>
-      <span class="dot"></span>
-      <span>数据自持</span>
+    <div class="hero-banner">
+      <h1>DISI</h1>
+      <p>论坛与技能工具，两个独立的应用。</p>
+      <div class="actions">
+        <a class="btn btn-solid" href="https://forum.disi-al.com">进入论坛</a>
+        <a class="btn btn-solid" href="https://insist.disi-al.com">进入 INSIST</a>
+        <a class="btn" href="#download">下载客户端</a>
+      </div>
     </div>
   </section>
 
   <section id="products" class="section">
-    <div class="section-head">
-      <h2>两个产品</h2>
-      <p>同一套后端，两个独立的应用；桌面端各自打包。</p>
-    </div>
-
-    <div class="cards">
-      <article class="card card-forum">
-        <div class="card-top">
-          <span class="card-badge">论坛</span>
-          <h3>DISI_FORUM</h3>
-        </div>
-        <p class="card-desc">
-          发帖、上传图片、写 Markdown；口令登录，注册只需口令 + 昵称。
-          私有空间，只有认识的人能进。
-        </p>
-        <ul class="card-list">
-          <li>GitHub 风格登录页</li>
-          <li>帖子 / 标签 / 图片上传</li>
-          <li>管理员用户管理</li>
-        </ul>
-        <div class="card-actions">
-          <a class="btn btn-primary" href="https://forum.disi-al.com">打开网页版</a>
-          <a class="btn btn-ghost" href="#download">下载客户端</a>
-        </div>
-      </article>
-
-      <article class="card card-insist">
-        <div class="card-top">
-          <span class="card-badge">工具</span>
-          <h3>DISI_INSIST</h3>
-        </div>
-        <p class="card-desc">
-          把正在练的技能变成经验条：日常打卡、经验卡、成就墙、遗忘曲线复习、
-          统计图表，定期一键整理成帖子发到论坛。
-        </p>
-        <ul class="card-list">
-          <li>技能等级 / 段位 / 晋升</li>
-          <li>经验卡与打卡奖励</li>
-          <li>统计、导出、与论坛互通</li>
-        </ul>
-        <div class="card-actions">
-          <a class="btn btn-primary" href="https://insist.disi-al.com">打开网页版</a>
-          <a class="btn btn-ghost" href="#download">下载客户端</a>
-        </div>
-      </article>
+    <div class="grid-2">
+      <a class="card" href="https://forum.disi-al.com">
+        <span class="card-kicker">DISI_FORUM</span>
+        <h2>论坛</h2>
+        <p>发帖、图片、Markdown。</p>
+        <span class="card-go">打开 →</span>
+      </a>
+      <a class="card" href="https://insist.disi-al.com">
+        <span class="card-kicker">DISI_INSIST</span>
+        <h2>技能进度</h2>
+        <p>打卡、经验卡、成就、统计。</p>
+        <span class="card-go">打开 →</span>
+      </a>
     </div>
   </section>
 
   <section id="download" class="section">
-    <div class="section-head">
-      <h2>下载</h2>
-      <p>Windows 10 / 11 · 安装包需要管理员权限（写入开始菜单与卸载项）；便携版解压即用。</p>
-    </div>
+    <h2 class="section-title">下载</h2>
+    <p class="section-sub">Windows 10 / 11</p>
 
-    <div class="downloads">
-      <div class="dl-row">
-        <div class="dl-name">
-          <span class="dl-tag">DISI_FORUM</span>
-          <span class="dl-meta">安装包 · 约 212 MB</span>
-        </div>
-        <a class="btn btn-primary" href="/download/DISI_FORUM-Setup.exe">下载安装包</a>
+    <div class="rows">
+      <div class="row">
+        <div class="row-main"><span class="row-name">DISI_FORUM</span><span class="row-meta">安装包 · 212 MB</span></div>
+        <a class="btn btn-solid btn-sm" href="/download/DISI_FORUM-Setup.exe">下载</a>
       </div>
-      <div class="dl-row">
-        <div class="dl-name">
-          <span class="dl-tag">DISI_FORUM</span>
-          <span class="dl-meta">便携版 zip · 约 110 MB</span>
-        </div>
-        <a class="btn" href="/download/DISI_FORUM-portable.zip">下载便携版</a>
+      <div class="row">
+        <div class="row-main"><span class="row-name">DISI_FORUM</span><span class="row-meta">便携版 · 110 MB</span></div>
+        <a class="btn btn-sm" href="/download/DISI_FORUM-portable.zip">下载</a>
       </div>
-      <div class="dl-row">
-        <div class="dl-name">
-          <span class="dl-tag">DISI_INSIST</span>
-          <span class="dl-meta">安装包 · 约 212 MB</span>
-        </div>
-        <a class="btn btn-primary" href="/download/DISI_INSIST-Setup.exe">下载安装包</a>
+      <div class="row">
+        <div class="row-main"><span class="row-name">DISI_INSIST</span><span class="row-meta">安装包 · 212 MB</span></div>
+        <a class="btn btn-solid btn-sm" href="/download/DISI_INSIST-Setup.exe">下载</a>
       </div>
-      <div class="dl-row">
-        <div class="dl-name">
-          <span class="dl-tag">DISI_INSIST</span>
-          <span class="dl-meta">便携版 zip · 约 110 MB</span>
-        </div>
-        <a class="btn" href="/download/DISI_INSIST-portable.zip">下载便携版</a>
-      </div>
-    </div>
-
-    <p class="dl-note">
-      首次运行若提示「Windows 已保护你的电脑」，点「更多信息 → 仍要运行」即可（未签名）。
-    </p>
-  </section>
-
-  <section id="about" class="section">
-    <div class="section-head">
-      <h2>关于这个项目</h2>
-      <p>一个人维护的私人项目，代码开源，部署在自己服务器上。</p>
-    </div>
-
-    <div class="about-grid">
-      <div class="about-item">
-        <h4>技术栈</h4>
-        <p>Vue 3 + Vite 前端，FastAPI + SQLite 后端，Nginx 反代，Cloudflare Tunnel 对外，Electron 打包桌面端。</p>
-      </div>
-      <div class="about-item">
-        <h4>为什么做</h4>
-        <p>想要一个真正私密、无广告、数据在自己手里的交流空间；顺手把「练习」这件事做成看得见进度条的工具。</p>
-      </div>
-      <div class="about-item">
-        <h4>源码</h4>
-        <p><a href="https://github.com/DISI-al/disi-forum" target="_blank" rel="noopener">github.com/DISI-al/disi-forum</a> —— 后端、两个前端、桌面端打包脚本都在里面。</p>
-      </div>
-      <div class="about-item">
-        <h4>隐私</h4>
-        <p>不接第三方统计、不收集设备信息；账号只有口令，数据只存在自己的数据库里，随时可导出。</p>
+      <div class="row">
+        <div class="row-main"><span class="row-name">DISI_INSIST</span><span class="row-meta">便携版 · 110 MB</span></div>
+        <a class="btn btn-sm" href="/download/DISI_INSIST-portable.zip">下载</a>
       </div>
     </div>
   </section>
@@ -166,7 +80,7 @@
 
 <footer class="footer">
   <div class="footer-inner">
-    <span>© DISI · 私人项目</span>
+    <span>DISI</span>
     <nav>
       <a href="https://forum.disi-al.com">论坛</a>
       <a href="https://insist.disi-al.com">INSIST</a>
