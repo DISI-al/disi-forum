@@ -158,10 +158,10 @@ function trayMenuHtml() {
     'background:transparent;border:0;border-radius:5px;color:' + THEME.fg + ';' +
     'font:13px "Microsoft YaHei UI",sans-serif;cursor:default;width:100%}' +
     '.row:hover{background:rgba(255,255,255,.12)}' +
-    '.row.on{color:' + THEME.accent + '}' +
+    '.row.on{color:#f85149}' +
     '</style></head><body>' +
     row(LABEL_OPEN, 'open', false) +
-    row(LABEL_AUTOSTART + (auto ? '  ✓' : ''), 'autostart', auto) +
+    row(LABEL_AUTOSTART, 'autostart', auto) +
     row(LABEL_QUIT, 'quit', false) +
     '</body></html>'
   )
@@ -219,6 +219,11 @@ function openTrayMenu(win) {
     trayMenu.show()
     trayMenu.focus()
     trayMenu.moveTop()
+    // 3.5 秒无操作自动关闭（任务栏自动隐藏等场景）
+    setTimeout(() => {
+      try { closeTrayMenu() } catch (e) { }
+    }, 3500)
+
     // 轮询兜底：一旦失去焦点（点了别处、溢出面板收起等）就关闭
     const timer = setInterval(() => {
       if (!trayMenu || trayMenu.isDestroyed()) {

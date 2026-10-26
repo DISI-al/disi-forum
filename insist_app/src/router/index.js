@@ -52,8 +52,9 @@ const preloaders = {
 
 router.beforeEach(async (to, from, next) => {
   const hasToken = !!localStorage.getItem('disi_token')
+  // 登录页优先：即使本地有 token 也先展示登录页
   if (to.path === '/login') {
-    hasToken ? next('/') : next()
+    next()
     return
   }
   if (!hasToken) {
