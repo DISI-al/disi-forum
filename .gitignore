@@ -94,3 +94,4 @@ backup_*.db
 /mobile/*/ios/DerivedData
 /mobile/*/ios/App/*.xcworkspace/xcuserdata
 /mobile/*/ios/App/*.xcodeproj/xcuserdata
+/mobile/*/android/keystore.properties
