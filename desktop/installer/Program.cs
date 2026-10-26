@@ -227,11 +227,11 @@ namespace DisiInstaller
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             header.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-            var logo = new PictureBox { Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom, Margin = new Padding(0, 4, 12, 4) };
+            var logo = new PictureBox { Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom, Margin = new Padding(0, 6, 10, 6) };
             try
             {
-                var ico = LoadIcon();
-                if (ico != null) logo.Image = ico.ToBitmap();
+                var bmp = LoadLogo();
+                if (bmp != null) logo.Image = bmp;
             }
             catch { }
 
@@ -266,16 +266,20 @@ namespace DisiInstaller
             pathRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 108F));
             pathRow.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
 
-            _pathBox.Dock = DockStyle.Fill;
-            _pathBox.Multiline = true;
-            _pathBox.WordWrap = false;
-            _pathBox.ScrollBars = ScrollBars.None;
-            _pathBox.BorderStyle = BorderStyle.FixedSingle;
+            var inputShell = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Panel, Margin = new Padding(0, 0, 8, 0) };
+            inputShell.Paint += (s2, e2) =>
+            {
+                using var pen = new Pen(Theme.Border);
+                e2.Graphics.DrawRectangle(pen, 0, 0, inputShell.Width - 1, inputShell.Height - 1);
+            };
+            _pathBox.BorderStyle = BorderStyle.None;
             _pathBox.BackColor = Theme.Panel;
             _pathBox.ForeColor = Theme.Text;
-            _pathBox.Font = new Font("Microsoft YaHei UI", 10F);
-            _pathBox.Margin = new Padding(0, 0, 8, 0);
+            _pathBox.Font = new Font("Microsoft YaHei UI", 11F);
+            _pathBox.Dock = DockStyle.Fill;
+            _pathBox.Margin = new Padding(10, 12, 10, 12);
             _pathBox.Text = DefaultDir();
+            inputShell.Controls.Add(_pathBox);
 
             _browse.Text = "浏览";
             _browse.Dock = DockStyle.Fill;
@@ -287,7 +291,7 @@ namespace DisiInstaller
                 if (dlg.ShowDialog(this) == DialogResult.OK) _pathBox.Text = dlg.SelectedPath;
             };
 
-            pathRow.Controls.Add(_pathBox, 0, 0);
+            pathRow.Controls.Add(inputShell, 0, 0);
             pathRow.Controls.Add(_browse, 1, 0);
             pathBlock.Controls.Add(pathLabel, 0, 0);
             pathBlock.Controls.Add(pathRow, 0, 1);
@@ -334,13 +338,13 @@ namespace DisiInstaller
             };
 
             _cancel.Text = "取消";
-            _cancel.Size = new Size(120, 40);
+            _cancel.Size = new Size(108, 40);
             _cancel.Margin = new Padding(0);
             StyleSecondary(_cancel);
             _cancel.Click += (s, e) => { if (!_busy) Close(); };
 
             _install.Text = "安装";
-            _install.Size = new Size(120, 40);
+            _install.Size = new Size(108, 40);
             _install.Margin = new Padding(0, 0, 12, 0);
             _install.FlatStyle = FlatStyle.Flat;
             _install.FlatAppearance.BorderSize = 1;
@@ -391,6 +395,24 @@ namespace DisiInstaller
             b.ForeColor = Theme.Text;
         }
 
+        private const int WM_NCHITTEST = 0x0084;
+        private const int HTCLIENT = 1;
+        private const int HTCAPTION = 2;
+
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+            if (m.Msg == WM_NCHITTEST && (int)m.Result == HTCLIENT)
+            {
+                var p = PointToClient(new Point((short)(m.LParam.ToInt32() & 0xFFFF), (short)((m.LParam.ToInt32() >> 16) & 0xFFFF)));
+                // 顶部 56px 内且不在关闭按钮上 → 可拖动
+                if (p.Y <= 56 && !(p.X > ClientSize.Width - 60 && p.Y < 44))
+                {
+                    m.Result = (IntPtr)HTCAPTION;
+                }
+            }
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
@@ -407,6 +429,42 @@ namespace DisiInstaller
         {
             using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("appicon.ico");
             return stream == null ? null : new Icon(stream, 64, 64);
+        }
+
+        private static Bitmap? LoadLogo()
+        {
+            try
+            {
+                using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("appicon.ico");
+                if (stream == null) return null;
+                using var ico = new Icon(stream, 256, 256);
+                using var raw = ico.ToBitmap();
+                // 裁掉透明留白
+                var minX = raw.Width;
+                var minY = raw.Height;
+                var maxX = -1;
+                var maxY = -1;
+                for (var y = 0; y < raw.Height; y++)
+                {
+                    for (var x = 0; x < raw.Width; x++)
+                    {
+                        if (raw.GetPixel(x, y).A > 12)
+                        {
+                            if (x < minX) minX = x;
+                            if (y < minY) minY = y;
+                            if (x > maxX) maxX = x;
+                            if (y > maxY) maxY = y;
+                        }
+                    }
+                }
+                if (maxX <= minX || maxY <= minY) return raw;
+                var rect = new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1);
+                return raw.Clone(rect, raw.PixelFormat);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private void SetProgress(int percent, string message)
@@ -568,8 +626,15 @@ namespace DisiInstaller
                     key.SetValue("Publisher", Info.Publisher);
                     key.SetValue("InstallLocation", dir);
                     key.SetValue("DisplayIcon", iconForShortcut);
-                    key.SetValue("UninstallString", "powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" + uninstallPs1 + "\"");
-                    key.SetValue("QuietUninstallString", "powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" + uninstallPs1 + "\"");
+                    var hasUninstaller = File.Exists(uninstallExe);
+                    var uninstallCmd = hasUninstaller
+                        ? "\"" + uninstallExe + "\" /uninstall"
+                        : "powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" + uninstallPs1 + "\"";
+                    var quietCmd = hasUninstaller
+                        ? "\"" + uninstallExe + "\" /uninstall /S"
+                        : uninstallCmd;
+                    key.SetValue("UninstallString", uninstallCmd);
+                    key.SetValue("QuietUninstallString", quietCmd);
                     key.SetValue("NoModify", 1, RegistryValueKind.DWord);
                     key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
                 }
@@ -626,6 +691,23 @@ namespace DisiInstaller
             try { File.WriteAllText(Path.Combine(dir, "uninstalling.flag"), "1"); } catch { }
 
             InstallerEngine.Uninstall(dir);
+
+            // 先直接删目录（进程已杀，通常能删干净）
+            for (var i = 0; i < 5; i++)
+            {
+                try
+                {
+                    if (Directory.Exists(dir)) Directory.Delete(dir, true);
+                }
+                catch { }
+                if (!Directory.Exists(dir)) break;
+                System.Threading.Thread.Sleep(500);
+            }
+
+            if (!Directory.Exists(dir))
+            {
+                return;
+            }
 
             var cmd = Path.Combine(Path.GetTempPath(), "disi-uninstall-" + Guid.NewGuid().ToString("N") + ".cmd");
             File.WriteAllText(cmd,
