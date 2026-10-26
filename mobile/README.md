@@ -67,14 +67,28 @@ $env:JAVA_HOME="local_dev\toolchain\jdk21"
 
 ## 三、iOS
 
-iOS 需要用 Xcode 编译，Windows 上通过 GitHub Actions（macOS runner）出**未签名 IPA**：
+Windows 无法编译 iOS，用 GitHub Actions 的 macOS runner 出**未签名 IPA**：
 
 ```
 .github/workflows/ios-unsigned.yml
 ```
 
-拿到 IPA 后用手机上的签名工具（Sideloadly / ESign / AltStore）自签安装。
-免费 Apple ID 有效期 7 天，付费开发者账号 1 年。
+### 怎么跑
+
+1. 打开仓库 → **Actions** → 左侧「iOS unsigned IPA」→ **Run workflow**；
+2. 约 8–12 分钟后，页面底部 **Artifacts** 里下载：
+   - `DISI_FORUM-ipa` → `DISI_FORUM-unsigned.ipa`
+   - `DISI_INSIST-ipa` → `DISI_INSIST-unsigned.ipa`
+3. 把 IPA 传到手机，用 Sideloadly / ESign / AltStore **自签安装**：
+   - 免费 Apple ID：7 天有效期，到期重签；
+   - 付费开发者账号：1 年。
+
+> 仓库是 public，Actions 分钟数基本不限；无需在仓库里放任何证书。
+
+### 本地能做什么
+
+`mobile/forum/ios`、`mobile/insist/ios` 这两个 Xcode 工程已经生成（Windows 上 `npx cap add ios` 可行），
+但 `pod install` 与 `xcodebuild` 只能在 macOS 上跑，所以本地 Windows 只做到「生成工程 + 提交」，编译交给 CI。
 
 ## 四、接口地址
 

@@ -1,0 +1,89 @@
+name: iOS unsigned IPA
+
+# 在 GitHub 的 macOS runner 上编译两个 App，产出未签名 IPA（artifact 可下载）
+# 触发：仓库 Actions 页面手动 Run workflow，或推送修改 mobile/ 的提交
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/ios-unsigned.yml'
+
+jobs:
+  build:
+    name: ${{ matrix.app }}
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: forum
+            web: forum_app
+            name: DISI_FORUM
+          - app: insist
+            web: insist_app
+            name: DISI_INSIST
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 构建前端
+        run: |
+          cd "${{ matrix.web }}"
+          if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+          npm run build
+
+      - name: 准备移动端资源
+        run: node mobile/prepare-web.mjs ${{ matrix.app }}
+
+      - name: 安装 Capacitor 依赖
+        run: |
+          cd "mobile/${{ matrix.app }}"
+          if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+
+      - name: 同步 iOS 工程
+        run: |
+          cd "mobile/${{ matrix.app }}"
+          npx cap sync ios
+
+      - name: 安装 CocoaPods 依赖
+        run: |
+          cd "mobile/${{ matrix.app }}/ios/App"
+          pod install --repo-update
+
+      - name: 编译（不签名）
+        run: |
+          cd "mobile/${{ matrix.app }}/ios/App"
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            -archivePath build/App.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            DEVELOPMENT_TEAM=""
+
+      - name: 打包未签名 IPA
+        run: |
+          cd "mobile/${{ matrix.app }}/ios/App/build"
+          mkdir -p Payload
+          cp -R App.xcarchive/Products/Applications/App.app Payload/
+          zip -qry "${{ matrix.name }}-unsigned.ipa" Payload
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          cp "${{ matrix.name }}-unsigned.ipa" "$GITHUB_WORKSPACE/out/"
+          ls -lh "$GITHUB_WORKSPACE/out"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-ipa
+          path: out/${{ matrix.name }}-unsigned.ipa
+          retention-days: 30
