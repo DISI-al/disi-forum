@@ -34,7 +34,6 @@ const MIME = {
 
 let mainWindow = null
 let tray = null
-let menuWindow = null
 
 function log(...args) {
   const line = new Date().toISOString() + ' ' + args.join(' ') + '\n'
@@ -139,77 +138,8 @@ function createServer() {
   })
 }
 
-function menuHtml() {
-  const auto = app.getLoginItemSettings().openAtLogin
-  const row = (label, action, active) =>
-    '<button class="row' + (active ? ' on' : '') + '" onclick="window.trayPick(\'' + action + '\')">' + label + '</button>'
-  return (
-    '<!doctype html><html><head><meta charset="utf-8"><style>' +
-    '*{margin:0;padding:0;box-sizing:border-box}' +
-    'html,body{height:100%;background:' + THEME.bg + ';color:' + THEME.fg + ';font:13px "Microsoft YaHei UI",sans-serif;overflow:hidden}' +
-    'body{border:1px solid rgba(255,255,255,.14);border-radius:8px;display:flex;flex-direction:column;padding:6px}' +
-    '.row{flex:1;display:flex;align-items:center;justify-content:center;background:transparent;border:0;color:' + THEME.fg + ';' +
-    'font:13px "Microsoft YaHei UI",sans-serif;border-radius:5px;cursor:default;width:100%}' +
-    '.row:hover{background:rgba(255,255,255,.10)}' +
-    '.row.on{color:' + THEME.accent + '}' +
-    '</style></head><body>' +
-    row(LABEL_OPEN, 'open', false) +
-    row(LABEL_AUTOSTART + (auto ? ' ✓' : ''), 'autostart', auto) +
-    row(LABEL_QUIT, 'quit', false) +
-    '</body></html>'
-  )
-}
 
-function closeMenu() {
-  if (menuWindow && !menuWindow.isDestroyed()) menuWindow.close()
-  menuWindow = null
-}
 
-function openMenu(win) {
-  if (menuWindow && !menuWindow.isDestroyed()) {
-    closeMenu()
-    return
-  }
-
-  const width = 168
-  const height = 132
-  const point = screen.getCursorScreenPoint()
-  const display = screen.getDisplayNearestPoint(point)
-  const area = display.workArea
-
-  let x = Math.round(point.x - width / 2)
-  let y = Math.round(point.y - height - 8)
-  x = Math.max(area.x + 4, Math.min(x, area.x + area.width - width - 4))
-  if (y < area.y + 4) y = Math.round(point.y + 12)
-
-  menuWindow = new BrowserWindow({
-    width,
-    height,
-    x,
-    y,
-    frame: false,
-    transparent: true,
-    resizable: false,
-    movable: false,
-    minimizable: false,
-    maximizable: false,
-    skipTaskbar: true,
-    alwaysOnTop: true,
-    show: false,
-    webPreferences: {
-      preload: path.join(__dirname, 'trayPreload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  })
-
-  menuWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(menuHtml()))
-  menuWindow.once('ready-to-show', () => {
-    menuWindow.show()
-    menuWindow.focus()
-  })
-  menuWindow.on('blur', () => closeMenu())
-}
 
 function setupTray(win) {
   try {
@@ -241,20 +171,6 @@ function setupTray(win) {
   tray.setContextMenu(buildMenu())
   tray.on('click', () => tray.popUpContextMenu())
 
-  ipcMain.on('tray-action', (event, action) => {
-    if (menuWindow && !menuWindow.isDestroyed() && event.sender === menuWindow.webContents) closeMenu()
-    if (action === 'open') {
-      win.show()
-      win.focus()
-    } else if (action === 'autostart') {
-      const next = !app.getLoginItemSettings().openAtLogin
-      app.setLoginItemSettings({ openAtLogin: next, path: process.execPath })
-      log('[autostart]', next)
-    } else if (action === 'quit') {
-      app.isQuitting = true
-      app.quit()
-    }
-  })
 }
 
 function createWindow(port) {
@@ -358,7 +274,6 @@ if (!gotLock) {
 
 app.on('before-quit', () => {
   app.isQuitting = true
-  closeMenu()
 })
 
 app.on('window-all-closed', () => {
