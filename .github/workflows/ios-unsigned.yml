@@ -63,7 +63,7 @@ jobs:
             -scheme App \
             -configuration Release \
             -sdk iphoneos \
-            -derivedDataPath build \
+            -derivedDataPath build/DerivedData \
             -archivePath build/App.xcarchive \
             archive \
             CODE_SIGNING_ALLOWED=NO \
@@ -75,6 +75,7 @@ jobs:
       - name: 打包未签名 IPA
         run: |
           cd "mobile/${{ matrix.app }}/ios/App/build"
+          ls -R App.xcarchive/Products 2>/dev/null | head -20 || true
           mkdir -p Payload
           cp -R App.xcarchive/Products/Applications/App.app Payload/
           zip -qry "${{ matrix.name }}-unsigned.ipa" Payload

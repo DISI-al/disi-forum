@@ -109,3 +109,5 @@ window.__DISI_API_BASE__ = 'https://forum.disi-al.com'
 - 隐藏滚动条
 
 返回手势（Android 物理键、iOS 侧滑）后续在原生层接 `App.addListener('backButton')` → `history.back()`。
+
+<!-- build trigger: 2026-10-26 21:45 -->
