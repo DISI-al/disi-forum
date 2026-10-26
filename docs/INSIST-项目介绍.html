@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>INSIST · 项目介绍</title>
+<style>
+  @page { size: 1280px 720px; margin: 0; }
+
+  :root {
+    --ink: #0b0f14;
+    --muted: #5b6570;
+    --line: #e3e7ea;
+    --accent: #2ea043;
+    --accent-soft: #e9f6ed;
+    --paper: #ffffff;
+    --soft: #f6f8f9;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #dfe3e6;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .slide {
+    position: relative;
+    width: 1280px;
+    height: 720px;
+    margin: 0 auto 28px;
+    padding: 64px 76px 56px;
+    background: var(--paper);
+    overflow: hidden;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+
+  /* 页脚编号 */
+  .slide::after {
+    content: attr(data-page);
+    position: absolute;
+    right: 76px;
+    bottom: 30px;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    color: #b8c0c7;
+  }
+
+  .kicker {
+    font-size: 12.5px;
+    letter-spacing: 0.26em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-size: 58px;
+    line-height: 1.16;
+    letter-spacing: 0.01em;
+    margin: 0 0 22px;
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: 38px;
+    line-height: 1.25;
+    margin: 0 0 26px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  h3 {
+    font-size: 19px;
+    margin: 0 0 8px;
+    font-weight: 650;
+  }
+
+  p { font-size: 18px; line-height: 1.72; margin: 0 0 14px; color: #2b333b; }
+  p.lead { font-size: 21px; line-height: 1.66; color: #1d242b; }
+  .muted { color: var(--muted); }
+  .small { font-size: 15px; line-height: 1.66; color: var(--muted); }
+
+  .rule { height: 1px; background: var(--line); margin: 26px 0; border: 0; }
+
+  /* ---------- 封面 ---------- */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 96px;
+    background:
+      radial-gradient(1200px 520px at 12% -10%, #f0f8f2 0%, rgba(255,255,255,0) 62%),
+      #ffffff;
+  }
+  .cover .brand {
+    font-size: 15px;
+    letter-spacing: 0.5em;
+    color: #94a0aa;
+    margin-bottom: 30px;
+  }
+  .cover .word {
+    font-size: 132px;
+    line-height: 0.96;
+    letter-spacing: 0.2em;
+    font-weight: 800;
+    margin: 0 0 26px 0;
+    padding-left: 0.2em;
+  }
+  .cover .word span { color: var(--accent); }
+  .cover .sub { font-size: 25px; color: #2b333b; line-height: 1.6; max-width: 900px; }
+  .cover .meta {
+    margin-top: 44px;
+    font-size: 14px;
+    color: #8c97a1;
+    letter-spacing: 0.12em;
+  }
+
+  /* ---------- 布局工具 ---------- */
+  .cols { display: grid; gap: 28px; }
+  .cols.c2 { grid-template-columns: 1fr 1fr; }
+  .cols.c3 { grid-template-columns: repeat(3, 1fr); }
+  .cols.c4 { grid-template-columns: repeat(4, 1fr); }
+  .cols.side { grid-template-columns: 1.15fr 0.85fr; align-items: start; }
+
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px 26px;
+    background: #fff;
+  }
+  .card.soft { background: var(--soft); border-color: transparent; }
+  .card.accent { background: var(--accent-soft); border-color: #cfe9d8; }
+
+  .big-num {
+    font-size: 46px;
+    font-weight: 750;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    margin-bottom: 10px;
+  }
+  .big-num small { font-size: 17px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+
+  /* ---------- 表格 ---------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 16px;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #8c97a1;
+    font-weight: 600;
+    border-bottom: 1px solid #d6dbe0;
+  }
+  td strong { font-weight: 650; }
+  tr:last-child td { border-bottom: 0; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- 徽章 / 标签 ---------- */
+  .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    line-height: 1.4;
+    background: var(--soft);
+    color: #46515b;
+    margin: 0 6px 6px 0;
+  }
+  .badge.green { background: var(--accent-soft); color: #1c7a37; }
+
+  /* ---------- XP 进度条 ---------- */
+  .bar {
+    position: relative;
+    height: 10px;
+    border-radius: 999px;
+    background: #edf0f2;
+    overflow: hidden;
+  }
+  .bar > i {
+    position: absolute;
+    inset: 0 auto 0 0;
+    display: block;
+    border-radius: 999px;
+    background: var(--accent);
+  }
+  .bar-row { display: flex; align-items: center; gap: 14px; margin: 12px 0; }
+  .bar-row .label { width: 168px; font-size: 15.5px; }
+  .bar-row .bar { flex: 1; }
+  .bar-row .val { width: 96px; text-align: right; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* ---------- 流程 ---------- */
+  .flow { display: flex; align-items: stretch; gap: 0; margin: 8px 0 4px; }
+  .flow .step {
+    flex: 1;
+    border: 1px solid var(--line);
+    border-right: 0;
+    padding: 18px 18px 20px;
+    background: #fff;
+    position: relative;
+  }
+  .flow .step:first-child { border-radius: 12px 0 0 12px; }
+  .flow .step:last-child { border-right: 1px solid var(--line); border-radius: 0 12px 12px 0; }
+  .flow .step b { display: block; font-size: 13px; letter-spacing: 0.16em; color: var(--accent); margin-bottom: 8px; }
+  .flow .step span { font-size: 15px; line-height: 1.6; color: #2b333b; }
+
+  /* ---------- 代码块 ---------- */
+  pre {
+    margin: 0;
+    padding: 20px 22px;
+    background: #0d1117;
+    color: #c9d1d9;
+    border-radius: 12px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 13.5px;
+    line-height: 1.72;
+    overflow: hidden;
+  }
+  pre .c { color: #8b949e; }
+  pre .k { color: #ff7b72; }
+  pre .s { color: #a5d6ff; }
+  pre .f { color: #d2a8ff; }
+
+  /* ---------- 帖子预览 ---------- */
+  .post {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px 26px;
+    background: #fff;
+    font-size: 15.5px;
+    line-height: 1.75;
+    color: #2b333b;
+  }
+  .post .title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .post .meta { font-size: 13px; color: #98a2ac; margin-bottom: 14px; }
+  .post h4 { font-size: 16px; margin: 16px 0 6px; }
+  .post ul { margin: 4px 0 0; padding-left: 20px; }
+  .post li { margin: 2px 0; }
+  .post .tagbar { margin-top: 14px; }
+
+  /* ---------- 引用 ---------- */
+  blockquote {
+    margin: 26px 0 0;
+    padding: 18px 24px;
+    border-left: 3px solid var(--accent);
+    background: #f7faf8;
+    font-size: 18px;
+    line-height: 1.7;
+    color: #26303a;
+    border-radius: 0 10px 10px 0;
+  }
+
+  /* ---------- 对比表 ---------- */
+  .versus { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .versus .col { border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; }
+  .versus .col.win { border-color: #cfe9d8; background: #f7fcf8; }
+  .versus h3 { font-size: 17px; margin-bottom: 12px; }
+  .versus ul { margin: 0; padding-left: 18px; font-size: 15.5px; line-height: 1.8; color: #39434d; }
+  .versus .col.win h3 { color: #1c7a37; }
+
+  /* 屏幕上的提示（打印隐藏） */
+  .hint {
+    width: 1280px;
+    margin: 0 auto 20px;
+    padding: 14px 18px;
+    background: #fff8e6;
+    border: 1px solid #f2e2b8;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #7a6427;
+  }
+  @media print { .hint { display: none; } .slide { margin: 0; } html, body { background: #fff; } }
+
+  @media screen and (max-width: 1340px) {
+    .slide { transform-origin: top center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hint">
+  导出方式：Chrome / Edge 打开本文件 → Ctrl+P → 「另存为 PDF」→ 纸张自定、边距「无」、勾选「背景图形」。
+  每页就是一张 16:9 幻灯片，可直接贴进 PPT。
+</div>
+
+<!-- ============ 1 封面 ============ -->
+<section class="slide cover" data-page="01">
+  <div class="brand">D I S I &nbsp;·&nbsp; 项目介绍</div>
+  <div class="word">INS<span>I</span>ST</div>
+  <div class="sub">
+    一个把「我在坚持」变成「我已经积累了多少」的技能成长账本。<br>
+    它不催你打卡，它记录你变强的证据。
+  </div>
+  <div class="meta">论坛配套 · 五端同步 · 2026</div>
+</section>
+
+<!-- ============ 2 问题 ============ -->
+<section class="slide" data-page="02">
+  <p class="kicker">Why</p>
+  <h2>学习最难的，不是开始，是「看不见自己在变强」</h2>
+  <div class="cols c3">
+    <div class="card soft">
+      <div class="big-num">01</div>
+      <h3>学完就忘</h3>
+      <p class="small">书看完了、课刷完了，三个月后只剩一句「我好像学过」。没有复习节奏，知识自己蒸发。</p>
+    </div>
+    <div class="card soft">
+      <div class="big-num">02</div>
+      <h3>目标空转</h3>
+      <p class="small">「我要学 Rust」「我要健身」，写下来就完事。没有拆解、没有阶段、没有反馈，永远停在第一周。</p>
+    </div>
+    <div class="card soft">
+      <div class="big-num">03</div>
+      <h3>进度不可见</h3>
+      <p class="small">待办 App 只会告诉你「还有 7 件事没做」，不会告诉你「你已经比三个月前强了一个段位」。</p>
+    </div>
+  </div>
+  <blockquote>
+    于是坚持变成一种感觉：今天状态好就觉得自己很行，状态差就怀疑一切。
+    <strong>INSIST 想做的，是把这种感觉换成可以查的账。</strong>
+  </blockquote>
+</section>
+
+<!-- ============ 3 定位 ============ -->
+<section class="slide" data-page="03">
+  <p class="kicker">Positioning</p>
+  <h2>一句话：它不是待办清单，是技能成长账本</h2>
+  <div class="versus">
+    <div class="col">
+      <h3>普通待办 / 打卡 App</h3>
+      <ul>
+        <li>任务是「消耗品」，做完就消失</li>
+        <li>只统计「今天做了没」</li>
+        <li>越用越焦虑：永远有一堆没做</li>
+        <li>没有积累，没有段位，没有遗忘</li>
+        <li>数据留在 App 里，朋友圈发不出去</li>
+      </ul>
+    </div>
+    <div class="col win">
+      <h3>INSIST</h3>
+      <ul>
+        <li>任务是「原料」，做完成长进技能里</li>
+        <li>统计「积累了多少、忘掉了多少」</li>
+        <li>越用越有成就感：看得见段位和等级</li>
+        <li>有遗忘度、有衰减、有晋升考试</li>
+        <li>一键把本周进度发成论坛帖子</li>
+      </ul>
+    </div>
+  </div>
+  <p class="lead" style="margin-top:28px">
+    核心只有四个字：<strong>技能 · 卡片</strong>。技能是你的长期资产，卡片是喂养它的日常动作。
+  </p>
+</section>
+
+<!-- ============ 4 核心模型 ============ -->
+<section class="slide" data-page="04">
+  <p class="kicker">Model · Skill</p>
+  <h2>技能：一个技能 = 一条成长曲线</h2>
+  <div class="cols side">
+    <div>
+      <p>每个技能有自己的<strong>段位</strong>（你要多用力）和<strong>等级</strong>（你练到哪了），XP 只在这一段里累积。</p>
+      <table>
+        <tr><th>段位</th><th>含义</th><th>对应的日常投入</th></tr>
+        <tr><td><strong>低阶</strong></td><td>入门尝试</td><td>每天十几分钟</td></tr>
+        <tr><td><strong>中阶</strong></td><td>稳定练习</td><td>每天半小时以上</td></tr>
+        <tr><td><strong>高阶</strong></td><td>认真投入</td><td>要出作品、要复盘</td></tr>
+        <tr><td><strong>臻阶</strong></td><td>长期主线</td><td>半年以上的主线目标</td></tr>
+      </table>
+      <p class="small" style="margin-top:16px">等级：初识 → 入门 → 熟练 → 精通 → 专家，对应 XP 门槛 0 / 100 / 300 / 700 / 1300。</p>
+    </div>
+    <div class="card">
+      <div class="small" style="margin-bottom:6px">示例 · Rust（高阶）</div>
+      <h3 style="margin-bottom:2px">熟练 <span class="muted small">· 420 / 700 XP</span></h3>
+      <div class="bar" style="margin:14px 0 10px"><i style="width:60%"></i></div>
+      <div class="small">距「精通」还差 <strong>280 XP</strong></div>
+      <hr class="rule">
+      <div class="bar-row" style="margin:0 0 10px">
+        <span class="label">遗忘度</span>
+        <span class="bar"><i style="width:8%;background:#d97706"></i></span>
+        <span class="val">8%</span>
+      </div>
+      <div class="small">上次活跃 9 天前 · 重要程度：重要（复习间隔 60 天）</div>
+      <hr class="rule">
+      <div class="bar-row" style="margin:0">
+        <span class="label">本周获得</span>
+        <span class="bar"><i style="width:42%"></i></span>
+        <span class="val">+126 XP</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5 卡片 ============ -->
+<section class="slide" data-page="05">
+  <p class="kicker">Model · Card</p>
+  <h2>卡片：四种形态，覆盖从「今天」到「今年」</h2>
+  <div class="cols c4">
+    <div class="card">
+      <span class="badge green">habit</span>
+      <h3>习惯卡</h3>
+      <p class="small">每天/隔天打卡。养的是<strong>连续性</strong>，不是爆发力。</p>
+      <p class="small muted">例：刷两道算法题、写 200 字。</p>
+    </div>
+    <div class="card">
+      <span class="badge">task</span>
+      <h3>任务卡</h3>
+      <p class="small">有明确完成标准的一次性动作。</p>
+      <p class="small muted">例：看完 CS61B 第六章、配好开发环境。</p>
+    </div>
+    <div class="card">
+      <span class="badge">project</span>
+      <h3>项目卡</h3>
+      <p class="small">需要多个步骤和产出的作品。</p>
+      <p class="small muted">例：手写一个 KV 存储、做一个博客。</p>
+    </div>
+    <div class="card">
+      <span class="badge">achievement</span>
+      <h3>成就卡</h3>
+      <p class="small">里程碑，通常由系统自动颁发。</p>
+      <p class="small muted">例：连续 100 天、首个项目上线。</p>
+    </div>
+  </div>
+  <hr class="rule">
+  <div class="cols c3">
+    <div>
+      <h3>卡片也有段位</h3>
+      <p class="small">低阶 / 中阶 / 高阶 / 臻阶。卡片段位决定它值多少 XP，也决定它能不能推动当前技能。</p>
+    </div>
+    <div>
+      <h3>门槛规则</h3>
+      <p class="small"><strong>卡片段位 ≥ 技能段位</strong>，进度才算数。想升段，就得做更难的事，而不是重复刷简单的。</p>
+    </div>
+    <div>
+      <h3>完成即入账</h3>
+      <p class="small">打卡或完成任务，XP 自动记到对应技能，同时留一条记录，可回溯「这周到底做了什么」。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6 打卡曲线 ============ -->
+<section class="slide" data-page="06">
+  <p class="kicker">Mechanics · Daily</p>
+  <h2>打卡不是线性加分，而是一条会「变慢」的曲线</h2>
+  <div class="cols side">
+    <div>
+      <p>目的很明确：<strong>奖励长期，抵抗心血来潮</strong>。前几天涨得快，越往后单位收益越低，逼你把时间投到更难的事上。</p>
+      <table>
+        <tr><th>技能段位</th><th>打卡一次的基础 XP</th></tr>
+        <tr><td>低阶</td><td class="num">1.5</td></tr>
+        <tr><td>中阶</td><td class="num">3.5</td></tr>
+        <tr><td>高阶</td><td class="num">12.0</td></tr>
+        <tr><td>臻阶</td><td class="num">24.0</td></tr>
+      </table>
+      <p class="small" style="margin-top:14px">高段位的技能本身就是稀缺投入，所以单位时间给得多。</p>
+    </div>
+    <div>
+      <table>
+        <tr><th>累计打卡天数</th><th>收益系数</th></tr>
+        <tr><td>不满 7 天</td><td class="num">× 1.00</td></tr>
+        <tr><td>7 – 29 天</td><td class="num">× 0.85</td></tr>
+        <tr><td>30 – 99 天</td><td class="num">× 0.62</td></tr>
+        <tr><td>100 – 199 天</td><td class="num">× 0.45</td></tr>
+        <tr><td>200 天以上</td><td class="num">× 0.30</td></tr>
+      </table>
+      <div class="card accent" style="margin-top:18px">
+        <h3>连续性奖励</h3>
+        <p class="small" style="margin:0">
+          连续 <strong>7</strong> 天 ＋20 XP　　连续 <strong>30</strong> 天 ＋80 XP　　连续 <strong>100</strong> 天 ＋300 XP
+        </p>
+      </div>
+    </div>
+  </div>
+  <blockquote>
+    结果：想靠「今天突击 20 次打卡」刷级是刷不动的，系统只认<strong>连续的、跨周跨月的时间</strong>。
+  </blockquote>
+</section>
+
+<!-- ============ 7 遗忘与爆满 ============ -->
+<section class="slide" data-page="07">
+  <p class="kicker">Mechanics · Decay</p>
+  <h2>会遗忘的进度，才是真进度</h2>
+  <div class="cols c2">
+    <div class="card soft">
+      <h3>遗忘度</h3>
+      <p class="small">距上次活跃越久，遗忘度越高，提醒你该复习了。</p>
+      <table style="margin-top:6px">
+        <tr><th>重要程度</th><th>复习间隔</th></tr>
+        <tr><td>次要</td><td class="num">180 天</td></tr>
+        <tr><td>一般</td><td class="num">120 天</td></tr>
+        <tr><td>重要</td><td class="num">60 天</td></tr>
+        <tr><td>核心</td><td class="num">30 天</td></tr>
+      </table>
+      <p class="small muted" style="margin-top:12px">核心技能 30 天不碰，遗忘度就满格 —— 它逼你诚实。</p>
+    </div>
+    <div class="card soft">
+      <h3>爆满与溢出</h3>
+      <p class="small">当前段位练满（比如 700 / 700）后，继续投入只按比例溢出，剩下的必须靠<strong>晋升</strong>释放。</p>
+      <table style="margin-top:6px">
+        <tr><th>爆满持续时长</th><th>溢出倍率</th></tr>
+        <tr><td>不满 7 天</td><td class="num">10% / 天</td></tr>
+        <tr><td>7 – 29 天</td><td class="num">5% / 天</td></tr>
+        <tr><td>30 天以上</td><td class="num">2% / 天</td></tr>
+      </table>
+      <p class="small muted" style="margin-top:12px">变相拒绝「在一个舒适段位无限刷经验」。</p>
+    </div>
+  </div>
+  <blockquote>
+    遗忘度和溢出，是 INSIST 和「打卡游戏」最大的区别：<strong>它允许你退步</strong>，所以进步才有意义。
+  </blockquote>
+</section>
+
+<!-- ============ 8 晋升 ============ -->
+<section class="slide" data-page="08">
+  <p class="kicker">Mechanics · Promotion</p>
+  <h2>晋升不是点按钮，是交作业</h2>
+  <p class="lead">从「熟练」往上，光有 XP 不够，必须拿完成的作品来换段位。</p>
+  <div class="cols c2" style="margin-top:8px">
+    <div class="card">
+      <h3>熟练 → 精通</h3>
+      <p class="small muted" style="margin-bottom:12px">证明你能稳定完成中等难度的事</p>
+      <table>
+        <tr><td>高阶项目卡</td><td class="num" style="text-align:right">1 张</td></tr>
+        <tr><td>中阶任务卡</td><td class="num" style="text-align:right">3 张</td></tr>
+        <tr><td>小任务卡</td><td class="num" style="text-align:right">5 张</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>精通 → 专家</h3>
+      <p class="small muted" style="margin-bottom:12px">证明你能把一件事做到别人愿意参考</p>
+      <table>
+        <tr><td>臻阶项目卡</td><td class="num" style="text-align:right">1 张</td></tr>
+        <tr><td>高阶项目卡</td><td class="num" style="text-align:right">2 张</td></tr>
+        <tr><td>高阶成就卡</td><td class="num" style="text-align:right">1 张</td></tr>
+      </table>
+    </div>
+  </div>
+  <p class="small" style="margin-top:22px">
+    系统会自动核对清单：哪一项差几张、还差多少，页面上一目了然。凑齐才能晋升，晋升后段位上限提高、每日打卡收益也提高。
+  </p>
+</section>
+
+<!-- ============ 9 成就 / 收藏 / 热力图 ============ -->
+<section class="slide" data-page="09">
+  <p class="kicker">Proof</p>
+  <h2>把「努力」变成看得见的证据</h2>
+  <div class="cols c3">
+    <div class="card soft">
+      <h3>14 天热力图</h3>
+      <p class="small">首页顶部一条小格子，最近两周的每日 XP 分布。三天没颜色，自己就坐不住了。</p>
+      <div style="display:flex;gap:5px;margin-top:16px">
+        <span style="width:16px;height:16px;border-radius:4px;background:#e9f6ed"></span>
+        <span style="width:16px;height:16px;border-radius:4px;background:#bfe6c9"></span>
+        <span style="width:16px;height:16px;border-radius:4px;background:#8fd3a0"></span>
+        <span style="width:16px;height:16px;border-radius:4px;background:#2ea043"></span>
+        <span style="width:16px;height:16px;border-radius:4px;background:#8fd3a0"></span>
+        <span style="width:16px;height:16px;border-radius:4px;background:#eef1f3"></span>
+        <span style="width:16px;height:16px;border-radius:4px;background:#2ea043"></span>
+      </div>
+    </div>
+    <div class="card soft">
+      <h3>成就墙</h3>
+      <p class="small">连续天数、首个项目、段位晋升等自动颁发，按等级分档。不为了收集，为了「回头看得到里程碑」。</p>
+      <div style="margin-top:14px">
+        <span class="badge green">连续 30 天</span>
+        <span class="badge green">首个项目</span>
+        <span class="badge">连续 100 天</span>
+      </div>
+    </div>
+    <div class="card soft">
+      <h3>收藏室</h3>
+      <p class="small">想学的技能先丢进收藏室，挑一个设为「近期目标」，首页就只显示它 —— 一次只打一场仗。</p>
+      <p class="small muted" style="margin-top:12px">收藏 → 设为目标 → 建卡 → 开始打卡。</p>
+    </div>
+  </div>
+  <hr class="rule">
+  <div class="cols c3">
+    <div><h3>本周面板</h3><p class="small">本周 XP、打卡 x/7、连续天数，三个数字概括这一周。</p></div>
+    <div><h3>今日打卡</h3><p class="small">习惯卡按天列出，一次点完，进度即时入账。</p></div>
+    <div><h3>进行中</h3><p class="small">项目卡和任务卡的进度条，提醒你手上还有哪些仗没打完。</p></div>
+  </div>
+</section>
+
+<!-- ============ 10 AI 复盘 ============ -->
+<section class="slide" data-page="10">
+  <p class="kicker">Assist</p>
+  <h2>AI 复盘：把数据翻译成人话</h2>
+  <div class="cols side">
+    <div>
+      <p>系统本来就有全部原始数据：本周 XP、每天的打卡、每张卡的进度、每个技能的遗忘度。</p>
+      <p>AI 复盘做的事，是把这些数字读一遍，回答三个问题：</p>
+      <ul style="font-size:17px;line-height:1.9;padding-left:20px;color:#2b333b">
+        <li>这周真正推进了什么？</li>
+        <li>哪里在空转、哪里快忘了？</li>
+        <li>下周只做一件最重要的事，做什么？</li>
+      </ul>
+      <p class="small muted" style="margin-top:14px">它不负责鼓励，负责指出问题。</p>
+    </div>
+    <div class="card accent">
+      <h3 style="margin-bottom:12px">复盘输出示意</h3>
+      <p class="small" style="color:#1f4d2c">
+        「本周 +126 XP，主要来自 Rust 的两次任务卡；但数据结构已 62 天未活跃，遗忘度 51%，
+        下周优先复习一次；手写 KV 项目卡停在 65%，建议拆成两个 2 小时任务推进。」
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 11 重点：发帖 ============ -->
+<section class="slide" data-page="11">
+  <p class="kicker">Highlight · Share</p>
+  <h2>重点功能：一键把进度「发帖到论坛」</h2>
+  <p class="lead">
+    INSIST 里有一个按钮：<strong>发布本周总结</strong>。
+    点下去，它把这一周的所有数据整理成一篇 Markdown 帖子，直接发到 DISI 论坛，并给你回链。
+  </p>
+  <div class="flow" style="margin-top:22px">
+    <div class="step"><b>01</b><span>读取当前进度：本周 XP、打卡 x/7、连续天数、技能列表、今日打卡、进行中的卡</span></div>
+    <div class="step"><b>02</b><span>拼成 Markdown：标题 + 本周概览 + 技能 / 今日打卡 / 进行中三个小节</span></div>
+    <div class="step"><b>03</b><span>调用论坛发帖接口，正文一次提交</span></div>
+    <div class="step"><b>04</b><span>回填标签：因为正文里的 ## 会被误抽成标签，发完再 PATCH 覆盖成 INSIST / 学习</span></div>
+    <div class="step"><b>05</b><span>拿到帖子 id，页面出现「已发布到论坛」和帖子链接</span></div>
+  </div>
+  <div class="cols c3" style="margin-top:26px">
+    <div>
+      <h3>为什么不是截图</h3>
+      <p class="small">截图不能搜索、不能被回复、不能积累。帖子可检索、可讨论、可被点赞。</p>
+    </div>
+    <div>
+      <h3>为什么发到论坛</h3>
+      <p class="small">给自己留下公开的复盘记录，也给朋友一个「知道你在干什么」的入口。</p>
+    </div>
+    <div>
+      <h3>为什么能一键</h3>
+      <p class="small">数据本来就在系统里，人只需要决定「发不发」，不需要重新写一遍。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 12 帖子长什么样 ============ -->
+<section class="slide" data-page="12">
+  <p class="kicker">Highlight · Output</p>
+  <h2>它生成的帖子长什么样</h2>
+  <div class="cols side">
+    <div class="post">
+      <div class="title">INSIST 进度 · 2026-10-27</div>
+      <div class="meta">游客 · 刚刚 · INSIST / 学习</div>
+      <h4>本周</h4>
+      <p style="margin:0"><strong>+126 XP</strong> · 打卡 5/7 · 连续 12 天</p>
+      <h4>技能</h4>
+      <ul>
+        <li>Rust（高阶 · 熟练）420 / 700 · 遗忘 8%</li>
+        <li>数据结构（中阶 · 精通）1180 / 1300 · 遗忘 15%</li>
+      </ul>
+      <h4>今日打卡</h4>
+      <ul>
+        <li>刷算法题：已打卡（连续 12 天 · 累计 96 天）</li>
+        <li>读写代码：已打卡（连续 5 天 · 累计 41 天）</li>
+      </ul>
+      <h4>进行中</h4>
+      <ul>
+        <li>[项目] 手写一个 KV 存储（高阶）65%</li>
+        <li>[任务] 完成 Rustlings 后半程（中阶）40%</li>
+      </ul>
+      <div class="tagbar"><span class="badge green">INSIST</span><span class="badge green">学习</span></div>
+    </div>
+    <div>
+      <h3>固定结构，省掉「怎么写复盘」</h3>
+      <p class="small">
+        标题固定为 <code>INSIST 进度 · 日期</code>，正文三段固定：技能 / 今日打卡 / 进行中。
+        时间久了，论坛里就是一条按周排列的成长曲线。
+      </p>
+      <hr class="rule">
+      <h3>数据全部来自真实记录</h3>
+      <p class="small">不是让你手填，是系统算出来的：XP 来自打卡与任务，遗忘度按上次活跃推算，进度来自卡片本身。</p>
+      <hr class="rule">
+      <h3>一个容易被忽略的细节</h3>
+      <p class="small">
+        论坛会从正文里自动抽 <code>#标签</code>，而 Markdown 的 <code>##</code> 小标题会被误抽成一个 <code>#</code>。
+        所以发帖之后会再补一次标签覆盖，保证帖子干净地落在「INSIST / 学习」下面。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 13 代码 ============ -->
+<section class="slide" data-page="13">
+  <p class="kicker">Implementation</p>
+  <h2 style="margin-bottom:18px">整段逻辑，不到 50 行</h2>
+  <div class="cols side" style="gap:26px">
+    <div>
+<pre style="font-size:12px;line-height:1.58;padding:18px 18px"><span class="c">// 把当前进度整理成一篇帖子，发到论坛</span>
+<span class="k">async function</span> <span class="f">publish</span>() {
+  <span class="k">const</span> ymd = <span class="f">today</span>()
+
+  <span class="k">const</span> lines = []
+  lines.<span class="f">push</span>(<span class="s">`## INSIST 进度 · ${ymd}`</span>)
+  lines.<span class="f">push</span>(<span class="s">`**本周** +${weekXp} XP · 打卡 ${checkDays}/7 · 连续 ${streak} 天`</span>)
+
+  <span class="k">for</span> (<span class="k">const</span> s <span class="k">of</span> skills) {                       <span class="c">// 技能</span>
+    lines.<span class="f">push</span>(<span class="s">`- ${s.name}（${tier} · ${level}）${s.xp} / ${total} · 遗忘 ${s.forget}%`</span>)
+  }
+  <span class="c">// 今日打卡 / 进行中的卡 ……</span>
+
+  <span class="k">const</span> res = <span class="k">await</span> <span class="f">apiCreatePost</span>({
+    title: <span class="s">`INSIST 进度 · ${ymd}`</span>,
+    content: lines.<span class="f">join</span>(<span class="s">'\n'</span>),
+    tags: [<span class="s">'INSIST'</span>, <span class="s">'学习'</span>]
+  })
+
+  <span class="c">// 正文里的 ## 会被论坛误抽成标签，补一次覆盖</span>
+  <span class="k">await</span> <span class="f">apiUpdatePost</span>(res.id, { tags: [<span class="s">'INSIST'</span>, <span class="s">'学习'</span>] })
+
+  publishedId.value = res.id            <span class="c">// 页面出现「已发布」+ 链接</span>
+}</pre>
+    </div>
+    <div>
+      <h3>三个设计取舍</h3>
+      <ul class="small" style="line-height:1.85;padding-left:18px;margin-top:6px">
+        <li><strong>先发再改标签</strong>：比改后端抽取规则省事，也不影响其他帖子。</li>
+        <li><strong>纯 Markdown、不用图片</strong>：五端都能看，以后能按标签做统计。</li>
+        <li><strong>复用论坛接口</strong>：INSIST 不重复造发帖系统，论坛才是内容的家。</li>
+      </ul>
+      <div class="card accent" style="margin-top:18px;padding:18px 20px">
+        <h3 style="font-size:16px;margin-bottom:6px">延伸可能</h3>
+        <p class="small" style="margin:0">同一套数据还能生成月度总结、技能雷达、年度回顾 —— 都是「把已有记录换个说法」。</p>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ============ 14 能干啥 ============ -->
+<section class="slide" data-page="14">
+  <p class="kicker">In Practice</p>
+  <h2>它到底能帮你干什么：五个真实用法</h2>
+  <table>
+    <tr><th style="width:24%">场景</th><th style="width:40%">怎么用</th><th>得到什么</th></tr>
+    <tr>
+      <td><strong>备考 / 证书</strong></td>
+      <td>技能「408 考研」中阶，习惯卡每日 2 小时，任务卡按章节拆，项目卡「真题全刷一遍」</td>
+      <td>每天看得见的推进；遗忘度提醒你回头复习；考前一段时间的曲线说明一切</td>
+    </tr>
+    <tr>
+      <td><strong>转岗 / 技术栈</strong></td>
+      <td>多个技能并行：Rust 高阶、数据库中阶、系统设计中阶，卡片按「能跑起来的作品」定义</td>
+      <td>面试时的项目卡就是作品集；晋升清单逼你从教程走向作品</td>
+    </tr>
+    <tr>
+      <td><strong>健身 / 生活习惯</strong></td>
+      <td>低阶技能 + 习惯卡，只看连续天数和边际递减，不追求爆发</td>
+      <td>把「今天去不去」变成「别断」，连续性奖励比空头承诺有用</td>
+    </tr>
+    <tr>
+      <td><strong>读书 / 输入</strong></td>
+      <td>每本书一张任务卡，读完写复盘；核心技能 30 天复习一次</td>
+      <td>不会「读完就忘」，遗忘度就是复习日程</td>
+    </tr>
+    <tr>
+      <td><strong>副业 / 长期项目</strong></td>
+      <td>臻阶技能 + 项目卡，每周发一次进度帖到论坛</td>
+      <td>公开记录带来外部监督，帖子本身也是持续输出的素材</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ============ 15 技术与端 ============ -->
+<section class="slide" data-page="15">
+  <p class="kicker">Architecture</p>
+  <h2>一套数据，五个地方都能看</h2>
+  <div class="cols c4">
+    <div class="card"><h3>Web</h3><p class="small">insist.disi-al.com</p></div>
+    <div class="card"><h3>Windows</h3><p class="small">DISI_INSIST 桌面端</p></div>
+    <div class="card"><h3>Android</h3><p class="small">DISI_INSIST.apk</p></div>
+    <div class="card"><h3>iOS</h3><p class="small">自签 IPA</p></div>
+  </div>
+  <hr class="rule">
+  <div class="cols c3">
+    <div>
+      <h3>后端</h3>
+      <p class="small">FastAPI + SQLite，规则集中在 <code>insist_rules.py</code>：段位、XP、递减、溢出、晋升清单、遗忘度全部是纯函数，接口层只做读写。</p>
+    </div>
+    <div>
+      <h3>可配置</h3>
+      <p class="small">每个用户都能改数值：等级门槛、每日 XP、衰减曲线、复习间隔、连续奖励 —— 默认值只是起点。</p>
+    </div>
+    <div>
+      <h3>与论坛的关系</h3>
+      <p class="small">同一套账号体系、同一个后端。<strong>INSIST 负责积累，论坛负责公开</strong>，两者靠「发帖」这个动作连起来。</p>
+    </div>
+  </div>
+  <blockquote style="margin-top:30px">
+    它不是又一个记录工具，而是把<strong>技能成长</strong>这件抽象的事，做成了一套能查、能算、能发的系统。
+  </blockquote>
+</section>
+
+<!-- ============ 16 结尾 ============ -->
+<section class="slide cover" data-page="16">
+  <div class="brand">T H A N K S</div>
+  <div class="word" style="font-size:92px">INS<span>I</span>ST</div>
+  <div class="sub" style="font-size:22px">
+    坚持不该靠意志力，<br>
+    它应该有一本账。
+  </div>
+  <div class="meta" style="margin-top:52px">
+    论坛：forum.disi-al.com　·　系统：insist.disi-al.com<br>
+    桌面 / Android / iOS 均可下载
+  </div>
+</section>
+
+</body>
+</html>
