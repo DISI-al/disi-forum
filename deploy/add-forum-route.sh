@@ -44,7 +44,7 @@ else
 fi
 
 # 校验语法
-if cloudflared tunnel ingress validate --config "${CONFIG}" 2>/dev/null; then
+if cloudflared tunnel --config "${CONFIG}" ingress validate 2>/dev/null; then
     ok "ingress 校验通过"
 else
     warn "ingress 校验未通过，请检查 ${CONFIG}"
