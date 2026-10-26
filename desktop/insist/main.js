@@ -212,17 +212,16 @@ function openTrayMenu(win) {
     },
   })
 
-  trayMenu.setAlwaysOnTop(true, 'screen-saver')
+  trayMenu.setAlwaysOnTop(true)
   trayMenu.setMenuBarVisibility(false)
   trayMenu.loadFile(htmlPath)
   trayMenu.once('ready-to-show', () => {
     trayMenu.show()
     trayMenu.focus()
-    trayMenu.moveTop()
     // 3.5 秒无操作自动关闭（任务栏自动隐藏等场景）
     setTimeout(() => {
       try { closeTrayMenu() } catch (e) { }
-    }, 3500)
+    }, 6000)
 
     // 轮询兜底：一旦失去焦点（点了别处、溢出面板收起等）就关闭
     const timer = setInterval(() => {
