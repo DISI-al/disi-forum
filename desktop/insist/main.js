@@ -6,7 +6,7 @@ const http = require('node:http')
 const APP_TITLE = 'DISI INSIST'
 const APP_ID = 'com.disi.insist'
 const DIST = path.join(__dirname, 'dist')
-const API_BASE = process.env.DISI_API || 'https://disi-al.com'
+const API_BASE = process.env.DISI_API || 'https://forum.disi-al.com'
 const PORT = 18765
 const SAFE_FLAG = path.join(app.getPath('userData'), 'safe-mode.flag')
 
