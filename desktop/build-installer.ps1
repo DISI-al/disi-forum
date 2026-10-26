@@ -11,8 +11,8 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 
 $meta = @{
-  forum  = @{ product = 'DISI_FORUM'; exe = 'DISI 论坛.exe'; appid = 'com.disi.forum';  zip = 'DISI-Forum-win-x64.zip'; style = 'green' }
-  insist = @{ product = 'DISI_INSIST';    exe = 'INSIST.exe';    appid = 'com.disi.insist'; zip = 'INSIST-win-x64.zip'; style = 'mono' }
+  forum  = @{ product = 'DISI_FORUM'; exe = 'DISI_FORUM.exe'; appid = 'com.disi.forum';  zip = 'DISI-Forum-win-x64.zip'; style = 'green' }
+  insist = @{ product = 'DISI_INSIST';    exe = 'DISI_INSIST.exe';    appid = 'com.disi.insist'; zip = 'INSIST-win-x64.zip'; style = 'mono' }
 }[$App]
 
 $appDir = Join-Path $PSScriptRoot $App

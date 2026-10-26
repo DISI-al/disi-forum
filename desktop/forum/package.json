@@ -2,7 +2,7 @@
   "name": "forum-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "DISI 论坛 · Windows 客户端",
+  "description": "DISI_FORUM · Windows 客户端",
   "main": "main.js",
   "scripts": {
     "copy:web": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});require('fs').cpSync('../../forum_app/dist','dist',{recursive:true})\"",
@@ -15,7 +15,7 @@
   },
   "build": {
     "appId": "com.disi.forum",
-    "productName": "DISI 论坛",
+    "productName": "DISI_FORUM",
     "directories": { "output": "release", "buildResources": "build" },
     "files": [
       "main.js",
@@ -36,7 +36,7 @@
       "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "DISI 论坛"
+      "shortcutName": "DISI_FORUM"
     }
   }
 }

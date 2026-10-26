@@ -1,16 +1,20 @@
-const { app, BrowserWindow, shell, Tray, Menu, nativeImage } = require('electron')
+const { app, BrowserWindow, shell, Tray, nativeImage, ipcMain, screen } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 const http = require('node:http')
 
-const APP_TITLE = 'INSIST'
+const APP_TITLE = 'DISI INSIST'
+const APP_ID = 'com.disi.insist'
 const DIST = path.join(__dirname, 'dist')
 const API_BASE = process.env.DISI_API || 'https://disi-al.com'
 const PORT = 18765
 const SAFE_FLAG = path.join(app.getPath('userData'), 'safe-mode.flag')
 
-// 任务栏/跳转列表显示应用名而不是 Electron
-try { app.setAppUserModelId('com.disi.insist') } catch (e) {}
+const LABEL_OPEN = '打开 INSIST'
+const LABEL_AUTOSTART = '开机自启'
+const LABEL_QUIT = '退出 INSIST'
+
+const THEME = { bg: '#050505', fg: '#ededed', accent: '#ededed', accentText: '#000000' }
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -30,6 +34,7 @@ const MIME = {
 
 let mainWindow = null
 let tray = null
+let menuWindow = null
 
 function log(...args) {
   const line = new Date().toISOString() + ' ' + args.join(' ') + '\n'
@@ -45,15 +50,28 @@ function log(...args) {
 process.on('uncaughtException', (err) => log('[uncaught]', err && err.stack ? err.stack : String(err)))
 process.on('unhandledRejection', (err) => log('[unhandled]', err && err.stack ? err.stack : String(err)))
 
+try {
+  app.setAppUserModelId(APP_ID)
+} catch (e) {
+  // ignore
+}
+
+// 卸载器会在目录里放 uninstalling.flag，看到就直接退出，避免卸载后还能运行
+try {
+  if (fs.existsSync(path.join(path.dirname(process.execPath), 'uninstalling.flag'))) {
+    app.quit()
+  }
+} catch (e) {
+  // ignore
+}
+
 let safeMode = false
 try {
   safeMode = fs.existsSync(SAFE_FLAG)
 } catch (e) {
   safeMode = false
 }
-log('[start] safeMode=', safeMode)
 
-// 手动切换渲染模式：set DISI_RENDER=software 再启动
 if (process.env.DISI_RENDER === 'software' || safeMode) {
   app.disableHardwareAcceleration()
   app.commandLine.appendSwitch('no-sandbox')
@@ -62,11 +80,7 @@ if (process.env.DISI_RENDER === 'software' || safeMode) {
 
 function iconFile() {
   const dir = path.dirname(process.execPath)
-  const candidates = [
-    path.join(dir, 'app.ico'),
-    path.join(__dirname, 'build', 'icon.ico'),
-    path.join(process.resourcesPath || '', 'app.ico'),
-  ]
+  const candidates = [path.join(dir, 'app.ico'), path.join(__dirname, 'build', 'icon.ico'), path.join(process.resourcesPath || '', 'app.ico')]
   for (const c of candidates) {
     try {
       if (fs.existsSync(c)) return c
@@ -121,6 +135,78 @@ function createServer() {
   })
 }
 
+function menuHtml() {
+  const auto = app.getLoginItemSettings().openAtLogin
+  const row = (label, action, active) =>
+    '<button class="row' + (active ? ' on' : '') + '" onclick="window.trayPick(\'' + action + '\')">' + label + '</button>'
+  return (
+    '<!doctype html><html><head><meta charset="utf-8"><style>' +
+    '*{margin:0;padding:0;box-sizing:border-box}' +
+    'html,body{height:100%;background:' + THEME.bg + ';color:' + THEME.fg + ';font:13px "Microsoft YaHei UI",sans-serif;overflow:hidden}' +
+    'body{border:1px solid rgba(255,255,255,.14);border-radius:8px;display:flex;flex-direction:column;padding:6px}' +
+    '.row{flex:1;display:flex;align-items:center;justify-content:center;background:transparent;border:0;color:' + THEME.fg + ';' +
+    'font:13px "Microsoft YaHei UI",sans-serif;border-radius:5px;cursor:default;width:100%}' +
+    '.row:hover{background:rgba(255,255,255,.10)}' +
+    '.row.on{color:' + THEME.accent + '}' +
+    '</style></head><body>' +
+    row(LABEL_OPEN, 'open', false) +
+    row(LABEL_AUTOSTART + (auto ? ' ✓' : ''), 'autostart', auto) +
+    row(LABEL_QUIT, 'quit', false) +
+    '</body></html>'
+  )
+}
+
+function closeMenu() {
+  if (menuWindow && !menuWindow.isDestroyed()) menuWindow.close()
+  menuWindow = null
+}
+
+function openMenu(win) {
+  if (menuWindow && !menuWindow.isDestroyed()) {
+    closeMenu()
+    return
+  }
+
+  const width = 168
+  const height = 132
+  const point = screen.getCursorScreenPoint()
+  const display = screen.getDisplayNearestPoint(point)
+  const area = display.workArea
+
+  let x = Math.round(point.x - width / 2)
+  let y = Math.round(point.y - height - 8)
+  x = Math.max(area.x + 4, Math.min(x, area.x + area.width - width - 4))
+  if (y < area.y + 4) y = Math.round(point.y + 12)
+
+  menuWindow = new BrowserWindow({
+    width,
+    height,
+    x,
+    y,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'trayPreload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+
+  menuWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(menuHtml()))
+  menuWindow.once('ready-to-show', () => {
+    menuWindow.show()
+    menuWindow.focus()
+  })
+  menuWindow.on('blur', () => closeMenu())
+}
+
 function setupTray(win) {
   try {
     const image = nativeImage.createFromPath(iconFile())
@@ -131,30 +217,23 @@ function setupTray(win) {
   }
 
   tray.setToolTip(APP_TITLE)
+  tray.on('click', () => openMenu(win))
+  tray.on('right-click', () => openMenu(win))
 
-  const buildMenu = () =>
-    Menu.buildFromTemplate([
-      { label: '打开应用', click: () => { win.show(); win.focus(); } },
-      { type: 'separator' },
-      {
-        label: '开机自启',
-        type: 'checkbox',
-        checked: app.getLoginItemSettings().openAtLogin,
-        click: (item) => {
-          app.setLoginItemSettings({ openAtLogin: item.checked, path: process.execPath })
-          tray.setContextMenu(buildMenu())
-        },
-      },
-      { type: 'separator' },
-      { label: '退出应用', click: () => { app.isQuitting = true; app.quit(); } },
-    ])
-
-  tray.setContextMenu(buildMenu())
-  tray.on('click', () => {
-    if (win.isVisible()) win.hide()
-    else { win.show(); win.focus(); }
+  ipcMain.on('tray-action', (event, action) => {
+    if (menuWindow && !menuWindow.isDestroyed() && event.sender === menuWindow.webContents) closeMenu()
+    if (action === 'open') {
+      win.show()
+      win.focus()
+    } else if (action === 'autostart') {
+      const next = !app.getLoginItemSettings().openAtLogin
+      app.setLoginItemSettings({ openAtLogin: next, path: process.execPath })
+      log('[autostart]', next)
+    } else if (action === 'quit') {
+      app.isQuitting = true
+      app.quit()
+    }
   })
-  tray.on('right-click', () => tray.setContextMenu(buildMenu()))
 }
 
 function createWindow(port) {
@@ -163,7 +242,7 @@ function createWindow(port) {
     height: 860,
     minWidth: 960,
     minHeight: 640,
-    backgroundColor: '#050505',
+    backgroundColor: THEME.bg,
     title: APP_TITLE,
     icon: iconFile(),
     autoHideMenuBar: true,
@@ -245,8 +324,9 @@ if (!gotLock) {
 
 app.on('before-quit', () => {
   app.isQuitting = true
+  closeMenu()
 })
 
 app.on('window-all-closed', () => {
-  // 托盘常驻：关闭窗口不退出，从托盘菜单退出
+  // 托盘常驻
 })

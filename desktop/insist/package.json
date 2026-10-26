@@ -2,7 +2,7 @@
   "name": "insist-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "INSIST 技能进度条 · Windows 客户端",
+  "description": "DISI_INSIST · Windows 客户端",
   "main": "main.js",
   "scripts": {
     "copy:web": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});require('fs').cpSync('../../insist_app/dist','dist',{recursive:true})\"",
@@ -15,7 +15,7 @@
   },
   "build": {
     "appId": "com.disi.insist",
-    "productName": "INSIST",
+    "productName": "DISI_INSIST",
     "directories": { "output": "release", "buildResources": "build" },
     "files": [
       "main.js",
@@ -36,7 +36,7 @@
       "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "INSIST"
+      "shortcutName": "DISI_INSIST"
     }
   }
 }

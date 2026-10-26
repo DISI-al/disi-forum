@@ -18,7 +18,8 @@ namespace DisiInstaller
         public const string AppExe = "@APPEXE@";
         public const string Publisher = "DISI";
         public const string AppId = "@APPID@";
-        public const string Style = "@STYLE@"; // green = DISI 论坛, mono = INSIST
+        public const string Style = "@STYLE@"; // green = DISI FORUM, mono = DISI INSIST
+        public static string DisplayName => ProductName.Replace('_', ' ');
     }
 
     internal static class Theme
@@ -222,7 +223,7 @@ namespace DisiInstaller
 
             var logo = new PictureBox
             {
-                Location = new Point(32, 32),
+                Location = new Point(32, 34),
                 Size = new Size(48, 48),
                 SizeMode = PictureBoxSizeMode.StretchImage
             };
@@ -233,10 +234,10 @@ namespace DisiInstaller
             }
             catch { }
 
-            _title.Text = Info.ProductName;
+            _title.Text = Info.DisplayName;
             _title.Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold);
             _title.ForeColor = Theme.Text;
-            _title.Location = new Point(88, 26);
+            _title.Location = new Point(88, 43);
             _title.AutoSize = true;
 
 
@@ -267,7 +268,7 @@ namespace DisiInstaller
 
             _browse.Text = "浏览";
             _browse.Location = new Point(508, 136);
-            _browse.Size = new Size(100, 34);
+            _browse.Size = new Size(100, 44);
             StyleSecondary(_browse);
             _browse.Click += (s, e) =>
             {
@@ -305,7 +306,7 @@ namespace DisiInstaller
             _install.Size = new Size(120, 40);
             _install.Location = new Point(ClientSize.Width - 284, 348);
             _install.FlatStyle = FlatStyle.Flat;
-            _install.FlatAppearance.BorderSize = 0;
+            _install.FlatAppearance.BorderSize = 1;
             _install.BackColor = Theme.Accent;
             _install.ForeColor = Theme.AccentText;
             _install.Font = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Bold);
@@ -475,17 +476,25 @@ namespace DisiInstaller
                 "$ErrorActionPreference = 'SilentlyContinue'",
                 "$dir = '" + dir.Replace("'", "''") + "'",
                 "$name = '" + Info.ProductName.Replace("'", "''") + "'",
+                "$exe = '" + Info.AppExe.Replace("'", "''") + "'",
+                "$exeName = [IO.Path]::GetFileNameWithoutExtension($exe)",
                 "$key = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\" + Info.AppId + "'",
-                "Get-Process | Where-Object { $_.Path -like \"$dir\\*\" } | Stop-Process -Force",
-                "Get-Process -Name '" + System.IO.Path.GetFileNameWithoutExtension(Info.AppExe) + "' -ErrorAction SilentlyContinue | Stop-Process -Force",
-                "Start-Sleep -Milliseconds 800",
+                "New-Item -ItemType File -Path (Join-Path $dir 'uninstalling.flag') -Force | Out-Null",
+                "for ($i = 0; $i -lt 4; $i++) {",
+                "  Get-Process | Where-Object { ($_.Path -like ($dir + '\\*')) -or ($_.ProcessName -eq $exeName) } | Stop-Process -Force",
+                "  Start-Sleep -Milliseconds 500",
+                "  if (-not (Test-Path (Join-Path $dir $exe))) { break }",
+                "}",
                 "foreach ($d in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'), [Environment]::GetFolderPath('CommonPrograms'))) {",
                 "  Remove-Item (Join-Path $d ($name + '.lnk')) -Force",
                 "}",
                 "Remove-Item $key -Recurse -Force",
-                "$cmd = Join-Path $env:TEMP ('disi-clean-' + [guid]::NewGuid().ToString('N') + '.cmd')",
-                "Set-Content -Path $cmd -Encoding ASCII -Value ('@echo off' + [Environment]::NewLine + 'timeout /t 2 /nobreak >nul' + [Environment]::NewLine + 'rmdir /s /q \"' + $dir + '\"' + [Environment]::NewLine + 'del /f /q \"%~f0\"')",
-                "Start-Process -FilePath 'cmd.exe' -ArgumentList ('/c \"' + $cmd + '\"') -WindowStyle Hidden",
+                "Remove-Item $dir -Recurse -Force",
+                "if (Test-Path $dir) {",
+                "  $cmd = Join-Path $env:TEMP ('disi-clean-' + [guid]::NewGuid().ToString('N') + '.cmd')",
+                "  Set-Content -Path $cmd -Encoding ASCII -Value ('@echo off' + [Environment]::NewLine + 'timeout /t 3 /nobreak >nul' + [Environment]::NewLine + 'rmdir /s /q \"' + $dir + '\"' + [Environment]::NewLine + 'del /f /q \"%~f0\"')",
+                "  Start-Process -FilePath 'cmd.exe' -ArgumentList ('/c \"' + $cmd + '\"') -WindowStyle Hidden",
+                "}",
                 "",
             });
             File.WriteAllText(uninstallPs1, ps1, new System.Text.UTF8Encoding(true));
@@ -532,7 +541,7 @@ namespace DisiInstaller
 
             if (!silent)
             {
-                var answer = MessageBox.Show("确定要卸载 " + Info.ProductName + " 吗？", "卸载", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var answer = MessageBox.Show("确定要卸载 " + Info.DisplayName + " 吗？", "卸载", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (answer != DialogResult.Yes) return;
             }
 
