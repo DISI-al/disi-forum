@@ -5,7 +5,7 @@
   --line: #262626;
   --panel: #0a0a0a;
   --btn-h: 40px;
-  --wrap: calc(80vw - 60px);
+  --wrap: calc(80vw - 120px);
   --wrap-wide: var(--wrap);
 }
 
@@ -54,7 +54,7 @@ a { color: inherit; text-decoration: none; }
 .nav-links { display: flex; gap: 26px; font-size: 13.5px; color: var(--muted); }
 .nav-links a:hover { color: var(--fg); }
 .nav-actions { display: flex; gap: 8px; justify-self: end; }
-.nav-actions .btn { min-width: 108px; }
+.nav-actions .btn { min-width: 96px; }
 
 /* Hero：与下方内容同宽、同边距 */
 .hero {
