@@ -29,12 +29,20 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+
+      - name: 环境信息
+        run: |
+          node -v
+          npm -v
+          npm config get registry
+          npm config list
 
       - name: 构建前端
         run: |
           cd "${{ matrix.web }}"
-          if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+          ls -la
+          npm install --no-audit --no-fund --loglevel=warn
           npm run build
 
       - name: 准备移动端资源
