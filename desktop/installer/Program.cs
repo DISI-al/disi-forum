@@ -260,12 +260,12 @@ namespace DisiInstaller
             var title = new Label
             {
                 Text = Info.DisplayName,
-                Font = new Font("Microsoft YaHei UI", 15F, FontStyle.Bold),
+                Font = new Font("Microsoft YaHei UI", 14.5F, FontStyle.Bold),
                 ForeColor = Theme.Text,
                 AutoSize = false,
                 Size = new Size(contentWidth - 54, 42),
                 TextAlign = ContentAlignment.MiddleLeft,
-                Location = new Point(left + 54, 32),
+                Location = new Point(left + 54, 31),
                 BackColor = Theme.Bg
             };
 
