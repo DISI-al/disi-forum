@@ -62,7 +62,6 @@
           </div>
         </div>
 
-        <!-- 入口：TALENT 被故障切片打散，露出红色 INSIST -->
         </section>
 
       <!-- 帖子列表：与上方个人信息卡片同宽 -->
@@ -165,19 +164,6 @@ const handleAvatarChange = async (e) => {
 
 const postPreview = (post) => makePreview(post.content, 120)
 
-/* TALENT 的故障切片：6 条横向切片，交替左右错位、依次淡出 */
-const SLICE_COUNT = 6
-const slices = Array.from({ length: SLICE_COUNT }, (_, i) => {
-  const h = 100 / SLICE_COUNT
-  const dir = i % 2 ? 1 : -1
-  return {
-    i,
-    top: `${(i * h).toFixed(3)}%`,
-    height: `${h}%`,
-    dx: `${dir * (8 + i * 3)}px`,
-    delay: `${i * 25}ms`,
-  }
-})
 
 const formatTime = (iso) => {
   if (!iso) return ''
