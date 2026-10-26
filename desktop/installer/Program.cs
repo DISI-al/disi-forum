@@ -263,7 +263,7 @@ namespace DisiInstaller
                 Font = new Font("Microsoft YaHei UI", 14.5F, FontStyle.Bold),
                 ForeColor = Theme.Text,
                 AutoSize = false,
-                Size = new Size(contentWidth - 54, 42),
+                Size = new Size(contentWidth - 54, 41),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Location = new Point(left + 54, 31),
                 BackColor = Theme.Bg
