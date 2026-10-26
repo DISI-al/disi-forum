@@ -94,6 +94,14 @@ a { color: inherit; text-decoration: none; }
 .btn-solid { background: var(--fg); color: #000; border-color: var(--fg); font-weight: 600; }
 .btn-solid:hover { background: #e6e6e6; border-color: #e6e6e6; }
 .btn-sm { height: 34px; min-width: 92px; font-size: 13px; }
+.btn-disabled {
+  border-color: #1e1e1e;
+  color: #5a5a5a;
+  cursor: not-allowed;
+  background: transparent;
+}
+.btn-disabled:hover { background: transparent; border-color: #1e1e1e; }
+.mt { margin-top: 56px; }
 
 /* 区块 */
 .section {
