@@ -5,8 +5,8 @@
   --line: #262626;
   --panel: #0a0a0a;
   --btn-h: 40px;
-  --wrap: 1100px;
-  --wrap-wide: 1360px;
+  --wrap: min(1720px, 92vw);
+  --wrap-wide: var(--wrap);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -60,7 +60,7 @@ a { color: inherit; text-decoration: none; }
 .hero {
   max-width: var(--wrap-wide);
   margin: 0 auto;
-  padding: 96px 16px 72px;
+  padding: 96px 24px 72px;
 }
 .hero-banner {
   width: 100%;
