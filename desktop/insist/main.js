@@ -218,7 +218,24 @@ function openTrayMenu(win) {
   trayMenu.once('ready-to-show', () => {
     trayMenu.show()
     trayMenu.focus()
-    // 3.5 秒无操作自动关闭（任务栏自动隐藏等场景）
+    // 鼠标移出菜单即关闭（比 blur 更早，避免慢半拍）
+    let wasInside = false
+    const hoverTimer = setInterval(() => {
+      if (!trayMenu || trayMenu.isDestroyed()) { clearInterval(hoverTimer); return }
+      const b = trayMenu.getBounds()
+      const pt = screen.getCursorScreenPoint()
+      const pad = 6
+      const inside = pt.x >= b.x - pad && pt.x <= b.x + b.width + pad && pt.y >= b.y - pad && pt.y <= b.y + b.height + pad
+      if (inside) { wasInside = true; return }
+      if (wasInside) {
+        clearInterval(hoverTimer)
+        // 先立即隐藏（视觉上同步），稍后再销毁
+        try { trayMenu.hide() } catch (e) {}
+        setTimeout(() => closeTrayMenu(), 120)
+      }
+    }, 50)
+
+    // 6 秒无操作自动关闭（兜底）
     setTimeout(() => {
       try { closeTrayMenu() } catch (e) { }
     }, 6000)
