@@ -316,9 +316,11 @@ if (!gotLock) {
   app.quit()
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.show()
       mainWindow.focus()
+    } else {
+      try { createWindow(PORT) } catch (e) { log('[recreate-fail]', String(e)) }
     }
   })
 
@@ -334,8 +336,19 @@ if (!gotLock) {
     }
 
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow(PORT)
+      if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow(PORT)
+      if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.show(); mainWindow.focus() }
     })
+
+    // 保险：启动 2 秒后如果没窗口可见，强制显示一次
+    setTimeout(() => {
+      try {
+        if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+          mainWindow.show()
+          mainWindow.focus()
+        }
+      } catch (e) { log('[show-fallback]', String(e)) }
+    }, 2000)
   })
 }
 

@@ -376,6 +376,11 @@ namespace DisiInstaller
             close.FlatAppearance.BorderSize = 0;
             close.Click += (s, e) => { if (!_busy) Close(); };
 
+            root.MouseDown += BeginDrag;
+            header.MouseDown += BeginDrag;
+            title.MouseDown += BeginDrag;
+            logo.MouseDown += BeginDrag;
+
             Controls.Add(root);
             Controls.Add(close);
             close.BringToFront();
@@ -393,6 +398,21 @@ namespace DisiInstaller
             b.FlatAppearance.BorderSize = 1;
             b.BackColor = Theme.Panel;
             b.ForeColor = Theme.Text;
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, int wParam, int lParam);
+
+        private const int WM_NCLBUTTONDOWN = 0x00A1;
+
+        private void BeginDrag(object? sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left) return;
+            ReleaseCapture();
+            SendMessage(Handle, WM_NCLBUTTONDOWN, 2, 0);
         }
 
         private const int WM_NCHITTEST = 0x0084;
