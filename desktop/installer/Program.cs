@@ -245,8 +245,8 @@ namespace DisiInstaller
             // 标题区
             var logo = new PictureBox
             {
-                Location = new Point(left, 30),
-                Size = new Size(46, 46),
+                Location = new Point(left, 32),
+                Size = new Size(42, 42),
                 SizeMode = PictureBoxSizeMode.Zoom,
                 BackColor = Theme.Bg
             };
@@ -260,12 +260,14 @@ namespace DisiInstaller
             var title = new Label
             {
                 Text = Info.DisplayName,
-                Font = new Font("Microsoft YaHei UI", 21F, FontStyle.Bold),
+                Font = new Font("Microsoft YaHei UI", 16.5F, FontStyle.Bold),
                 ForeColor = Theme.Text,
                 AutoSize = true,
-                Location = new Point(left + 58, 37),
+                Location = new Point(left + 54, 32),
                 BackColor = Theme.Bg
             };
+
+            title.Top = logo.Top + (logo.Height - title.PreferredHeight) / 2;
 
             var close = new Button
             {
