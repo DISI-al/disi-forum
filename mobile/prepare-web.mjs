@@ -60,23 +60,8 @@ const injection = `  <script>
     ::-webkit-scrollbar { width: 0; height: 0; }
   </style>
   <script>
-    // 原生能力：状态栏配色、启动图收起、Android 返回键接路由
+    // 原生能力：状态栏配色、启动图收起、返回键 / 左缘滑动返回
     (function () {
-      // ---- 记录页面栈深度（hash 路由看不到 history 长度，自己数）----
-      var depth = 0;
-      var pushState = history.pushState;
-      var replaceState = history.replaceState;
-      history.pushState = function () {
-        depth++;
-        return pushState.apply(history, arguments);
-      };
-      history.replaceState = function () {
-        return replaceState.apply(history, arguments);
-      };
-      window.addEventListener('popstate', function () {
-        if (depth > 0) depth--;
-      });
-
       function bridge() {
         var C = window.Capacitor;
         if (!C || typeof C.isNativePlatform !== 'function' || !C.isNativePlatform()) return null;
@@ -84,6 +69,17 @@ const injection = `  <script>
       }
 
       var attached = false;
+
+      // 统一返回：优先交给页面路由，退无可退才进后台
+      function goBack(P) {
+        var handled = false;
+        try {
+          if (typeof window.__DISI_BACK__ === 'function') handled = window.__DISI_BACK__();
+        } catch (e) {}
+        if (!handled) {
+          try { P && P.App && P.App.minimizeApp && P.App.minimizeApp(); } catch (e) {}
+        }
+      }
 
       function attach() {
         if (attached) return true;
@@ -108,20 +104,39 @@ const injection = `  <script>
         setTimeout(hideSplash, 400);
         window.addEventListener('load', function () { setTimeout(hideSplash, 150); });
 
-        // 3) Android 返回键：能退就退一层，退无可退才进后台
+        // 3) Android 物理返回键
         try {
-          P.App.addListener('backButton', function () {
-            if (depth > 0) {
-              window.history.back();
-            } else {
-              try { P.App.minimizeApp(); } catch (e) {}
-            }
-          });
+          P.App.addListener('backButton', function () { goBack(P); });
         } catch (e) {}
+
+        // 4) iOS：从屏幕左缘往右滑 = 返回（WKWebView 本身不带手势）
+        var touchX = 0, touchY = 0, tracking = false;
+        document.addEventListener(
+          'touchstart',
+          function (e) {
+            if (e.touches.length !== 1) return;
+            touchX = e.touches[0].clientX;
+            touchY = e.touches[0].clientY;
+            tracking = touchX <= 28; // 只在左缘 28px 内起手
+          },
+          { passive: true }
+        );
+        document.addEventListener(
+          'touchend',
+          function (e) {
+            if (!tracking) return;
+            tracking = false;
+            var t = e.changedTouches && e.changedTouches[0];
+            if (!t) return;
+            var dx = t.clientX - touchX;
+            var dy = Math.abs(t.clientY - touchY);
+            if (dx > 70 && dy < 60) goBack(P);
+          },
+          { passive: true }
+        );
         return true;
       }
 
-      // 桥接可能晚于 DOM 就绪，轮询 3 秒
       var tries = 0;
       var timer = setInterval(function () {
         tries++;
