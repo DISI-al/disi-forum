@@ -20,6 +20,8 @@ SRC_DIR="${SRC_DIR:-/opt/disi-forum-src}"
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/disi-forum}"
 WWW_FORUM="${WWW_FORUM:-/var/www/forum}"
 WWW_INSIST="${WWW_INSIST:-/var/www/insist}"
+WWW_HOME="${WWW_HOME:-/var/www/home}"
+DOWNLOAD_DIR="${DOWNLOAD_DIR:-/var/www/download}"
 SERVICE="${SERVICE:-disi-forum}"
 APP_USER="${APP_USER:-disi}"
 PORT="${PORT:-8000}"
@@ -44,7 +46,7 @@ command -v npm >/dev/null 2>&1 || die "缺少 npm / Node.js（建议 Node 20+）
 [ -x "${VENV}/bin/pip" ] || die "虚拟环境不存在: ${VENV}（请先用 deploy_oneclick.sh 完成首次部署）"
 
 log_info "源码 ${SRC_DIR} / 后端 ${DEPLOY_DIR}"
-log_info "论坛站点 ${WWW_FORUM} / INSIST 站点 ${WWW_INSIST}"
+log_info "门户 ${WWW_HOME} / 论坛 ${WWW_FORUM} / INSIST ${WWW_INSIST} / 下载 ${DOWNLOAD_DIR}"
 
 # --------------------------------------------------------------
 log_step "Step 1/8: 拉取最新代码"
@@ -121,6 +123,20 @@ log_step "Step 5/8: 发布静态文件"
 publish_app "${SRC_DIR}/forum_app/dist" "${WWW_FORUM}" "DISI_FORUM"
 publish_app "${SRC_DIR}/insist_app/dist" "${WWW_INSIST}" "DISI_INSIST"
 
+# 门户页（静态）
+publish_app "${SRC_DIR}/site" "${WWW_HOME}" "门户"
+cp -f "${SRC_DIR}/assets/icon.png" "${WWW_HOME}/icon.png" 2>/dev/null || true
+cp -f "${SRC_DIR}/assets/favicon.ico" "${WWW_HOME}/favicon.ico" 2>/dev/null || true
+
+# 客户端安装包
+mkdir -p "${DOWNLOAD_DIR}"
+cp -f "${SRC_DIR}/desktop/forum/release/DISI_FORUM Setup.exe" "${DOWNLOAD_DIR}/DISI_FORUM-Setup.exe" 2>/dev/null || true
+cp -f "${SRC_DIR}/desktop/forum/release/DISI-Forum-win-x64.zip" "${DOWNLOAD_DIR}/DISI_FORUM-portable.zip" 2>/dev/null || true
+cp -f "${SRC_DIR}/desktop/insist/release/DISI_INSIST Setup.exe" "${DOWNLOAD_DIR}/DISI_INSIST-Setup.exe" 2>/dev/null || true
+cp -f "${SRC_DIR}/desktop/insist/release/INSIST-win-x64.zip" "${DOWNLOAD_DIR}/DISI_INSIST-portable.zip" 2>/dev/null || true
+chown -R "${NGINX_USER}:${NGINX_USER}" "${DOWNLOAD_DIR}" 2>/dev/null || true
+log_info "安装包已发布到 ${DOWNLOAD_DIR}"
+
 # --------------------------------------------------------------
 log_step "Step 6/8: 写入 Nginx 双站点配置"
 CONF_DIR="/etc/nginx/conf.d"
@@ -128,7 +144,8 @@ mkdir -p "${CONF_DIR}"
 cp -a "${CONF_DIR}/disi-forum.conf" "${CONF_DIR}/disi-forum.conf.bak" 2>/dev/null || true
 cp -f "${SRC_DIR}/deploy/nginx-forum.conf"  "${CONF_DIR}/disi-forum.conf"
 cp -f "${SRC_DIR}/deploy/nginx-insist.conf" "${CONF_DIR}/insist.conf"
-log_info "配置已写入：disi-forum.conf / insist.conf"
+cp -f "${SRC_DIR}/deploy/nginx-home.conf"   "${CONF_DIR}/disi-home.conf"
+log_info "配置已写入：disi-home.conf / disi-forum.conf / insist.conf"
 
 nginx -t || die "nginx 配置有误，未重载"
 systemctl reload nginx
@@ -154,5 +171,7 @@ done
 
 echo
 log_info "完成。请浏览器验证："
-echo "   论坛   https://disi-al.com"
+echo "   门户   https://disi-al.com"
+echo "   论坛   https://forum.disi-al.com"
 echo "   INSIST https://insist.disi-al.com"
+echo "   下载   https://disi-al.com/download/DISI_FORUM-Setup.exe"

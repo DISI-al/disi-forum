@@ -18,5 +18,5 @@ defineProps({
   active: { type: String, default: '' },
 })
 
-const forumUrl = import.meta.env.VITE_FORUM_URL || 'https://disi-al.com'
+const forumUrl = import.meta.env.VITE_FORUM_URL || 'https://forum.disi-al.com'
 </script>

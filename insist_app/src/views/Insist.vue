@@ -12,7 +12,7 @@ import { levelName, tierName, stars, forgetClass, kindLabel } from '../insist/co
 
 const router = useRouter()
 
-const forumUrl = import.meta.env.VITE_FORUM_URL || 'https://disi-al.com'
+const forumUrl = import.meta.env.VITE_FORUM_URL || 'https://forum.disi-al.com'
 const loading = ref(!peek('skills'))
 const error = ref('')
 const overview = ref(peek('overview') || { skillCount: 0, totalXp: 0, saturatedCount: 0, dailyXp: [], todayCheckins: 0 })
