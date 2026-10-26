@@ -212,7 +212,7 @@ function openTrayMenu(win) {
     },
   })
 
-  trayMenu.setAlwaysOnTop(true)
+  trayMenu.setAlwaysOnTop(true, 'screen-saver')
   trayMenu.setMenuBarVisibility(false)
   trayMenu.loadFile(htmlPath)
   trayMenu.once('ready-to-show', () => {
@@ -236,6 +236,7 @@ function openTrayMenu(win) {
     }, 120)
   })
   trayMenu.on('blur', () => closeTrayMenu())
+  trayMenu.on('hide', () => closeTrayMenu())
   trayMenu.on('closed', () => { trayMenu = null })
 }
 
