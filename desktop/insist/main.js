@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, Tray, Menu, nativeImage } = require('electron')
+const { app, BrowserWindow, shell, Tray, Menu, nativeImage, ipcMain, screen } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 const http = require('node:http')
@@ -10,9 +10,9 @@ const API_BASE = process.env.DISI_API || 'https://disi-al.com'
 const PORT = 18765
 const SAFE_FLAG = path.join(app.getPath('userData'), 'safe-mode.flag')
 
-const LABEL_OPEN = '打开 INSIST'
+const LABEL_OPEN = '开启应用'
 const LABEL_AUTOSTART = '开机自启'
-const LABEL_QUIT = '退出 INSIST'
+const LABEL_QUIT = '退出应用'
 
 const THEME = { bg: '#050505', fg: '#ededed', accent: '#ededed', accentText: '#000000' }
 
@@ -34,6 +34,7 @@ const MIME = {
 
 let mainWindow = null
 let tray = null
+let trayMenu = null
 
 function log(...args) {
   const line = new Date().toISOString() + ' ' + args.join(' ') + '\n'
@@ -141,6 +142,87 @@ function createServer() {
 
 
 
+
+function trayMenuHtml() {
+  const auto = app.getLoginItemSettings().openAtLogin
+  const row = (label, action, active) =>
+    '<button class="row' + (active ? ' on' : '') + '" onclick="window.trayPick(\'' + action + '\')">' + label + '</button>'
+  return (
+    '<!doctype html><html><head><meta charset="utf-8"><style>' +
+    '*{margin:0;padding:0;box-sizing:border-box;user-select:none}' +
+    'html,body{height:100%;width:100%;background:transparent;overflow:hidden;' +
+    'font:13px "Microsoft YaHei UI",sans-serif}' +
+    'body{padding:6px;display:flex;flex-direction:column;gap:2px;' +
+    'background:' + THEME.bg + ';border:1px solid rgba(255,255,255,.16);border-radius:8px}' +
+    '.row{flex:1;display:flex;align-items:center;justify-content:center;' +
+    'background:transparent;border:0;border-radius:5px;color:' + THEME.fg + ';' +
+    'font:13px "Microsoft YaHei UI",sans-serif;cursor:default;width:100%}' +
+    '.row:hover{background:rgba(255,255,255,.12)}' +
+    '.row.on{color:' + THEME.accent + '}' +
+    '</style></head><body>' +
+    row(LABEL_OPEN, 'open', false) +
+    row(LABEL_AUTOSTART + (auto ? '  ✓' : ''), 'autostart', auto) +
+    row(LABEL_QUIT, 'quit', false) +
+    '</body></html>'
+  )
+}
+
+function closeTrayMenu() {
+  if (trayMenu && !trayMenu.isDestroyed()) trayMenu.close()
+  trayMenu = null
+}
+
+function openTrayMenu(win) {
+  if (trayMenu && !trayMenu.isDestroyed()) { closeTrayMenu(); return }
+
+  const width = 168
+  const height = 128
+  const point = screen.getCursorScreenPoint()
+  const area = screen.getDisplayNearestPoint(point).workArea
+  let x = Math.round(point.x - width / 2)
+  let y = Math.round(point.y - height - 8)
+  x = Math.max(area.x + 4, Math.min(x, area.x + area.width - width - 4))
+  if (y < area.y + 4) y = Math.round(point.y + 12)
+
+  const htmlPath = path.join(app.getPath('userData'), 'tray-menu.html')
+  try { fs.writeFileSync(htmlPath, trayMenuHtml()) } catch (e) { log('[menu-html]', String(e)) }
+
+  trayMenu = new BrowserWindow({
+    width,
+    height,
+    x,
+    y,
+    frame: false,
+    transparent: true,
+    hasShadow: true,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    focusable: true,
+    show: false,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: path.join(__dirname, 'trayPreload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  })
+
+  trayMenu.setAlwaysOnTop(true, 'screen-saver')
+  trayMenu.setMenuBarVisibility(false)
+  trayMenu.loadFile(htmlPath)
+  trayMenu.once('ready-to-show', () => {
+    trayMenu.show()
+    trayMenu.focus()
+  })
+  trayMenu.on('blur', () => closeTrayMenu())
+  trayMenu.on('closed', () => { trayMenu = null })
+}
+
 function setupTray(win) {
   try {
     const image = nativeImage.createFromPath(iconFile())
@@ -151,26 +233,23 @@ function setupTray(win) {
   }
 
   tray.setToolTip(APP_TITLE)
-  const buildMenu = () =>
-    Menu.buildFromTemplate([
-      { label: LABEL_OPEN, click: () => { win.show(); win.focus(); } },
-      { type: 'separator' },
-      {
-        label: LABEL_AUTOSTART,
-        type: 'checkbox',
-        checked: app.getLoginItemSettings().openAtLogin,
-        click: (item) => {
-          app.setLoginItemSettings({ openAtLogin: item.checked, path: process.execPath })
-          tray.setContextMenu(buildMenu())
-        },
-      },
-      { type: 'separator' },
-      { label: LABEL_QUIT, click: () => { app.isQuitting = true; app.quit(); } },
-    ])
+  tray.on('click', () => openTrayMenu(win))
+  tray.on('right-click', () => openTrayMenu(win))
 
-  tray.setContextMenu(buildMenu())
-  tray.on('click', () => tray.popUpContextMenu())
-
+  ipcMain.on('tray-action', (event, action) => {
+    closeTrayMenu()
+    if (action === 'open') {
+      win.show()
+      win.focus()
+    } else if (action === 'autostart') {
+      const next = !app.getLoginItemSettings().openAtLogin
+      app.setLoginItemSettings({ openAtLogin: next, path: process.execPath })
+      log('[autostart]', next)
+    } else if (action === 'quit') {
+      app.isQuitting = true
+      app.quit()
+    }
+  })
 }
 
 function createWindow(port) {
@@ -274,6 +353,7 @@ if (!gotLock) {
 
 app.on('before-quit', () => {
   app.isQuitting = true
+  closeTrayMenu()
 })
 
 app.on('window-all-closed', () => {
