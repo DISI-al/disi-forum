@@ -62,23 +62,34 @@ const injection = `  <script>
   <script>
     // 原生能力：状态栏配色、启动图收起、Android 返回键接路由
     (function () {
-      function ready(fn) {
-        if (document.readyState === 'complete' || document.readyState === 'interactive') {
-          setTimeout(fn, 0);
-        } else {
-          document.addEventListener('DOMContentLoaded', fn);
-        }
-      }
+      // ---- 记录页面栈深度（hash 路由看不到 history 长度，自己数）----
+      var depth = 0;
+      var pushState = history.pushState;
+      var replaceState = history.replaceState;
+      history.pushState = function () {
+        depth++;
+        return pushState.apply(history, arguments);
+      };
+      history.replaceState = function () {
+        return replaceState.apply(history, arguments);
+      };
+      window.addEventListener('popstate', function () {
+        if (depth > 0) depth--;
+      });
 
-      function nativeBridge() {
+      function bridge() {
         var C = window.Capacitor;
         if (!C || typeof C.isNativePlatform !== 'function' || !C.isNativePlatform()) return null;
-        return (C.Plugins || {});
+        return C.Plugins || null;
       }
 
-      ready(function () {
-        var P = nativeBridge();
-        if (!P) return;
+      var attached = false;
+
+      function attach() {
+        if (attached) return true;
+        var P = bridge();
+        if (!P || !P.App) return false;
+        attached = true;
 
         // 1) 状态栏
         try {
@@ -90,33 +101,37 @@ const injection = `  <script>
           }
         } catch (e) {}
 
-        // 2) 启动图：首屏渲染后收起（最多等 1.2s）
+        // 2) 启动图
         var hideSplash = function () {
           try { P.SplashScreen && P.SplashScreen.hide(); } catch (e) {}
         };
-        setTimeout(hideSplash, 600);
-        window.addEventListener('load', function () { setTimeout(hideSplash, 200); });
+        setTimeout(hideSplash, 400);
+        window.addEventListener('load', function () { setTimeout(hideSplash, 150); });
 
-        // 3) Android 物理返回键：有历史就回退，在根页面则退到后台
-        var routerEntry = function () {
-          var h = (location.hash || '').replace(/^#/, '');
-          return h === '' || h === '/' ;
-        };
+        // 3) Android 返回键：能退就退一层，退无可退才进后台
         try {
-          P.App && P.App.addListener('backButton', function () {
-            if (window.history.length > 1 && !routerEntry()) {
+          P.App.addListener('backButton', function () {
+            if (depth > 0) {
               window.history.back();
-            } else if (P.App.minimizeApp) {
-              P.App.minimizeApp();
+            } else {
+              try { P.App.minimizeApp(); } catch (e) {}
             }
           });
         } catch (e) {}
+        return true;
+      }
 
-        // 4) 兜底：iOS 侧滑返回时保持页面滚动位置
-        window.addEventListener('popstate', function () {
-          document.documentElement.style.scrollBehavior = 'auto';
-        });
-      });
+      // 桥接可能晚于 DOM 就绪，轮询 3 秒
+      var tries = 0;
+      var timer = setInterval(function () {
+        tries++;
+        if (attach() || tries > 30) clearInterval(timer);
+      }, 100);
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attach);
+      } else {
+        attach();
+      }
     })();
   </script>
 `
