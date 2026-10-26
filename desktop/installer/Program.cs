@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -479,20 +480,51 @@ namespace DisiInstaller
                     var exePath = Path.Combine(dir, Info.AppExe);
                     InstallerEngine.KillRunning(Path.GetFileNameWithoutExtension(Info.AppExe));
                     await Task.Delay(400);
-                    try
+                    if (File.Exists(exePath))
                     {
-                        if (File.Exists(exePath))
+                        // 依次尝试：ShellExecute → explorer 打开 → cmd start，并把失败原因写入 install.log
+                        var started = false;
+                        var errors = new List<string>();
+                        try
                         {
                             Process.Start(new ProcessStartInfo(exePath) { UseShellExecute = true, WorkingDirectory = dir });
+                            started = true;
                         }
-                        else
+                        catch (Exception ex) { errors.Add("shell: " + ex.Message); }
+
+                        if (!started)
                         {
-                            MessageBox.Show(this, "程序文件缺失，未找到：" + Environment.NewLine + exePath, "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            try
+                            {
+                                Process.Start(new ProcessStartInfo("explorer.exe", "\"" + exePath + "\"") { UseShellExecute = true });
+                                started = true;
+                            }
+                            catch (Exception ex) { errors.Add("explorer: " + ex.Message); }
+                        }
+
+                        if (!started)
+                        {
+                            try
+                            {
+                                Process.Start(new ProcessStartInfo("cmd.exe", "/c start \"\" \"" + exePath + "\"")
+                                {
+                                    CreateNoWindow = true,
+                                    UseShellExecute = false
+                                });
+                                started = true;
+                            }
+                            catch (Exception ex) { errors.Add("cmd: " + ex.Message); }
+                        }
+
+                        if (!started)
+                        {
+                            try { File.AppendAllText(Path.Combine(dir, "install.log"), "launch: " + string.Join(" | ", errors) + "\r\n"); } catch { }
+                            MessageBox.Show(this, "已安装完成，但自动启动失败。\n请手动打开：" + Environment.NewLine + exePath, "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        MessageBox.Show(this, "启动失败：" + ex.Message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show(this, "程序文件缺失，未找到：" + Environment.NewLine + exePath, "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                 }
 
