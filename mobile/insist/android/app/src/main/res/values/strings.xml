@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">DISI INSIST</string>
+    <string name="title_activity_main">DISI INSIST</string>
+    <string name="package_name">com.disi.insist</string>
+    <string name="custom_url_scheme">com.disi.insist</string>
+</resources>

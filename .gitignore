@@ -77,3 +77,15 @@ backup_*.db
 # 平台相关的锁文件不要提交（Windows 生成会在 Linux 上 EBADPLATFORM）
 /forum_app/package-lock.json
 /insist_app/package-lock.json
+
+# ===== 移动端 =====
+/mobile/*/node_modules
+/mobile/*/www
+/mobile/*/android/.gradle
+/mobile/*/android/build
+/mobile/*/android/app/build
+/mobile/*/android/local.properties
+/mobile/release
+/local_dev/toolchain
+/local_dev/keystore
+/_*.png

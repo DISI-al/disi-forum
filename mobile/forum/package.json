@@ -1,0 +1,21 @@
+{
+  "name": "disi-forum-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DISI_FORUM mobile shell (Capacitor)",
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/app": "^7.1.0",
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/preferences": "^7.0.2",
+    "@capacitor/splash-screen": "^7.0.3",
+    "@capacitor/status-bar": "^7.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3"
+  }
+}
