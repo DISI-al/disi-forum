@@ -67,6 +67,23 @@ namespace DisiInstaller
             }
 
             ApplicationConfiguration.Initialize();
+
+            // 调试用：把界面渲染成 PNG（DISI_RENDER_UI=<output.png>）
+            var renderTo = Environment.GetEnvironmentVariable("DISI_RENDER_UI");
+            if (!string.IsNullOrEmpty(renderTo))
+            {
+                var f = new InstallerForm();
+                f.Show();
+                Application.DoEvents();
+                System.Threading.Thread.Sleep(400);
+                Application.DoEvents();
+                using var bmp = new Bitmap(f.Width, f.Height);
+                f.DrawToBitmap(bmp, new Rectangle(0, 0, f.Width, f.Height));
+                bmp.Save(renderTo, System.Drawing.Imaging.ImageFormat.Png);
+                f.Close();
+                return;
+            }
+
             Application.Run(new InstallerForm());
         }
     }
@@ -192,7 +209,22 @@ namespace DisiInstaller
         private readonly Label _status = new Label();
         private readonly CheckBox _launch = new CheckBox();
         private bool _busy;
-        private Point _dragOffset;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, int wParam, int lParam);
+
+        private const int WM_NCLBUTTONDOWN = 0x00A1;
+        private const int HTCAPTION = 2;
+
+        private void BeginDrag(object? sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left) return;
+            ReleaseCapture();
+            SendMessage(Handle, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+        }
 
         public InstallerForm()
         {
@@ -206,28 +238,18 @@ namespace DisiInstaller
             Font = new Font("Microsoft YaHei UI", 9.5F);
             try { Icon = LoadIcon(); } catch { }
 
-            var root = new TableLayoutPanel
+            const int left = 32;
+            const int right = 32;
+            var contentWidth = ClientSize.Width - left - right;
+
+            // 标题区
+            var logo = new PictureBox
             {
-                Dock = DockStyle.Fill,
-                BackColor = Theme.Bg,
-                Padding = new Padding(32, 28, 32, 28),
-                ColumnCount = 1,
-                RowCount = 5,
-                GrowStyle = TableLayoutPanelGrowStyle.FixedSize
+                Location = new Point(left, 30),
+                Size = new Size(46, 46),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Theme.Bg
             };
-            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 104F));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
-
-            var header = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = new Padding(0) };
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60F));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            header.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-
-            var logo = new PictureBox { Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom, Margin = new Padding(0, 6, 10, 6) };
             try
             {
                 var bmp = LoadLogo();
@@ -237,131 +259,13 @@ namespace DisiInstaller
 
             var title = new Label
             {
-                Dock = DockStyle.Fill,
                 Text = Info.DisplayName,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold),
+                Font = new Font("Microsoft YaHei UI", 21F, FontStyle.Bold),
                 ForeColor = Theme.Text,
-                Margin = new Padding(0)
+                AutoSize = true,
+                Location = new Point(left + 58, 37),
+                BackColor = Theme.Bg
             };
-
-            header.Controls.Add(logo, 0, 0);
-            header.Controls.Add(title, 1, 0);
-
-            var pathBlock = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Margin = new Padding(0) };
-            pathBlock.RowStyles.Add(new RowStyle(SizeType.Absolute, 26F));
-            pathBlock.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-
-            var pathLabel = new Label
-            {
-                Text = "安装位置",
-                ForeColor = Theme.Muted,
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0)
-            };
-
-            var pathRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = new Padding(0) };
-            pathRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            pathRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 108F));
-            pathRow.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-
-            var inputShell = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Panel, Margin = new Padding(0, 0, 8, 0) };
-            inputShell.Paint += (s2, e2) =>
-            {
-                using var pen = new Pen(Theme.Border);
-                e2.Graphics.DrawRectangle(pen, 0, 0, inputShell.Width - 1, inputShell.Height - 1);
-            };
-            _pathBox.BorderStyle = BorderStyle.None;
-            _pathBox.BackColor = Theme.Panel;
-            _pathBox.ForeColor = Theme.Text;
-            _pathBox.Font = new Font("Microsoft YaHei UI", 11F);
-            _pathBox.Dock = DockStyle.Fill;
-            _pathBox.Margin = new Padding(10, 9, 10, 9);
-            _pathBox.Text = DefaultDir();
-            inputShell.Controls.Add(_pathBox);
-
-            _browse.Text = "浏览";
-            _browse.Dock = DockStyle.Fill;
-            _browse.Margin = new Padding(0);
-            StyleSecondary(_browse);
-            _browse.Click += (s, e) =>
-            {
-                using var dlg = new FolderBrowserDialog { SelectedPath = _pathBox.Text };
-                if (dlg.ShowDialog(this) == DialogResult.OK) _pathBox.Text = dlg.SelectedPath;
-            };
-
-            pathRow.Controls.Add(inputShell, 0, 0);
-            pathRow.Controls.Add(_browse, 1, 0);
-            pathBlock.Controls.Add(pathLabel, 0, 0);
-            pathBlock.Controls.Add(pathRow, 0, 1);
-
-            var progressPanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Margin = new Padding(0, 12, 0, 0) };
-            progressPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 6F));
-            progressPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-
-            _progressTrack.Dock = DockStyle.Fill;
-            _progressTrack.BackColor = Theme.Panel;
-            _progressTrack.Margin = new Padding(0);
-            _progressFill.Dock = DockStyle.Left;
-            _progressFill.Width = 0;
-            _progressFill.BackColor = Theme.Accent;
-            _progressTrack.Controls.Add(_progressFill);
-
-            _status.Dock = DockStyle.Fill;
-            _status.Text = "准备就绪";
-            _status.ForeColor = Theme.Muted;
-            _status.TextAlign = ContentAlignment.MiddleLeft;
-            _status.Margin = new Padding(0, 8, 0, 0);
-
-            progressPanel.Controls.Add(_progressTrack, 0, 0);
-            progressPanel.Controls.Add(_status, 0, 1);
-
-            var optionsPanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 1, Margin = new Padding(0, 8, 0, 0) };
-            optionsPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            _launch.Text = "安装完成后运行";
-            _launch.ForeColor = Theme.Text;
-            _launch.BackColor = Theme.Bg;
-            _launch.Dock = DockStyle.Fill;
-            _launch.TextAlign = ContentAlignment.MiddleLeft;
-            _launch.Margin = new Padding(0);
-            _launch.Checked = true;
-            optionsPanel.Controls.Add(_launch, 0, 0);
-
-            var buttonRow = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.RightToLeft,
-                WrapContents = false,
-                Margin = new Padding(0),
-                Padding = new Padding(0)
-            };
-
-            _cancel.Text = "取消";
-            _cancel.Size = new Size(108, 40);
-            _cancel.Margin = new Padding(0);
-            StyleSecondary(_cancel);
-            _cancel.Click += (s, e) => { if (!_busy) Close(); };
-
-            _install.Text = "安装";
-            _install.Size = new Size(108, 40);
-            _install.Margin = new Padding(0, 0, 12, 0);
-            _install.FlatStyle = FlatStyle.Flat;
-            _install.FlatAppearance.BorderSize = 1;
-            _install.FlatAppearance.BorderColor = Theme.Accent;
-            _install.BackColor = Theme.Accent;
-            _install.ForeColor = Theme.AccentText;
-            _install.Font = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Bold);
-            _install.Click += async (s, e) => await StartInstallAsync();
-
-            buttonRow.Controls.Add(_cancel);
-            buttonRow.Controls.Add(_install);
-
-            root.Controls.Add(header, 0, 0);
-            root.Controls.Add(pathBlock, 0, 1);
-            root.Controls.Add(progressPanel, 0, 2);
-            root.Controls.Add(optionsPanel, 0, 3);
-            root.Controls.Add(buttonRow, 0, 4);
 
             var close = new Button
             {
@@ -376,17 +280,103 @@ namespace DisiInstaller
             close.FlatAppearance.BorderSize = 0;
             close.Click += (s, e) => { if (!_busy) Close(); };
 
-            root.MouseDown += BeginDrag;
-            header.MouseDown += BeginDrag;
-            title.MouseDown += BeginDrag;
+            // 安装位置
+            var pathLabel = new Label
+            {
+                Text = "安装位置",
+                ForeColor = Theme.Muted,
+                AutoSize = true,
+                Location = new Point(left, 108),
+                BackColor = Theme.Bg
+            };
+
+            const int rowTop = 132;
+            const int rowHeight = 44;
+
+            var inputShell = new Panel
+            {
+                Location = new Point(left, rowTop),
+                Size = new Size(contentWidth - 108 - 8, rowHeight),
+                BackColor = Theme.Panel
+            };
+            inputShell.Paint += (s2, e2) =>
+            {
+                using var pen = new Pen(Theme.Border);
+                e2.Graphics.DrawRectangle(pen, 0, 0, inputShell.Width - 1, inputShell.Height - 1);
+            };
+
+            _pathBox.BorderStyle = BorderStyle.None;
+            _pathBox.BackColor = Theme.Panel;
+            _pathBox.ForeColor = Theme.Text;
+            _pathBox.Font = new Font("Microsoft YaHei UI", 11F);
+            _pathBox.Text = DefaultDir();
+            _pathBox.Location = new Point(12, 11);
+            _pathBox.Width = inputShell.Width - 24;
+            inputShell.Controls.Add(_pathBox);
+
+            _browse.Text = "浏览";
+            _browse.Location = new Point(left + contentWidth - 108, rowTop);
+            _browse.Size = new Size(108, rowHeight);
+            StyleSecondary(_browse);
+            _browse.Click += (s, e) =>
+            {
+                using var dlg = new FolderBrowserDialog { SelectedPath = _pathBox.Text };
+                if (dlg.ShowDialog(this) == DialogResult.OK) _pathBox.Text = dlg.SelectedPath;
+            };
+
+            // 进度
+            _progressTrack.Location = new Point(left, rowTop + rowHeight + 26);
+            _progressTrack.Size = new Size(contentWidth, 6);
+            _progressTrack.BackColor = Theme.Panel;
+            _progressFill.Location = new Point(0, 0);
+            _progressFill.Size = new Size(0, 6);
+            _progressFill.BackColor = Theme.Accent;
+            _progressTrack.Controls.Add(_progressFill);
+
+            _status.Text = "准备就绪";
+            _status.ForeColor = Theme.Muted;
+            _status.AutoSize = true;
+            _status.Location = new Point(left, rowTop + rowHeight + 38);
+            _status.BackColor = Theme.Bg;
+
+            _launch.Text = "安装完成后运行";
+            _launch.ForeColor = Theme.Text;
+            _launch.BackColor = Theme.Bg;
+            _launch.AutoSize = false;
+            _launch.Size = new Size(200, 24);
+            _launch.Location = new Point(left, rowTop + rowHeight + 84);
+            _launch.Checked = true;
+
+            // 按钮
+            const int buttonTop = 348;
+            _cancel.Text = "取消";
+            _cancel.Size = new Size(108, 40);
+            _cancel.Location = new Point(left + contentWidth - 108, buttonTop);
+            StyleSecondary(_cancel);
+            _cancel.Click += (s, e) => { if (!_busy) Close(); };
+
+            _install.Text = "安装";
+            _install.Size = new Size(108, 40);
+            _install.Location = new Point(left + contentWidth - 108 - 12 - 108, buttonTop);
+            _install.FlatStyle = FlatStyle.Flat;
+            _install.FlatAppearance.BorderSize = 1;
+            _install.FlatAppearance.BorderColor = Theme.Accent;
+            _install.BackColor = Theme.Accent;
+            _install.ForeColor = Theme.AccentText;
+            _install.Font = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Bold);
+            _install.Click += async (s, e) => await StartInstallAsync();
+
+            Controls.AddRange(new Control[]
+            {
+                logo, title, close, pathLabel, inputShell, _browse,
+                _progressTrack, _status, _launch, _install, _cancel
+            });
+
+            // 拖动：标题区、logo、空白处
+            MouseDown += BeginDrag;
             logo.MouseDown += BeginDrag;
-
-            Controls.Add(root);
-            Controls.Add(close);
-            close.BringToFront();
-
-            MouseDown += (s, e) => { _dragOffset = e.Location; };
-            MouseMove += (s, e) => { if (e.Button == MouseButtons.Left) Location = new Point(Location.X + e.X - _dragOffset.X, Location.Y + e.Y - _dragOffset.Y); };
+            title.MouseDown += BeginDrag;
+            pathLabel.MouseDown += BeginDrag;
 
             ResumeLayout();
         }
@@ -398,39 +388,6 @@ namespace DisiInstaller
             b.FlatAppearance.BorderSize = 1;
             b.BackColor = Theme.Panel;
             b.ForeColor = Theme.Text;
-        }
-
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
-        private static extern bool ReleaseCapture();
-
-        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
-        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, int wParam, int lParam);
-
-        private const int WM_NCLBUTTONDOWN = 0x00A1;
-
-        private void BeginDrag(object? sender, MouseEventArgs e)
-        {
-            if (e.Button != MouseButtons.Left) return;
-            ReleaseCapture();
-            SendMessage(Handle, WM_NCLBUTTONDOWN, 2, 0);
-        }
-
-        private const int WM_NCHITTEST = 0x0084;
-        private const int HTCLIENT = 1;
-        private const int HTCAPTION = 2;
-
-        protected override void WndProc(ref Message m)
-        {
-            base.WndProc(ref m);
-            if (m.Msg == WM_NCHITTEST && (int)m.Result == HTCLIENT)
-            {
-                var p = PointToClient(new Point((short)(m.LParam.ToInt32() & 0xFFFF), (short)((m.LParam.ToInt32() >> 16) & 0xFFFF)));
-                // 顶部 56px 内且不在关闭按钮上 → 可拖动
-                if (p.Y <= 56 && !(p.X > ClientSize.Width - 60 && p.Y < 44))
-                {
-                    m.Result = (IntPtr)HTCAPTION;
-                }
-            }
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -459,7 +416,6 @@ namespace DisiInstaller
                 if (stream == null) return null;
                 using var ico = new Icon(stream, 256, 256);
                 using var raw = ico.ToBitmap();
-                // 裁掉透明留白
                 var minX = raw.Width;
                 var minY = raw.Height;
                 var maxX = -1;
@@ -519,6 +475,8 @@ namespace DisiInstaller
                 if (_launch.Checked)
                 {
                     var exePath = Path.Combine(dir, Info.AppExe);
+                    InstallerEngine.KillRunning(Path.GetFileNameWithoutExtension(Info.AppExe));
+                    await Task.Delay(400);
                     try
                     {
                         if (File.Exists(exePath))
@@ -556,9 +514,27 @@ namespace DisiInstaller
     {
         private const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\" + Info.AppId;
 
+        public static void KillRunning(string processName)
+        {
+            try
+            {
+                foreach (var proc in Process.GetProcessesByName(processName))
+                {
+                    try
+                    {
+                        proc.Kill(true);
+                        proc.WaitForExit(2000);
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+        }
+
         public static void Install(string dir, Action<int, string> report)
         {
             report(2, "准备目录…");
+            KillRunning(Path.GetFileNameWithoutExtension(Info.AppExe));
             Directory.CreateDirectory(dir);
             try
             {

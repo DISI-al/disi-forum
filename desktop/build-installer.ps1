@@ -36,7 +36,7 @@ Copy-Item $icon (Join-Path $staging 'appicon.ico') -Force
 Copy-Item (Join-Path $PSScriptRoot 'installer\app.manifest') (Join-Path $staging 'app.manifest') -Force
 
 # 源码 + 占位符替换
-$version = '0.1.0'
+$version = '0.2.0'
 $program = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot 'installer\Program.cs'), [System.Text.Encoding]::UTF8)
 $program = $program.Replace('@PRODUCT@', $meta.product).Replace('@VERSION@', $version).Replace('@APPEXE@', $meta.exe).Replace('@APPID@', $meta.appid).Replace('@STYLE@', $meta.style)
 [System.IO.File]::WriteAllText((Join-Path $staging 'Program.cs'), $program, (New-Object System.Text.UTF8Encoding($true)))
