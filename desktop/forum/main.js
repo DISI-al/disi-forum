@@ -57,9 +57,13 @@ try {
 }
 
 // 卸载器会在目录里放 uninstalling.flag，看到就直接退出，避免卸载后还能运行
+// 卸载标记：只有在最近 10 分钟内写入时才生效（避免历史残留误杀）
 try {
-  if (fs.existsSync(path.join(path.dirname(process.execPath), 'uninstalling.flag'))) {
-    app.quit()
+  const flag = path.join(path.dirname(process.execPath), 'uninstalling.flag')
+  if (fs.existsSync(flag)) {
+    const age = Date.now() - fs.statSync(flag).mtimeMs
+    if (age < 10 * 60 * 1000) app.quit()
+    else fs.unlinkSync(flag)
   }
 } catch (e) {
   // ignore

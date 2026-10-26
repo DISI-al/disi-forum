@@ -250,7 +250,7 @@ namespace DisiInstaller
 
             var pathBlock = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Margin = new Padding(0) };
             pathBlock.RowStyles.Add(new RowStyle(SizeType.Absolute, 26F));
-            pathBlock.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+            pathBlock.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
 
             var pathLabel = new Label
             {
@@ -264,7 +264,7 @@ namespace DisiInstaller
             var pathRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = new Padding(0) };
             pathRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             pathRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 108F));
-            pathRow.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+            pathRow.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
 
             var inputShell = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Panel, Margin = new Padding(0, 0, 8, 0) };
             inputShell.Paint += (s2, e2) =>
@@ -277,7 +277,7 @@ namespace DisiInstaller
             _pathBox.ForeColor = Theme.Text;
             _pathBox.Font = new Font("Microsoft YaHei UI", 11F);
             _pathBox.Dock = DockStyle.Fill;
-            _pathBox.Margin = new Padding(10, 12, 10, 12);
+            _pathBox.Margin = new Padding(10, 9, 10, 9);
             _pathBox.Text = DefaultDir();
             inputShell.Controls.Add(_pathBox);
 
@@ -518,10 +518,25 @@ namespace DisiInstaller
 
                 if (_launch.Checked)
                 {
-                    try { Process.Start(new ProcessStartInfo(Path.Combine(dir, Info.AppExe)) { UseShellExecute = true }); } catch { }
+                    var exePath = Path.Combine(dir, Info.AppExe);
+                    try
+                    {
+                        if (File.Exists(exePath))
+                        {
+                            Process.Start(new ProcessStartInfo(exePath) { UseShellExecute = true, WorkingDirectory = dir });
+                        }
+                        else
+                        {
+                            MessageBox.Show(this, "程序文件缺失，未找到：" + Environment.NewLine + exePath, "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(this, "启动失败：" + ex.Message, "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
                 }
 
-                await Task.Delay(300);
+                await Task.Delay(700);
                 Close();
             }
             catch (Exception ex)
@@ -545,6 +560,12 @@ namespace DisiInstaller
         {
             report(2, "准备目录…");
             Directory.CreateDirectory(dir);
+            try
+            {
+                var stale = Path.Combine(dir, "uninstalling.flag");
+                if (File.Exists(stale)) File.Delete(stale);
+            }
+            catch { }
 
             report(5, "解压程序文件…");
             var asm = Assembly.GetExecutingAssembly();
@@ -609,9 +630,9 @@ namespace DisiInstaller
                 "$exeName = '" + Path.GetFileNameWithoutExtension(Info.AppExe).Replace("'", "''") + "'",
                 "$key = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\" + Info.AppId + "'",
                 "New-Item -ItemType File -Path (Join-Path $dir 'uninstalling.flag') -Force | Out-Null",
-                "for ($i = 0; $i -lt 5; $i++) {",
+                "for ($i = 0; $i -lt 3; $i++) {",
                 "  Get-Process | Where-Object { ($_.Path -like ($dir + '\\*')) -or ($_.ProcessName -eq $exeName) } | Stop-Process -Force",
-                "  Start-Sleep -Milliseconds 600",
+                "  Start-Sleep -Milliseconds 200",
                 "  $busy = Get-Process | Where-Object { ($_.Path -like ($dir + '\\*')) -or ($_.ProcessName -eq $exeName) }",
                 "  if (-not $busy) { break }",
                 "}",
@@ -622,7 +643,7 @@ namespace DisiInstaller
                 "Remove-Item $dir -Recurse -Force",
                 "if (Test-Path $dir) {",
                 "  $cmd = Join-Path $env:TEMP ('disi-clean-' + [guid]::NewGuid().ToString('N') + '.cmd')",
-                "  Set-Content -Path $cmd -Encoding ASCII -Value @('@echo off', 'timeout /t 3 /nobreak >nul', ('rmdir /s /q ' + [char]34 + $dir + [char]34), ('del /f /q ' + [char]34 + '%~f0' + [char]34))",
+                "  Set-Content -Path $cmd -Encoding ASCII -Value @('@echo off', 'timeout /t 1 /nobreak >nul', ('rmdir /s /q ' + [char]34 + $dir + [char]34), ('del /f /q ' + [char]34 + '%~f0' + [char]34))",
                 "  Start-Process -FilePath 'cmd.exe' -ArgumentList ('/c ' + [char]34 + $cmd + [char]34) -WindowStyle Hidden",
                 "}",
                 "",
@@ -713,7 +734,7 @@ namespace DisiInstaller
             InstallerEngine.Uninstall(dir);
 
             // 先直接删目录（进程已杀，通常能删干净）
-            for (var i = 0; i < 5; i++)
+            for (var i = 0; i < 3; i++)
             {
                 try
                 {
@@ -721,7 +742,7 @@ namespace DisiInstaller
                 }
                 catch { }
                 if (!Directory.Exists(dir)) break;
-                System.Threading.Thread.Sleep(500);
+                System.Threading.Thread.Sleep(200);
             }
 
             if (!Directory.Exists(dir))
