@@ -668,28 +668,64 @@ namespace DisiInstaller
 
         public static void Uninstall(string dir)
         {
-            foreach (var proc in Process.GetProcesses())
+            // 1) 先按进程名杀（比遍历全部进程快得多），把托盘图标立刻干掉
+            var exeName = Path.GetFileNameWithoutExtension(Info.AppExe);
+            foreach (var proc in Process.GetProcessesByName(exeName))
             {
                 try
                 {
-                    var path = proc.MainModule?.FileName;
-                    if (path != null && (path.StartsWith(dir + "\\", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(proc.ProcessName, Path.GetFileNameWithoutExtension(Info.AppExe), StringComparison.OrdinalIgnoreCase)))
-                    {
-                        proc.Kill(true);
-                        proc.WaitForExit(3000);
-                    }
+                    proc.Kill(true);
+                    proc.WaitForExit(800);
                 }
                 catch { }
             }
 
+            // 2) 再兜底清理安装目录下的残留进程（同名但路径不同 / 旧名字）
+            foreach (var legacy in new[] { "DISI 论坛", "INSIST", "DISI_FORUM", "DISI_INSIST" })
+            {
+                foreach (var proc in Process.GetProcessesByName(legacy))
+                {
+                    try
+                    {
+                        var path = proc.MainModule?.FileName;
+                        if (path != null && path.StartsWith(dir + "\\", StringComparison.OrdinalIgnoreCase))
+                        {
+                            proc.Kill(true);
+                            proc.WaitForExit(500);
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            // 3) 用户可见的内容：快捷方式 + 应用列表项
             var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             var userPrograms = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
             var commonPrograms = Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms);
-            Shortcuts.Delete(Path.Combine(desktop, Info.ProductName + ".lnk"));
-            Shortcuts.Delete(Path.Combine(userPrograms, Info.ProductName + ".lnk"));
-            if (!string.IsNullOrEmpty(commonPrograms)) Shortcuts.Delete(Path.Combine(commonPrograms, Info.ProductName + ".lnk"));
-            Registry.CurrentUser.DeleteSubKeyTree(UninstallKey, false);
+
+            foreach (var name in new[] { Info.ProductName, "DISI 论坛", "INSIST", "DISI_FORUM", "DISI_INSIST", "DISI Forum", "INSIST App" })
+            {
+                Shortcuts.Delete(Path.Combine(desktop, name + ".lnk"));
+                Shortcuts.Delete(Path.Combine(userPrograms, name + ".lnk"));
+                if (!string.IsNullOrEmpty(commonPrograms)) Shortcuts.Delete(Path.Combine(commonPrograms, name + ".lnk"));
+            }
+
+            foreach (var id in new[] { Info.AppId, "com.disi.forum", "com.disi.insist" })
+            {
+                try { Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\" + id, false); } catch { }
+            }
+
+            // 4) 立刻尝试删目录，只在失败时短暂重试
+            for (var i = 0; i < 3; i++)
+            {
+                try
+                {
+                    if (Directory.Exists(dir)) Directory.Delete(dir, true);
+                }
+                catch { }
+                if (!Directory.Exists(dir)) break;
+                System.Threading.Thread.Sleep(150);
+            }
         }
 
         private const string UninstallKeyUnused = @"";
