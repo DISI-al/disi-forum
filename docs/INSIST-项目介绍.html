@@ -7,12 +7,14 @@
   @page { size: 1280px 720px; margin: 0; }
 
   :root {
-    --ink: #000000;
-    --muted: #666666;
-    --faint: #999999;
-    --line: #eaeaea;
-    --soft: #fafafa;
-    --accent: #0070f3;
+    --bg: #000000;
+    --bg-soft: #0a0a0a;
+    --ink: #ffffff;
+    --body: #a1a1a1;
+    --muted: #888888;
+    --faint: #666666;
+    --line: #262626;
+    --red: #ff4d4f;
     --mono: "SFMono-Regular", ui-monospace, "Geist Mono", Consolas, "Liberation Mono", Menlo, monospace;
   }
 
@@ -21,7 +23,7 @@
   html, body {
     margin: 0;
     padding: 0;
-    background: #ededed;
+    background: #111111;
     color: var(--ink);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -36,7 +38,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    background: #ffffff;
+    background: var(--bg);
     overflow: hidden;
     page-break-after: always;
     break-after: page;
@@ -52,7 +54,7 @@
     font-family: var(--mono);
     font-size: 11px;
     letter-spacing: 0.1em;
-    color: #bbbbbb;
+    color: #444444;
   }
 
   .kicker {
@@ -60,41 +62,42 @@
     font-size: 11.5px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--red);
     margin: 0 0 16px;
   }
 
-  h1 { font-size: 52px; line-height: 1.14; margin: 0 0 22px; font-weight: 600; letter-spacing: -0.03em; }
-  h2 { font-size: 40px; line-height: 1.2; margin: 0 0 28px; font-weight: 600; letter-spacing: -0.025em; }
-  h3 { font-size: 18px; margin: 0 0 8px; font-weight: 600; letter-spacing: -0.01em; }
+  h1 { font-size: 52px; line-height: 1.14; margin: 0 0 22px; font-weight: 600; letter-spacing: -0.03em; color: #ffffff; }
+  h2 { font-size: 40px; line-height: 1.2; margin: 0 0 28px; font-weight: 600; letter-spacing: -0.025em; color: #ffffff; }
+  h3 { font-size: 18px; margin: 0 0 8px; font-weight: 600; letter-spacing: -0.01em; color: #ffffff; }
 
-  p { font-size: 17px; line-height: 1.75; margin: 0 0 14px; color: #333333; }
-  p.lead { font-size: 20px; line-height: 1.7; color: #111111; }
+  p { font-size: 17px; line-height: 1.75; margin: 0 0 14px; color: var(--body); }
+  p.lead { font-size: 20px; line-height: 1.7; color: #e5e5e5; }
   .muted { color: var(--muted); }
-  .small { font-size: 14.5px; line-height: 1.72; color: var(--muted); }
+  .small { font-size: 14.5px; line-height: 1.72; color: var(--body); }
+  strong { color: #ffffff; font-weight: 600; }
 
   code {
     font-family: var(--mono);
     font-size: 0.9em;
-    background: var(--soft);
+    background: #161616;
     border: 1px solid var(--line);
     border-radius: 4px;
     padding: 1px 5px;
+    color: #e5e5e5;
   }
 
   .rule { height: 1px; background: var(--line); margin: 26px 0; border: 0; }
 
-  /* ---------- 封面（反白） ---------- */
+  /* ---------- 封面 ---------- */
   .cover {
     justify-content: center;
     background: #000000;
-    color: #ffffff;
   }
   .cover .brand {
     font-family: var(--mono);
     font-size: 12.5px;
     letter-spacing: 0.34em;
-    color: #888888;
+    color: #555555;
     margin-bottom: 34px;
   }
   .cover .word {
@@ -106,17 +109,16 @@
     padding-left: 0.16em;
     color: #ffffff;
   }
-  .cover .word span { color: #ffffff; }
-  .cover .sub { font-size: 22px; color: #a1a1a1; line-height: 1.8; max-width: 860px; font-weight: 400; }
+  .cover .word span { color: var(--red); }
+  .cover .sub { font-size: 22px; color: var(--body); line-height: 1.8; max-width: 860px; font-weight: 400; }
   .cover .meta {
     margin-top: 46px;
     font-family: var(--mono);
     font-size: 12px;
-    color: #666666;
+    color: #555555;
     letter-spacing: 0.06em;
     line-height: 1.9;
   }
-  .cover::after { color: #444444; }
 
   /* ---------- 布局 ---------- */
   .cols { display: grid; gap: 26px; }
@@ -129,17 +131,17 @@
     border: 1px solid var(--line);
     border-radius: 8px;
     padding: 22px 24px;
-    background: #ffffff;
+    background: var(--bg-soft);
   }
-  .card.soft { background: var(--soft); }
-  .card.accent { background: #ffffff; border-color: #111111; }
+  .card.soft { background: var(--bg-soft); }
+  .card.accent { background: #0f0f0f; border-color: #3a3a3a; }
 
   .big-num {
     font-family: var(--mono);
     font-size: 15px;
     font-weight: 500;
     letter-spacing: 0.1em;
-    color: var(--faint);
+    color: var(--red);
     margin-bottom: 14px;
   }
 
@@ -150,6 +152,7 @@
     padding: 11px 12px;
     border-bottom: 1px solid var(--line);
     vertical-align: top;
+    color: var(--body);
   }
   th {
     font-family: var(--mono);
@@ -158,11 +161,11 @@
     text-transform: uppercase;
     color: var(--faint);
     font-weight: 500;
-    border-bottom: 1px solid #d9d9d9;
+    border-bottom: 1px solid #3a3a3a;
   }
-  td strong { font-weight: 600; }
+  td strong { color: #ffffff; font-weight: 600; }
   tr:last-child td { border-bottom: 0; }
-  .num { font-family: var(--mono); font-size: 14px; }
+  .num { font-family: var(--mono); font-size: 14px; color: #e5e5e5; }
 
   /* ---------- 徽章 ---------- */
   .badge {
@@ -171,29 +174,28 @@
     font-size: 11px;
     letter-spacing: 0.04em;
     padding: 3px 8px;
-    border: 1px solid var(--line);
+    border: 1px solid #333333;
     border-radius: 4px;
-    background: #ffffff;
-    color: #444444;
+    background: transparent;
+    color: var(--body);
     margin: 0 6px 6px 0;
   }
-  .badge.green { border-color: #111111; color: #111111; }
+  .badge.green { border-color: var(--red); color: var(--red); }
 
   /* ---------- 进度条 ---------- */
-  .bar { position: relative; height: 6px; border-radius: 999px; background: #ededed; overflow: hidden; }
-  .bar > i { position: absolute; inset: 0 auto 0 0; display: block; border-radius: 999px; background: #000000; }
+  .bar { position: relative; height: 6px; border-radius: 999px; background: #1f1f1f; overflow: hidden; }
+  .bar > i { position: absolute; inset: 0 auto 0 0; display: block; border-radius: 999px; background: #ffffff; }
   .bar-row { display: flex; align-items: center; gap: 14px; margin: 12px 0; }
-  .bar-row .label { width: 150px; font-size: 14.5px; color: #333333; }
+  .bar-row .label { width: 150px; font-size: 14.5px; color: var(--body); }
   .bar-row .bar { flex: 1; }
   .bar-row .val { width: 92px; text-align: right; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
 
   /* ---------- 流程 ---------- */
-  .flow { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .flow { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg-soft); }
   .flow .step {
     flex: 1;
     padding: 18px 18px 20px;
     border-right: 1px solid var(--line);
-    background: #ffffff;
   }
   .flow .step:last-child { border-right: 0; }
   .flow .step b {
@@ -201,26 +203,27 @@
     font-family: var(--mono);
     font-size: 11px;
     letter-spacing: 0.12em;
-    color: var(--faint);
+    color: var(--red);
     margin-bottom: 10px;
     font-weight: 500;
   }
-  .flow .step span { font-size: 14px; line-height: 1.62; color: #333333; }
+  .flow .step span { font-size: 14px; line-height: 1.62; color: var(--body); }
 
   /* ---------- 代码 ---------- */
   pre {
     margin: 0;
     padding: 18px 20px;
-    background: #000000;
-    color: #ededed;
+    background: #0a0a0a;
+    border: 1px solid var(--line);
+    color: #e5e5e5;
     border-radius: 8px;
     font-family: var(--mono);
     font-size: 12px;
     line-height: 1.6;
     overflow: hidden;
   }
-  pre .c { color: #666666; }
-  pre .k { color: #ffffff; }
+  pre .c { color: #5c5c5c; }
+  pre .k { color: #ff8a8c; }
   pre .s { color: #a1a1a1; }
   pre .f { color: #ffffff; }
 
@@ -229,14 +232,14 @@
     border: 1px solid var(--line);
     border-radius: 8px;
     padding: 20px 24px;
-    background: #ffffff;
+    background: var(--bg-soft);
     font-size: 15px;
     line-height: 1.75;
-    color: #333333;
+    color: var(--body);
   }
-  .post .title { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; color: #000000; margin-bottom: 4px; }
+  .post .title { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; color: #ffffff; margin-bottom: 4px; }
   .post .meta { font-family: var(--mono); font-size: 11.5px; color: var(--faint); margin-bottom: 14px; }
-  .post h4 { font-size: 15px; margin: 15px 0 5px; font-weight: 600; color: #000000; }
+  .post h4 { font-size: 15px; margin: 15px 0 5px; font-weight: 600; color: #ffffff; }
   .post ul { margin: 4px 0 0; padding-left: 19px; }
   .post li { margin: 2px 0; }
   .post .tagbar { margin-top: 13px; }
@@ -246,38 +249,39 @@
     margin: 26px 0 0;
     padding: 18px 22px;
     border: 1px solid var(--line);
+    border-left: 2px solid var(--red);
     border-radius: 8px;
-    background: var(--soft);
+    background: #0a0a0a;
     font-size: 17px;
     line-height: 1.75;
-    color: #111111;
+    color: #e5e5e5;
   }
-  blockquote strong { font-weight: 600; }
 
   /* ---------- 对比 ---------- */
   .versus { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
-  .versus .col { border: 1px solid var(--line); border-radius: 8px; padding: 20px 22px; }
-  .versus .col.win { border-color: #111111; }
+  .versus .col { border: 1px solid var(--line); border-radius: 8px; padding: 20px 22px; background: var(--bg-soft); }
+  .versus .col.win { border-color: #4a4a4a; background: #0f0f0f; }
   .versus h3 { font-size: 16px; margin-bottom: 12px; }
   .versus .col:not(.win) h3 { color: var(--muted); }
-  .versus ul { margin: 0; padding-left: 18px; font-size: 14.5px; line-height: 1.85; color: #333333; }
+  .versus .col.win h3 { color: #ffffff; }
+  .versus ul { margin: 0; padding-left: 18px; font-size: 14.5px; line-height: 1.85; color: var(--body); }
 
   /* 屏幕提示 */
   .hint {
     width: 1280px;
     margin: 0 auto 18px;
     padding: 12px 16px;
-    background: #ffffff;
-    border: 1px solid #d9d9d9;
+    background: #0a0a0a;
+    border: 1px solid #333333;
     border-radius: 8px;
     font-family: var(--mono);
     font-size: 12px;
-    color: #666666;
+    color: var(--muted);
   }
   @media print {
     .hint { display: none; }
     .slide { margin: 0; }
-    html, body { background: #ffffff; }
+    html, body { background: #000000; }
   }
   
 </style>
@@ -382,7 +386,7 @@
       <hr class="rule">
       <div class="bar-row" style="margin:0 0 10px">
         <span class="label">遗忘度</span>
-        <span class="bar"><i style="width:8%;background:#000000"></i></span>
+        <span class="bar"><i style="width:8%;background:#ff4d4f"></i></span>
         <span class="val">8%</span>
       </div>
       <div class="small">上次活跃 9 天前 · 重要程度：重要（复习间隔 60 天）</div>
@@ -554,13 +558,13 @@
       <h3>14 天热力图</h3>
       <p class="small">首页顶部一条小格子，最近两周的每日 XP 分布。三天没颜色，自己就坐不住了。</p>
       <div style="display:flex;gap:5px;margin-top:16px">
-        <span style="width:16px;height:16px;border-radius:4px;background:#f2f2f2"></span>
-        <span style="width:16px;height:16px;border-radius:4px;background:#d4d4d4"></span>
-        <span style="width:16px;height:16px;border-radius:4px;background:#a3a3a3"></span>
-        <span style="width:16px;height:16px;border-radius:4px;background:#000000"></span>
-        <span style="width:16px;height:16px;border-radius:4px;background:#a3a3a3"></span>
-        <span style="width:16px;height:16px;border-radius:4px;background:#ededed"></span>
-        <span style="width:16px;height:16px;border-radius:4px;background:#000000"></span>
+        <span style="width:16px;height:16px;border-radius:4px;background:#1a1a1a"></span>
+        <span style="width:16px;height:16px;border-radius:4px;background:#4d4d4d"></span>
+        <span style="width:16px;height:16px;border-radius:4px;background:#8a8a8a"></span>
+        <span style="width:16px;height:16px;border-radius:4px;background:#ffffff"></span>
+        <span style="width:16px;height:16px;border-radius:4px;background:#8a8a8a"></span>
+        <span style="width:16px;height:16px;border-radius:4px;background:#262626"></span>
+        <span style="width:16px;height:16px;border-radius:4px;background:#ffffff"></span>
       </div>
     </div>
     <div class="card soft">
