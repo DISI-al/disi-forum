@@ -18,7 +18,7 @@ namespace DisiInstaller
         public const string AppExe = "@APPEXE@";
         public const string Publisher = "DISI";
         public const string AppId = "@APPID@";
-        public const string Style = "@STYLE@"; // green = DISI FORUM, mono = DISI INSIST
+        public const string Style = "@STYLE@";
         public static string DisplayName => ProductName.Replace('_', ' ');
     }
 
@@ -45,16 +45,8 @@ namespace DisiInstaller
             }
             catch (Exception ex)
             {
-                try
-                {
-                    File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "setup-error.log"), DateTime.Now.ToString("s") + " " + ex + "\r\n");
-                }
-                catch { }
-                try
-                {
-                    MessageBox.Show("安装程序启动失败：\n" + ex.Message, "DISI Setup", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                catch { }
+                try { File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "setup-error.log"), DateTime.Now.ToString("s") + " " + ex + "\r\n"); } catch { }
+                try { MessageBox.Show("安装程序启动失败：\n" + ex.Message, "DISI Setup", MessageBoxButtons.OK, MessageBoxIcon.Error); } catch { }
             }
         }
 
@@ -120,18 +112,15 @@ namespace DisiInstaller
         }
 
         [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-        private static extern int CoCreateInstance(
-            ref Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, ref Guid riid, out IntPtr ppv);
+        private static extern int CoCreateInstance(ref Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, ref Guid riid, out IntPtr ppv);
 
         private static readonly Guid CLSID_ShellLink = new Guid("00021401-0000-0000-C000-000000000046");
 
-        /// <summary>进程内直接写 .lnk，失败时回落到 cscript。</summary>
         public static void Create(string linkPath, string targetExe, string workDir, string description, string? iconPath = null)
         {
             try
             {
                 var iidShellLink = new Guid("000214F9-0000-0000-C000-000000000046");
-                var iidPersist = new Guid("0000010b-0000-0000-C000-000000000046");
                 var clsid = CLSID_ShellLink;
                 var hr = CoCreateInstance(ref clsid, IntPtr.Zero, 1, ref iidShellLink, out var linkPtr);
                 if (hr == 0 && linkPtr != IntPtr.Zero)
@@ -148,7 +137,7 @@ namespace DisiInstaller
             }
             catch
             {
-                // 落到 cscript
+                // 回落到 cscript
             }
 
             if (File.Exists(linkPath)) return;
@@ -184,8 +173,6 @@ namespace DisiInstaller
             {
                 try { File.Delete(vbs); } catch { }
             }
-
-
         }
 
         public static void Delete(string linkPath)
@@ -204,8 +191,6 @@ namespace DisiInstaller
         private readonly Panel _progressFill = new Panel();
         private readonly Label _status = new Label();
         private readonly CheckBox _launch = new CheckBox();
-        private readonly Label _title = new Label();
-        private readonly Button _close = new Button();
         private bool _busy;
         private Point _dragOffset;
 
@@ -221,12 +206,28 @@ namespace DisiInstaller
             Font = new Font("Microsoft YaHei UI", 9.5F);
             try { Icon = LoadIcon(); } catch { }
 
-            var logo = new PictureBox
+            var root = new TableLayoutPanel
             {
-                Location = new Point(32, 34),
-                Size = new Size(48, 48),
-                SizeMode = PictureBoxSizeMode.StretchImage
+                Dock = DockStyle.Fill,
+                BackColor = Theme.Bg,
+                Padding = new Padding(32, 28, 32, 28),
+                ColumnCount = 1,
+                RowCount = 5,
+                GrowStyle = TableLayoutPanelGrowStyle.FixedSize
             };
+            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 104F));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+
+            var header = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = new Padding(0) };
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60F));
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            header.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            var logo = new PictureBox { Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom, Margin = new Padding(0, 4, 12, 4) };
             try
             {
                 var ico = LoadIcon();
@@ -234,41 +235,51 @@ namespace DisiInstaller
             }
             catch { }
 
-            _title.Text = Info.DisplayName;
-            _title.Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold);
-            _title.ForeColor = Theme.Text;
-            _title.Location = new Point(88, 43);
-            _title.AutoSize = true;
+            var title = new Label
+            {
+                Dock = DockStyle.Fill,
+                Text = Info.DisplayName,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold),
+                ForeColor = Theme.Text,
+                Margin = new Padding(0)
+            };
 
+            header.Controls.Add(logo, 0, 0);
+            header.Controls.Add(title, 1, 0);
 
+            var pathBlock = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Margin = new Padding(0) };
+            pathBlock.RowStyles.Add(new RowStyle(SizeType.Absolute, 26F));
+            pathBlock.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
 
-            _close.Text = "✕";
-            _close.FlatStyle = FlatStyle.Flat;
-            _close.FlatAppearance.BorderSize = 0;
-            _close.Size = new Size(40, 30);
-            _close.Location = new Point(ClientSize.Width - 52, 10);
-            _close.ForeColor = Theme.Muted;
-            _close.BackColor = Theme.Bg;
-            _close.TabStop = false;
-            _close.Click += (s, e) => { if (!_busy) Close(); };
+            var pathLabel = new Label
+            {
+                Text = "安装位置",
+                ForeColor = Theme.Muted,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(0)
+            };
 
-            var line = new Panel { BackColor = Theme.Border, Location = new Point(32, 92), Size = new Size(ClientSize.Width - 64, 1) };
+            var pathRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Margin = new Padding(0) };
+            pathRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            pathRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 108F));
+            pathRow.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
 
-            var pathLabel = new Label { Text = "安装位置", ForeColor = Theme.Muted, Location = new Point(32, 112), AutoSize = true };
-
-            _pathBox.Location = new Point(32, 136);
-            _pathBox.AutoSize = false;
+            _pathBox.Dock = DockStyle.Fill;
             _pathBox.Multiline = true;
-            _pathBox.ScrollBars = ScrollBars.None;
             _pathBox.WordWrap = false;
+            _pathBox.ScrollBars = ScrollBars.None;
             _pathBox.BorderStyle = BorderStyle.FixedSingle;
             _pathBox.BackColor = Theme.Panel;
             _pathBox.ForeColor = Theme.Text;
+            _pathBox.Font = new Font("Microsoft YaHei UI", 10F);
+            _pathBox.Margin = new Padding(0, 0, 8, 0);
             _pathBox.Text = DefaultDir();
 
             _browse.Text = "浏览";
-            _browse.Location = new Point(508, 136);
-            _browse.Size = new Size(100, 44);
+            _browse.Dock = DockStyle.Fill;
+            _browse.Margin = new Padding(0);
             StyleSecondary(_browse);
             _browse.Click += (s, e) =>
             {
@@ -276,52 +287,97 @@ namespace DisiInstaller
                 if (dlg.ShowDialog(this) == DialogResult.OK) _pathBox.Text = dlg.SelectedPath;
             };
 
-            _progressTrack.Location = new Point(32, 200);
-            _progressTrack.Size = new Size(ClientSize.Width - 64, 6);
+            pathRow.Controls.Add(_pathBox, 0, 0);
+            pathRow.Controls.Add(_browse, 1, 0);
+            pathBlock.Controls.Add(pathLabel, 0, 0);
+            pathBlock.Controls.Add(pathRow, 0, 1);
+
+            var progressPanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Margin = new Padding(0, 12, 0, 0) };
+            progressPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 6F));
+            progressPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            _progressTrack.Dock = DockStyle.Fill;
             _progressTrack.BackColor = Theme.Panel;
-            _progressFill.Location = new Point(0, 0);
-            _progressFill.Size = new Size(0, 6);
+            _progressTrack.Margin = new Padding(0);
+            _progressFill.Dock = DockStyle.Left;
+            _progressFill.Width = 0;
             _progressFill.BackColor = Theme.Accent;
             _progressTrack.Controls.Add(_progressFill);
 
+            _status.Dock = DockStyle.Fill;
             _status.Text = "准备就绪";
             _status.ForeColor = Theme.Muted;
-            _status.Location = new Point(32, 214);
-            _status.Size = new Size(400, 22);
+            _status.TextAlign = ContentAlignment.MiddleLeft;
+            _status.Margin = new Padding(0, 8, 0, 0);
 
+            progressPanel.Controls.Add(_progressTrack, 0, 0);
+            progressPanel.Controls.Add(_status, 0, 1);
+
+            var optionsPanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 1, Margin = new Padding(0, 8, 0, 0) };
+            optionsPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             _launch.Text = "安装完成后运行";
             _launch.ForeColor = Theme.Text;
             _launch.BackColor = Theme.Bg;
-            _launch.Location = new Point(32, 256);
-            _launch.AutoSize = true;
+            _launch.Dock = DockStyle.Fill;
+            _launch.TextAlign = ContentAlignment.MiddleLeft;
+            _launch.Margin = new Padding(0);
             _launch.Checked = true;
+            optionsPanel.Controls.Add(_launch, 0, 0);
+
+            var buttonRow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.RightToLeft,
+                WrapContents = false,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
+            };
 
             _cancel.Text = "取消";
             _cancel.Size = new Size(120, 40);
-            _cancel.Location = new Point(ClientSize.Width - 152, 348);
+            _cancel.Margin = new Padding(0);
             StyleSecondary(_cancel);
             _cancel.Click += (s, e) => { if (!_busy) Close(); };
 
             _install.Text = "安装";
             _install.Size = new Size(120, 40);
-            _install.Location = new Point(ClientSize.Width - 284, 348);
+            _install.Margin = new Padding(0, 0, 12, 0);
             _install.FlatStyle = FlatStyle.Flat;
             _install.FlatAppearance.BorderSize = 1;
+            _install.FlatAppearance.BorderColor = Theme.Accent;
             _install.BackColor = Theme.Accent;
             _install.ForeColor = Theme.AccentText;
             _install.Font = new Font("Microsoft YaHei UI", 9.5F, FontStyle.Bold);
             _install.Click += async (s, e) => await StartInstallAsync();
 
-            Controls.AddRange(new Control[]
+            buttonRow.Controls.Add(_cancel);
+            buttonRow.Controls.Add(_install);
+
+            root.Controls.Add(header, 0, 0);
+            root.Controls.Add(pathBlock, 0, 1);
+            root.Controls.Add(progressPanel, 0, 2);
+            root.Controls.Add(optionsPanel, 0, 3);
+            root.Controls.Add(buttonRow, 0, 4);
+
+            var close = new Button
             {
-                logo, _title, _close, line, pathLabel, _pathBox, _browse,
-                _progressTrack, _status, _launch, _install, _cancel
-            });
+                Text = "✕",
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(40, 30),
+                Location = new Point(ClientSize.Width - 52, 10),
+                ForeColor = Theme.Muted,
+                BackColor = Theme.Bg,
+                TabStop = false
+            };
+            close.FlatAppearance.BorderSize = 0;
+            close.Click += (s, e) => { if (!_busy) Close(); };
+
+            Controls.Add(root);
+            Controls.Add(close);
+            close.BringToFront();
 
             MouseDown += (s, e) => { _dragOffset = e.Location; };
             MouseMove += (s, e) => { if (e.Button == MouseButtons.Left) Location = new Point(Location.X + e.X - _dragOffset.X, Location.Y + e.Y - _dragOffset.Y); };
-            _title.MouseDown += (s, e) => { _dragOffset = PointToClient(Cursor.Position); };
-            _title.MouseMove += (s, e) => { if (e.Button == MouseButtons.Left) Location = new Point(Cursor.Position.X - _dragOffset.X, Cursor.Position.Y - _dragOffset.Y); };
 
             ResumeLayout();
         }
@@ -387,7 +443,7 @@ namespace DisiInstaller
                     try { Process.Start(new ProcessStartInfo(Path.Combine(dir, Info.AppExe)) { UseShellExecute = true }); } catch { }
                 }
 
-                await Task.Delay(350);
+                await Task.Delay(300);
                 Close();
             }
             catch (Exception ex)
@@ -432,7 +488,6 @@ namespace DisiInstaller
                 }
             }
 
-            // 统一图标文件：快捷方式和应用列表都指向它，避免 exe 图标被替换后显示异常
             var iconPath = Path.Combine(dir, "app.ico");
             try
             {
@@ -450,40 +505,37 @@ namespace DisiInstaller
             var iconForShortcut = File.Exists(iconPath) ? iconPath : exePath;
             var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             var userPrograms = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
-            try { Shortcuts.Create(Path.Combine(desktop, Info.ProductName + ".lnk"), exePath, dir, Info.ProductName, iconForShortcut); }
-            catch (Exception ex) { try { File.AppendAllText(Path.Combine(dir, "install.log"), "desktop-shortcut: " + ex.Message + "\r\n"); } catch { } }
-            try { Shortcuts.Create(Path.Combine(userPrograms, Info.ProductName + ".lnk"), exePath, dir, Info.ProductName, iconForShortcut); }
-            catch (Exception ex) { try { File.AppendAllText(Path.Combine(dir, "install.log"), "startmenu-shortcut: " + ex.Message + "\r\n"); } catch { } }
+            var commonPrograms = Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms);
 
-
-            // 有权限时再写一份到「所有用户」开始菜单，方便开始菜单搜索到
-            try
+            foreach (var (folder, label) in new[] { (desktop, "desktop"), (userPrograms, "startmenu"), (commonPrograms, "commonmenu") })
             {
-                var commonPrograms = Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms);
-                if (!string.IsNullOrEmpty(commonPrograms) && Directory.Exists(commonPrograms))
+                if (string.IsNullOrEmpty(folder)) continue;
+                try
                 {
-                    Shortcuts.Create(Path.Combine(commonPrograms, Info.ProductName + ".lnk"), exePath, dir, Info.ProductName, iconForShortcut);
+                    Shortcuts.Create(Path.Combine(folder, Info.ProductName + ".lnk"), exePath, dir, Info.DisplayName, iconForShortcut);
+                }
+                catch (Exception ex)
+                {
+                    try { File.AppendAllText(Path.Combine(dir, "install.log"), label + "-shortcut: " + ex.Message + "\r\n"); } catch { }
                 }
             }
-            catch { }
 
             report(93, "写入卸载信息…");
 
-            // 卸载器：用脚本实现，避免复制 exe 失败导致卸载入口失效
             var uninstallPs1 = Path.Combine(dir, "uninstall.ps1");
             var ps1 = string.Join("\r\n", new[]
             {
                 "$ErrorActionPreference = 'SilentlyContinue'",
                 "$dir = '" + dir.Replace("'", "''") + "'",
                 "$name = '" + Info.ProductName.Replace("'", "''") + "'",
-                "$exe = '" + Info.AppExe.Replace("'", "''") + "'",
-                "$exeName = [IO.Path]::GetFileNameWithoutExtension($exe)",
+                "$exeName = '" + Path.GetFileNameWithoutExtension(Info.AppExe).Replace("'", "''") + "'",
                 "$key = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\" + Info.AppId + "'",
                 "New-Item -ItemType File -Path (Join-Path $dir 'uninstalling.flag') -Force | Out-Null",
-                "for ($i = 0; $i -lt 4; $i++) {",
+                "for ($i = 0; $i -lt 5; $i++) {",
                 "  Get-Process | Where-Object { ($_.Path -like ($dir + '\\*')) -or ($_.ProcessName -eq $exeName) } | Stop-Process -Force",
-                "  Start-Sleep -Milliseconds 500",
-                "  if (-not (Test-Path (Join-Path $dir $exe))) { break }",
+                "  Start-Sleep -Milliseconds 600",
+                "  $busy = Get-Process | Where-Object { ($_.Path -like ($dir + '\\*')) -or ($_.ProcessName -eq $exeName) }",
+                "  if (-not $busy) { break }",
                 "}",
                 "foreach ($d in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'), [Environment]::GetFolderPath('CommonPrograms'))) {",
                 "  Remove-Item (Join-Path $d ($name + '.lnk')) -Force",
@@ -492,8 +544,8 @@ namespace DisiInstaller
                 "Remove-Item $dir -Recurse -Force",
                 "if (Test-Path $dir) {",
                 "  $cmd = Join-Path $env:TEMP ('disi-clean-' + [guid]::NewGuid().ToString('N') + '.cmd')",
-                "  Set-Content -Path $cmd -Encoding ASCII -Value ('@echo off' + [Environment]::NewLine + 'timeout /t 3 /nobreak >nul' + [Environment]::NewLine + 'rmdir /s /q \"' + $dir + '\"' + [Environment]::NewLine + 'del /f /q \"%~f0\"')",
-                "  Start-Process -FilePath 'cmd.exe' -ArgumentList ('/c \"' + $cmd + '\"') -WindowStyle Hidden",
+                "  Set-Content -Path $cmd -Encoding ASCII -Value @('@echo off', 'timeout /t 3 /nobreak >nul', ('rmdir /s /q ' + [char]34 + $dir + [char]34), ('del /f /q ' + [char]34 + '%~f0' + [char]34))",
+                "  Start-Process -FilePath 'cmd.exe' -ArgumentList ('/c ' + [char]34 + $cmd + [char]34) -WindowStyle Hidden",
                 "}",
                 "",
             });
@@ -511,13 +563,13 @@ namespace DisiInstaller
                 using var key = Registry.CurrentUser.CreateSubKey(UninstallKey);
                 if (key != null)
                 {
-                    key.SetValue("DisplayName", Info.ProductName);
+                    key.SetValue("DisplayName", Info.DisplayName);
                     key.SetValue("DisplayVersion", Info.Version);
                     key.SetValue("Publisher", Info.Publisher);
                     key.SetValue("InstallLocation", dir);
                     key.SetValue("DisplayIcon", iconForShortcut);
-                    key.SetValue("UninstallString", File.Exists(uninstallExe) ? ("\"" + uninstallExe + "\" /uninstall") : ("powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" + uninstallPs1 + "\""));
-                    key.SetValue("QuietUninstallString", File.Exists(uninstallExe) ? ("\"" + uninstallExe + "\" /uninstall /S") : ("powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" + uninstallPs1 + "\""));
+                    key.SetValue("UninstallString", "powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" + uninstallPs1 + "\"");
+                    key.SetValue("QuietUninstallString", "powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" + uninstallPs1 + "\"");
                     key.SetValue("NoModify", 1, RegistryValueKind.DWord);
                     key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
                 }
@@ -529,50 +581,64 @@ namespace DisiInstaller
 
             report(100, "安装完成");
         }
+
+        public static void Uninstall(string dir)
+        {
+            foreach (var proc in Process.GetProcesses())
+            {
+                try
+                {
+                    var path = proc.MainModule?.FileName;
+                    if (path != null && (path.StartsWith(dir + "\\", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(proc.ProcessName, Path.GetFileNameWithoutExtension(Info.AppExe), StringComparison.OrdinalIgnoreCase)))
+                    {
+                        proc.Kill(true);
+                        proc.WaitForExit(3000);
+                    }
+                }
+                catch { }
+            }
+
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            var userPrograms = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
+            var commonPrograms = Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms);
+            Shortcuts.Delete(Path.Combine(desktop, Info.ProductName + ".lnk"));
+            Shortcuts.Delete(Path.Combine(userPrograms, Info.ProductName + ".lnk"));
+            if (!string.IsNullOrEmpty(commonPrograms)) Shortcuts.Delete(Path.Combine(commonPrograms, Info.ProductName + ".lnk"));
+            Registry.CurrentUser.DeleteSubKeyTree(UninstallKey, false);
+        }
+
+        private const string UninstallKeyUnused = @"";
     }
 
     internal static class Uninstaller
     {
-        private const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\" + Info.AppId;
-
         public static void Run(bool silent)
         {
             var dir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
 
             if (!silent)
             {
-                var answer = MessageBox.Show("确定要卸载 " + Info.DisplayName + " 吗？", "卸载", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                var answer = MessageBox.Show("确定要卸载 " + Info.DisplayName + " 吗？\n程序会被关闭，快捷方式和程序文件都会删除。", "卸载", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (answer != DialogResult.Yes) return;
             }
 
-            try
-            {
-                var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                var userPrograms = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
-                var commonPrograms = Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms);
-                Shortcuts.Delete(Path.Combine(desktop, Info.ProductName + ".lnk"));
-                Shortcuts.Delete(Path.Combine(userPrograms, Info.ProductName + ".lnk"));
-                if (!string.IsNullOrEmpty(commonPrograms)) Shortcuts.Delete(Path.Combine(commonPrograms, Info.ProductName + ".lnk"));
-                Registry.CurrentUser.DeleteSubKeyTree(UninstallKey, false);
-            }
-            catch { }
+            try { File.WriteAllText(Path.Combine(dir, "uninstalling.flag"), "1"); } catch { }
 
-            try
+            InstallerEngine.Uninstall(dir);
+
+            var cmd = Path.Combine(Path.GetTempPath(), "disi-uninstall-" + Guid.NewGuid().ToString("N") + ".cmd");
+            File.WriteAllText(cmd,
+                "@echo off\r\n" +
+                "timeout /t 2 /nobreak >nul\r\n" +
+                "rmdir /s /q \"" + dir + "\"\r\n" +
+                "del /f /q \"%~f0\"\r\n");
+            Process.Start(new ProcessStartInfo("cmd.exe", "/c \"" + cmd + "\"")
             {
-                var cmd = Path.Combine(Path.GetTempPath(), "disi-uninstall-" + Guid.NewGuid().ToString("N") + ".cmd");
-                File.WriteAllText(cmd,
-                    "@echo off\r\n" +
-                    "timeout /t 2 /nobreak >nul\r\n" +
-                    "rmdir /s /q \"" + dir + "\"\r\n" +
-                    "del /f /q \"%~f0\"\r\n");
-                Process.Start(new ProcessStartInfo("cmd.exe", "/c \"" + cmd + "\"")
-                {
-                    CreateNoWindow = true,
-                    UseShellExecute = false,
-                    WindowStyle = ProcessWindowStyle.Hidden
-                });
-            }
-            catch { }
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                WindowStyle = ProcessWindowStyle.Hidden
+            });
         }
     }
 }

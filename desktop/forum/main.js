@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, Tray, nativeImage, ipcMain, screen } = require('electron')
+const { app, BrowserWindow, shell, Tray, Menu, nativeImage } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 const http = require('node:http')
@@ -217,8 +217,25 @@ function setupTray(win) {
   }
 
   tray.setToolTip(APP_TITLE)
-  tray.on('click', () => openMenu(win))
-  tray.on('right-click', () => openMenu(win))
+  const buildMenu = () =>
+    Menu.buildFromTemplate([
+      { label: LABEL_OPEN, click: () => { win.show(); win.focus(); } },
+      { type: 'separator' },
+      {
+        label: LABEL_AUTOSTART,
+        type: 'checkbox',
+        checked: app.getLoginItemSettings().openAtLogin,
+        click: (item) => {
+          app.setLoginItemSettings({ openAtLogin: item.checked, path: process.execPath })
+          tray.setContextMenu(buildMenu())
+        },
+      },
+      { type: 'separator' },
+      { label: LABEL_QUIT, click: () => { app.isQuitting = true; app.quit(); } },
+    ])
+
+  tray.setContextMenu(buildMenu())
+  tray.on('click', () => tray.popUpContextMenu())
 
   ipcMain.on('tray-action', (event, action) => {
     if (menuWindow && !menuWindow.isDestroyed() && event.sender === menuWindow.webContents) closeMenu()
