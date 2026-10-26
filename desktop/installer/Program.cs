@@ -260,14 +260,14 @@ namespace DisiInstaller
             var title = new Label
             {
                 Text = Info.DisplayName,
-                Font = new Font("Microsoft YaHei UI", 16.5F, FontStyle.Bold),
+                Font = new Font("Microsoft YaHei UI", 15F, FontStyle.Bold),
                 ForeColor = Theme.Text,
-                AutoSize = true,
+                AutoSize = false,
+                Size = new Size(contentWidth - 54, 42),
+                TextAlign = ContentAlignment.MiddleLeft,
                 Location = new Point(left + 54, 32),
                 BackColor = Theme.Bg
             };
-
-            title.Top = logo.Top + (logo.Height - title.PreferredHeight) / 2;
 
             var close = new Button
             {
@@ -345,8 +345,8 @@ namespace DisiInstaller
             _launch.ForeColor = Theme.Text;
             _launch.BackColor = Theme.Bg;
             _launch.AutoSize = false;
-            _launch.Size = new Size(200, 24);
-            _launch.Location = new Point(left, rowTop + rowHeight + 84);
+            _launch.Size = new Size(220, 32);
+            _launch.Location = new Point(left, rowTop + rowHeight + 78);
             _launch.Checked = true;
 
             // 按钮
@@ -695,6 +695,45 @@ namespace DisiInstaller
         private const string UninstallKeyUnused = @"";
     }
 
+
+    internal sealed class UninstallProgress : Form
+    {
+        private readonly Label _label = new Label();
+        private readonly ProgressBar _bar = new ProgressBar();
+
+        public UninstallProgress(string text)
+        {
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.CenterScreen;
+            ClientSize = new Size(360, 96);
+            BackColor = Theme.Bg;
+            ShowInTaskbar = false;
+            TopMost = true;
+
+            _label.Text = text;
+            _label.ForeColor = Theme.Text;
+            _label.Font = new Font("Microsoft YaHei UI", 10F);
+            _label.Location = new Point(24, 22);
+            _label.AutoSize = true;
+            _label.BackColor = Theme.Bg;
+
+            _bar.Location = new Point(24, 54);
+            _bar.Size = new Size(312, 8);
+            _bar.Style = ProgressBarStyle.Marquee;
+            _bar.MarqueeAnimationSpeed = 30;
+
+            Controls.Add(_label);
+            Controls.Add(_bar);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            using var pen = new Pen(Theme.Border);
+            e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+        }
+    }
+
     internal static class Uninstaller
     {
         public static void Run(bool silent)
@@ -708,6 +747,14 @@ namespace DisiInstaller
             }
 
             try { File.WriteAllText(Path.Combine(dir, "uninstalling.flag"), "1"); } catch { }
+
+            UninstallProgress? progress = null;
+            if (!silent)
+            {
+                progress = new UninstallProgress("正在卸载 " + Info.DisplayName + "…");
+                progress.Show();
+                Application.DoEvents();
+            }
 
             InstallerEngine.Uninstall(dir);
 
@@ -725,6 +772,7 @@ namespace DisiInstaller
 
             if (!Directory.Exists(dir))
             {
+                try { progress?.Close(); } catch { }
                 return;
             }
 
