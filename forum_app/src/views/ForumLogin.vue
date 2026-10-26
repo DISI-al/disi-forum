@@ -117,7 +117,7 @@ onMounted(() => pwdInput.value?.focus())
       </a>
     </nav>
 
-    <h1 class="wordmark">DISI</h1>
+    <h1 class="wordmark">FORUM</h1>
 
     <form class="form" :class="{ wide: isRegister }" @submit.prevent="submit">
       <input
@@ -215,9 +215,9 @@ onMounted(() => pwdInput.value?.focus())
   left: 50%;
   top: 38vh;
   transform: translate(-50%, -50%);
-  font-size: clamp(64px, 9.2vw, 120px);
+  font-size: clamp(52px, 7.6vw, 100px);
   font-weight: 600;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.24em;
   margin-right: -0.3em;
   line-height: 1;
   color: #2ea043;

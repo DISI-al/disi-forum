@@ -222,8 +222,8 @@ namespace DisiInstaller
 
             var logo = new PictureBox
             {
-                Location = new Point(32, 30),
-                Size = new Size(44, 44),
+                Location = new Point(32, 32),
+                Size = new Size(48, 48),
                 SizeMode = PictureBoxSizeMode.StretchImage
             };
             try
@@ -234,9 +234,9 @@ namespace DisiInstaller
             catch { }
 
             _title.Text = Info.ProductName;
-            _title.Font = new Font("Microsoft YaHei UI", 17F, FontStyle.Bold);
+            _title.Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold);
             _title.ForeColor = Theme.Text;
-            _title.Location = new Point(88, 30);
+            _title.Location = new Point(88, 26);
             _title.AutoSize = true;
 
 
@@ -244,8 +244,8 @@ namespace DisiInstaller
             _close.Text = "✕";
             _close.FlatStyle = FlatStyle.Flat;
             _close.FlatAppearance.BorderSize = 0;
-            _close.Size = new Size(36, 28);
-            _close.Location = new Point(ClientSize.Width - 68, 12);
+            _close.Size = new Size(40, 30);
+            _close.Location = new Point(ClientSize.Width - 52, 10);
             _close.ForeColor = Theme.Muted;
             _close.BackColor = Theme.Bg;
             _close.TabStop = false;
@@ -257,6 +257,9 @@ namespace DisiInstaller
 
             _pathBox.Location = new Point(32, 136);
             _pathBox.AutoSize = false;
+            _pathBox.Multiline = true;
+            _pathBox.ScrollBars = ScrollBars.None;
+            _pathBox.WordWrap = false;
             _pathBox.BorderStyle = BorderStyle.FixedSingle;
             _pathBox.BackColor = Theme.Panel;
             _pathBox.ForeColor = Theme.Text;
@@ -450,9 +453,7 @@ namespace DisiInstaller
             catch (Exception ex) { try { File.AppendAllText(Path.Combine(dir, "install.log"), "desktop-shortcut: " + ex.Message + "\r\n"); } catch { } }
             try { Shortcuts.Create(Path.Combine(userPrograms, Info.ProductName + ".lnk"), exePath, dir, Info.ProductName, iconForShortcut); }
             catch (Exception ex) { try { File.AppendAllText(Path.Combine(dir, "install.log"), "startmenu-shortcut: " + ex.Message + "\r\n"); } catch { } }
-            // 再放一个英文名别名，方便开始菜单用英文搜索
-            var alias = Info.Style == "green" ? "DISI Forum" : "INSIST App";
-            try { Shortcuts.Create(Path.Combine(userPrograms, alias + ".lnk"), exePath, dir, Info.ProductName); } catch { }
+
 
             // 有权限时再写一份到「所有用户」开始菜单，方便开始菜单搜索到
             try
@@ -474,11 +475,12 @@ namespace DisiInstaller
                 "$ErrorActionPreference = 'SilentlyContinue'",
                 "$dir = '" + dir.Replace("'", "''") + "'",
                 "$name = '" + Info.ProductName.Replace("'", "''") + "'",
-                "$alias = '" + (Info.Style == "green" ? "DISI Forum" : "INSIST App") + "'",
                 "$key = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\" + Info.AppId + "'",
                 "Get-Process | Where-Object { $_.Path -like \"$dir\\*\" } | Stop-Process -Force",
+                "Get-Process -Name '" + System.IO.Path.GetFileNameWithoutExtension(Info.AppExe) + "' -ErrorAction SilentlyContinue | Stop-Process -Force",
+                "Start-Sleep -Milliseconds 800",
                 "foreach ($d in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'), [Environment]::GetFolderPath('CommonPrograms'))) {",
-                "  foreach ($n in @($name, $alias)) { Remove-Item (Join-Path $d ($n + '.lnk')) -Force }",
+                "  Remove-Item (Join-Path $d ($name + '.lnk')) -Force",
                 "}",
                 "Remove-Item $key -Recurse -Force",
                 "$cmd = Join-Path $env:TEMP ('disi-clean-' + [guid]::NewGuid().ToString('N') + '.cmd')",
