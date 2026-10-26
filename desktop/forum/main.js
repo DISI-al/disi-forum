@@ -235,25 +235,8 @@ function openTrayMenu(win) {
       }
     }, 50)
 
-    // 6 秒无操作自动关闭（兜底）
-    setTimeout(() => {
-      try { closeTrayMenu() } catch (e) { }
-    }, 6000)
 
-    // 轮询兜底：一旦失去焦点（点了别处、溢出面板收起等）就关闭
-    const timer = setInterval(() => {
-      if (!trayMenu || trayMenu.isDestroyed()) {
-        clearInterval(timer)
-        return
-      }
-      if (!trayMenu.isFocused()) {
-        clearInterval(timer)
-        closeTrayMenu()
-      }
-    }, 120)
   })
-  trayMenu.on('blur', () => closeTrayMenu())
-  trayMenu.on('hide', () => closeTrayMenu())
   trayMenu.on('closed', () => { trayMenu = null })
 }
 
