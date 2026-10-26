@@ -1,5 +1,5 @@
 """
-JWT 认证工具 — 生成和验证 token，支持单设备登录
+JWT 认证工具 — 生成和验证 token（多端同时在线）
 """
 import os
 from datetime import datetime, timedelta, timezone
@@ -18,7 +18,7 @@ security = HTTPBearer(auto_error=False)
 
 
 def create_access_token(user_id: str, login_version: str) -> str:
-    """生成 JWT token，包含 login_version 用于单设备登录控制"""
+    """生成 JWT token（login_version 仅作标记，不再用于挤号）"""
     expire = datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     payload = {"sub": user_id, "exp": expire, "ver": login_version}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
@@ -43,9 +43,8 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         return None
-    # 单设备登录：token 版本与用户当前版本不一致 → 已被新登录挤掉
-    if token_ver != user.login_version:
-        return None
+    # 多端同时在线：不再校验 login_version，token 在有效期内（30 天）一直可用
+    # （需要强制下线某设备时，改用户的 login_version 并恢复这里的比较即可）
     return user
 
 
