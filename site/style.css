@@ -5,7 +5,7 @@
   --line: #262626;
   --panel: #0a0a0a;
   --btn-h: 40px;
-  --wrap: calc(80vw - 180px);
+  --wrap: calc(80vw - 210px);
   --wrap-wide: var(--wrap);
 }
 
