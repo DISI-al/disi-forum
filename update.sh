@@ -91,11 +91,9 @@ build_app() {
     local dir="$1" name="$2"
     log_info "构建 ${name} …"
     cd "${dir}"
-    if [ -f package-lock.json ]; then
-        npm ci --no-audit --no-fund
-    else
-        npm install --no-audit --no-fund
-    fi
+    # 锁文件含平台相关依赖（Windows 生成的锁在 Linux 会 EBADPLATFORM），统一用 install
+    rm -f package-lock.json
+    npm install --no-audit --no-fund
     npm run build
     [ -f dist/index.html ] || die "${name} 构建产物缺失：dist/index.html"
     log_info "${name} 构建完成"
