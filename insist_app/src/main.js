@@ -7,19 +7,25 @@ import './styles/insist.css'
 
 createApp(App).use(router).mount('#app')
 
-// ---- 移动端：把「返回」交给路由（Android 返回键 / iOS 左缘滑动都会调到这里）----
+// ---- 移动端返回：根页面交给原生（进后台），其余交给路由 ----
 ;(function () {
-  if (!window.Capacitor || typeof window.Capacitor.isNativePlatform !== 'function') return
-  if (!window.Capacitor.isNativePlatform()) return
+  var ROOTS = ['/', '/collection', '/cards', '/achievements', '/settings', '/login']
+
+  function isNative() {
+    return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
+  }
 
   window.__DISI_BACK__ = function () {
+    var path = router.currentRoute.value.path
+    if (ROOTS.indexOf(path) !== -1) return false
     var state = window.history.state || {}
-    // vue-router 在 history.state 里记录 back，有它就说明还有上一层
     if (state.back) {
       router.back()
       return true
     }
-    return false
+    router.replace(ROOTS[0])
+    return true
   }
-})()
 
+  window.__DISI_IS_NATIVE__ = isNative()
+})()

@@ -68,18 +68,29 @@ const injection = `  <script>
         return C.Plugins || null;
       }
 
-      var attached = false;
-
-      // 统一返回：优先交给页面路由，退无可退才进后台
+      // 统一返回：交给页面路由，路由说「这是根页面」时才进后台
       function goBack(P) {
         var handled = false;
         try {
-          if (typeof window.__DISI_BACK__ === 'function') handled = window.__DISI_BACK__();
+          if (typeof window.__DISI_BACK__ === 'function') {
+            handled = window.__DISI_BACK__();
+          }
         } catch (e) {}
-        if (!handled) {
-          try { P && P.App && P.App.minimizeApp && P.App.minimizeApp(); } catch (e) {}
+
+        if (handled) return;
+
+        // 页面脚本还没就绪（或路由没接管）：用 history.state 兜底
+        var st = window.history.state || {};
+        if (st.back) {
+          window.history.back();
+          return;
         }
+        try {
+          if (P && P.App && P.App.minimizeApp) P.App.minimizeApp();
+        } catch (e) {}
       }
+
+      var attached = false;
 
       function attach() {
         if (attached) return true;
@@ -104,20 +115,20 @@ const injection = `  <script>
         setTimeout(hideSplash, 400);
         window.addEventListener('load', function () { setTimeout(hideSplash, 150); });
 
-        // 3) Android 物理返回键
+        // 3) Android 物理返回键 / 系统返回手势
         try {
           P.App.addListener('backButton', function () { goBack(P); });
         } catch (e) {}
 
-        // 4) iOS：从屏幕左缘往右滑 = 返回（WKWebView 本身不带手势）
-        var touchX = 0, touchY = 0, tracking = false;
+        // 4) iOS：屏幕左缘往右滑 = 返回
+        var startX = 0, startY = 0, tracking = false;
         document.addEventListener(
           'touchstart',
           function (e) {
             if (e.touches.length !== 1) return;
-            touchX = e.touches[0].clientX;
-            touchY = e.touches[0].clientY;
-            tracking = touchX <= 28; // 只在左缘 28px 内起手
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            tracking = startX <= 28;
           },
           { passive: true }
         );
@@ -128,8 +139,8 @@ const injection = `  <script>
             tracking = false;
             var t = e.changedTouches && e.changedTouches[0];
             if (!t) return;
-            var dx = t.clientX - touchX;
-            var dy = Math.abs(t.clientY - touchY);
+            var dx = t.clientX - startX;
+            var dy = Math.abs(t.clientY - startY);
             if (dx > 70 && dy < 60) goBack(P);
           },
           { passive: true }
@@ -137,15 +148,15 @@ const injection = `  <script>
         return true;
       }
 
+      // 桥接可能晚于脚本执行：立刻试一次 + 轮询 10 秒
+      attach();
       var tries = 0;
       var timer = setInterval(function () {
         tries++;
-        if (attach() || tries > 30) clearInterval(timer);
+        if (attach() || tries > 100) clearInterval(timer);
       }, 100);
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', attach);
-      } else {
-        attach();
       }
     })();
   </script>
