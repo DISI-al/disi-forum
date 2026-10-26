@@ -304,13 +304,13 @@ onMounted(() => pwdInput.value?.focus())
 .switch a:hover { color: #c9d1d9; text-decoration: underline; }
 
 @media (max-width: 720px) {
-  .wall { padding: 18px 14px 0; gap: 14px 16px; justify-content: center; max-width: 420px; margin: 0 auto; }
-  .logo { width: 26px; height: 26px; }
-  .logo img { width: 20px; height: 20px; }
+  .wall { padding: 28px 16px 0; gap: 18px 20px; }
+  .logo { width: 30px; height: 30px; }
+  .logo img { width: 22px; height: 22px; }
   .logo:hover img { transform: scale(1.32); }
-  .wordmark { top: 23vh; font-size: clamp(34px, 10.5vw, 54px); letter-spacing: 0.12em; margin-right: -0.12em; }
-  .form { top: 41vh; width: min(86vw, 340px); }
-  .form.wide { top: 38vh; }
+  .wordmark { top: 36vh; font-size: clamp(38px, 11vw, 60px); letter-spacing: 0.14em; margin-right: -0.14em; }
+  .form { top: 64vh; width: 300px; }
+  .form.wide { top: 58vh; }
   .line { height: 38px; font-size: 15px; }
 }
 
