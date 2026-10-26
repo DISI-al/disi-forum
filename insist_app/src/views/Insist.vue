@@ -12,6 +12,7 @@ import { levelName, tierName, stars, forgetClass, kindLabel } from '../insist/co
 
 const router = useRouter()
 
+const forumUrl = import.meta.env.VITE_FORUM_URL || 'https://disi-al.com'
 const loading = ref(!peek('skills'))
 const error = ref('')
 const overview = ref(peek('overview') || { skillCount: 0, totalXp: 0, saturatedCount: 0, dailyXp: [], todayCheckins: 0 })
@@ -296,7 +297,7 @@ onMounted(load)
             <button class="insist-btn" type="button" :disabled="sharing" @click="publish">
               {{ sharing ? '发布中…' : '发布本周总结' }}
             </button>
-            <router-link v-if="publishedId" class="insist-btn" :to="'/post/' + publishedId">查看帖子 →</router-link>
+            <a v-if="publishedId" class="insist-btn" :href="forumUrl + '/post/' + publishedId" target="_blank" rel="noopener">查看帖子 →</a>
           </div>
           <p v-if="shareMsg" class="notice">{{ shareMsg }}</p>
         </section>
