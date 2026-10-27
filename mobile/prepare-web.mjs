@@ -52,12 +52,33 @@ const injection = `  <script>
     window.__DISI_MOBILE__ = true;
   </script>
   <style>
-    /* 刘海屏 / 底部横条安全区 */
-    html { --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); }
-    body { padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
-    /* 移动端不显示滚动条 */
+    /* ---- 刘海屏 / 底部横条安全区 ---- */
+    html {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+    body {
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+      touch-action: manipulation;   /* 去掉双击放大 */
+    }
+
+    /* ---- iOS 聚焦输入框会自动放大页面，字号 < 16px 时更明显 ---- */
+    input,
+    textarea,
+    select,
+    [contenteditable="true"] {
+      font-size: 16px !important;
+    }
+
+    /* ---- 移动端不显示滚动条 ---- */
     html { scrollbar-width: none; -ms-overflow-style: none; }
     ::-webkit-scrollbar { width: 0; height: 0; }
+
+    /* ---- 防止固定定位元素在键盘弹出时被顶起后再也回不来 ---- */
+    .fixed-bottom { transform: translateZ(0); }
   </style>
   <script>
     // 原生能力：状态栏配色、启动图收起、返回键 / 左缘滑动返回
@@ -168,12 +189,12 @@ if (!html.includes('__DISI_API_BASE__')) {
   html = html.replace(/window\.__DISI_API_BASE__ = "[^"]*"/, `window.__DISI_API_BASE__ = ${JSON.stringify(app.api)}`)
 }
 
-// viewport-fit=cover（安全区生效的前提）
-if (!html.includes('viewport-fit=cover')) {
-  html = html.replace(
-    /(<meta name="viewport" content="[^"]*")/,
-    '$1, viewport-fit=cover"'
-  ).replace(', viewport-fit=cover""', ', viewport-fit=cover"')
+// viewport：原生环境锁定缩放（浏览器里不动，保留无障碍缩放）
+const nativeViewport = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+if (html.includes('name="viewport"')) {
+  html = html.replace(/<meta name="viewport" content="[^"]*"[^>]*>/, `<meta name="viewport" content="${nativeViewport}">`)
+} else {
+  html = html.replace('</head>', `  <meta name="viewport" content="${nativeViewport}">\n</head>`)
 }
 
 fs.writeFileSync(indexPath, html)
