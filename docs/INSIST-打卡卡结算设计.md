@@ -110,7 +110,7 @@ GET /cards?status=done
 - 结算事件（perfect / filled / manual）作为成就引擎的输入事件之一；
 - 引擎实现后，现有的 7/30/100 散装调用一并迁入定义表，避免两套逻辑。
 
-## 7. 已确认事项（v3）
+## 7. 已确认事项（v4）
 
 | 问题 | 结论 |
 |---|---|
@@ -119,6 +119,8 @@ GET /cards?status=done
 | 已结算卡能否复活 | 不能，只能新建 |
 | 系统是否改重要度 | **不改**，永远由用户决定 |
 | `habit` 是否改名 | **改**，统一为 `checkin`（含数据库） |
+| 表名是否一起改 | **改**：`insist_habit_logs` → `insist_checkin_logs` |
+| `cycle_days` 是否必填 | **必填**：前端不给默认值，后端 schema 与模型都要求非空 |
 
 ## 8. 数据库迁移（SQLite）
 
@@ -129,8 +131,11 @@ UPDATE insist_cards SET kind = 'checkin' WHERE kind = 'habit';
 ALTER TABLE insist_cards ADD COLUMN settle_reason VARCHAR(12);
 ALTER TABLE insist_cards ADD COLUMN settled_at DATETIME;
 ALTER TABLE insist_cards ADD COLUMN locked_xp FLOAT;
--- 3) 打卡日志唯一约束（防多设备同日重复）
-CREATE UNIQUE INDEX IF NOT EXISTS uq_habit_log_card_day ON insist_habit_logs (card_id, day);
+-- 3) 打卡日志表改名 + 唯一约束（防多设备同日重复）
+ALTER TABLE insist_habit_logs RENAME TO insist_checkin_logs;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_checkin_log_card_day ON insist_checkin_logs (card_id, day);
+-- 4) 周期必填（历史空值先补 30）
+UPDATE insist_cards SET cycle_days = 30 WHERE kind = 'checkin' AND cycle_days IS NULL;
 ```
 
 代码侧需要同步的位置（全部 `habit` 出现点）：
