@@ -224,10 +224,14 @@ onMounted(load)
               <span class="tick">{{ n.got >= n.need ? '✓' : '○' }}</span>
               <span class="ck-label">{{ n.label }}</span>
               <span class="ck-count mono">{{ n.got }} / {{ n.need }}</span>
+              <span v-if="n.subs" class="ck-sub mono">含成就替代 {{ n.subs }}</span>
               <span class="ck-bar"><i :style="{ width: Math.min(100, (n.got / n.need) * 100) + '%' }"></i></span>
             </li>
           </ul>
-          <p class="hint">凭证来自完成的项目卡 / 任务卡 / 成就卡（成就可用于替代同等级项目）。</p>
+          <p class="hint">
+            凭证来自完成的项目卡 / 任务卡 / 成就卡。项目卡不足时，可用<strong>同等级或更高等级</strong>的成就卡替代
+            （例：英语六级及格可顶替一个高阶项目，适合产不出项目的学科）。
+          </p>
 
           <div class="actions">
             <button
@@ -399,4 +403,6 @@ onMounted(load)
 .head-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
 .focus-badge { font-size: 0.62rem; color: #cfcfcf; border: 1px solid #3a3a3a; border-radius: 3px; padding: 0.02rem 0.32rem; }
 .field-hint { margin-top: 0.4rem; font-size: 0.66rem; color: #5f5f5f; line-height: 1.6; }
+
+.ck-sub { font-size: 0.6rem; color: #d29922; margin-left: 0.3rem; }
 </style>
