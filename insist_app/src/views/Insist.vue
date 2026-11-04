@@ -473,7 +473,7 @@ onMounted(load)
 }
 .checkin-meta { width: 100%; font-size: 0.64rem; color: #5f5f5f; line-height: 1.5; }
 
-.checkin-btn { min-width: 84px; height: 32px; padding: 0 1rem; flex: 0 0 auto; }
+.checkin-btn { min-width: 84px; height: 32px; padding: 0 0.9rem; flex: 0 0 auto; justify-content: center; }
 .checkin-flag {
   flex: 0 0 auto;
   font-size: 0.68rem;

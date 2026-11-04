@@ -200,7 +200,9 @@
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
+  line-height: 1;
 }
 .insist-btn:hover { border-color: #5a5a5a; color: #fff; }
 .insist-btn.primary { background: #ededed; border-color: #ededed; color: #000; }
