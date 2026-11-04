@@ -122,79 +122,64 @@ def skill_level_ok(card_tier: int, skill_level: int) -> bool:
 
 def promotion_checklist(cards) -> dict:
     """
-    按量晋升清单：统计已完成卡片。
-    熟练 → 精通：高阶项目 1 + 中阶任务 3 + 小任务 5
-    精通 → 专家：臻阶项目 1 + 高阶项目 2 + 高阶成就 1
+    按量晋升清单（2026-11-04 调整）：
 
-    成就替代规则（重要）：
-    - 项目卡不足时，可用「同等级或更高等级」的成就卡顶替；
-      例：英语六级及格（高阶成就）可以替代一个高阶项目，
-          因为有些学科根本产不出项目。
-    - 替代按"高级需求优先"消耗成就，避免一张成就被重复计算。
+    熟练 → 精通：
+      - 高阶及以上任务卡 ≥ 2 张
+      - 高阶及以上项目卡 ≥ 1 张
+      （初阶卡不计入要求）
+
+    精通 → 专家：
+      - 臻阶任务卡 ≥ 3 张
+      - 臻阶项目卡 ≥ 3 张
+
+    成就替代：任一需求不足时，可用「同等级或更高等级」的成就卡顶替，
+    一张成就只算一次，按等级需求从高到低消耗。
     """
     done = [c for c in cards if c.status in ("done", "archived")]
 
-    def count(kind, tier):
-        return sum(1 for c in done if c.kind == kind and c.tier == tier)
+    def raw_count(kind: str, min_tier: int) -> int:
+        return sum(1 for c in done if c.kind == kind and (c.tier or 1) >= min_tier)
 
-    def count_at_least(kind, tier):
-        return sum(1 for c in done if c.kind == kind and (c.tier or 1) >= tier)
+    # 每个阶段独立评估成就替代（互不占用）
+    base_ach = sorted(((c.tier or 1) for c in done if c.kind == "achievement"), reverse=True)
 
-    # 可用作替代的成就（按等级从高到低）
-    ach_pool = sorted(
-        [(c.tier or 1) for c in done if c.kind == "achievement"],
-        reverse=True,
-    )
-
-    def take_ach(min_tier: int) -> bool:
-        """从池子里取一张 >= min_tier 的成就，成功则消耗"""
-        for i, t in enumerate(ach_pool):
+    def take_ach(pool, min_tier: int) -> bool:
+        for i, t in enumerate(pool):
             if t >= min_tier:
-                ach_pool.pop(i)
+                pool.pop(i)
                 return True
         return False
 
-    def need_with_sub(required: int, raw: int, min_tier: int):
-        """先算真实数量，不足部分用成就补；返回 (got, subs)"""
-        got = raw
-        subs = 0
-        while got < required and take_ach(min_tier):
-            got += 1
-            subs += 1
-        return got, subs
-
-    # ---- 熟练 → 精通 ----
-    project_high_raw = count("project", 3)
-    project_high, subs_ph = need_with_sub(1, project_high_raw, 3)
-
-    task_mid_raw = count("task", 2) + count("project", 2)
-    task_mid, subs_tm = need_with_sub(3, task_mid_raw, 2)
-
-    task_low_raw = count("task", 1)
-    task_low, subs_tl = need_with_sub(5, task_low_raw, 1)
-
-    # ---- 精通 → 专家 ----
-    project_expert_raw = count("project", 4)
-    project_expert, subs_pe = need_with_sub(1, project_expert_raw, 4)
-
-    project_high2_raw = max(0, count_at_least("project", 3) - 1)  # 已被上一档用掉一张
-    project_high2, subs_ph2 = need_with_sub(2, project_high2_raw, 3)
-
-    ach_high_raw = count_at_least("achievement", 3)
-    ach_high, _ = need_with_sub(1, ach_high_raw, 3)
-
-    return {
+    # 需求定义：(标签, kind, 最低等级, 需要数量)
+    reqs = {
         "to_master": [
-            {"label": "高阶项目卡", "need": 1, "got": project_high, "subs": subs_ph},
-            {"label": "中阶任务卡", "need": 3, "got": task_mid, "subs": subs_tm},
-            {"label": "小任务卡", "need": 5, "got": task_low, "subs": subs_tl},
+            ("高阶及以上任务卡", "task", 3, 2),
+            ("高阶及以上项目卡", "project", 3, 1),
         ],
         "to_expert": [
-            {"label": "臻阶项目卡", "need": 1, "got": project_expert, "subs": subs_pe},
-            {"label": "高阶项目卡", "need": 2, "got": project_high2, "subs": subs_ph2},
-            {"label": "高阶成就卡", "need": 1, "got": ach_high, "subs": 0},
+            ("臻阶任务卡", "task", 4, 3),
+            ("臻阶项目卡", "project", 4, 3),
         ],
     }
+
+    result = {}
+    for stage, items in reqs.items():
+        ach_pool = list(base_ach)
+        # 先按等级从高到低满足，成就优先给高等级需求
+        items_sorted = sorted(items, key=lambda x: (-x[2], -x[3]))
+        computed = {}
+        for label, kind, min_tier, need in items_sorted:
+            got = raw_count(kind, min_tier)
+            subs = 0
+            while got < need and take_ach(ach_pool, min_tier):
+                got += 1
+                subs += 1
+            computed[label] = {"label": label, "need": need, "got": got, "subs": subs}
+        # 按原始顺序输出，界面稳定
+        result[stage] = [computed[label] for label, kind, min_tier, need in items]
+
+    return result
 
 
 def checklist_for_level(checklist: dict, level: int):
