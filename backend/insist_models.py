@@ -60,16 +60,19 @@ class InsistCard(Base):
     total_days = Column(Integer, default=0)
     last_checkin = Column(Date, nullable=True)
     phase = Column(String(20), nullable=True)
+    settle_reason = Column(String(12), nullable=True)   # perfect | filled | manual
+    settled_at = Column(DateTime, nullable=True)
+    locked_xp = Column(Float, nullable=True)            # 结算时锁定的 XP 快照
     created_at = Column(DateTime, default=now)
     updated_at = Column(DateTime, default=now, onupdate=now)
     done_at = Column(DateTime, nullable=True)
 
     skill = relationship("InsistSkill", back_populates="cards")
-    logs = relationship("InsistHabitLog", back_populates="card", cascade="all, delete-orphan")
+    logs = relationship("InsistCheckinLog", back_populates="card", cascade="all, delete-orphan")
 
 
-class InsistHabitLog(Base):
-    __tablename__ = "insist_habit_logs"
+class InsistCheckinLog(Base):
+    __tablename__ = "insist_checkin_logs"
     __table_args__ = (UniqueConstraint("card_id", "day", name="uq_habit_card_day"),)
 
     id = Column(String(12), primary_key=True, default=gen_id)

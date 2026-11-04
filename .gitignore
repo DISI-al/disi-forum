@@ -95,3 +95,7 @@ backup_*.db
 /mobile/*/ios/App/*.xcworkspace/xcuserdata
 /mobile/*/ios/App/*.xcodeproj/xcuserdata
 /mobile/*/android/keystore.properties
+
+/backend/*.db.bak-*
+/backend/*.db-wal
+/backend/*.db-shm

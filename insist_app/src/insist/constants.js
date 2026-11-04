@@ -22,7 +22,7 @@ export function daysAgo(iso) {
 
 /** 卡片类型中文 */
 export const kindLabel = (kind) =>
-  ({ habit: '打卡', task: '任务', project: '项目', achievement: '成就' }[kind] || '卡片')
+  ({ checkin: '打卡', task: '任务', project: '项目', achievement: '成就' }[kind] || '卡片')
 
 export const statusLabel = (status) =>
   ({ active: '进行中', done: '已完成', archived: '已归档' }[status] || '')

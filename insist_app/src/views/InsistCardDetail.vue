@@ -5,7 +5,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import InsistNav from '../components/InsistNav.vue'
-import { apiCard, apiSkills, apiCheckin, apiCompleteCard, apiPatchCard, apiDeleteCard } from '../api/insist_api.js'
+import { apiCard, apiSkills, apiCheckin, apiCompleteCard, apiSettleCard, apiPatchCard, apiDeleteCard } from '../api/insist_api.js'
 import { tierName, kindLabel, statusLabel } from '../insist/constants.js'
 
 const route = useRoute()
@@ -19,9 +19,12 @@ const busy = ref(false)
 const showEdit = ref(false)
 const savingEdit = ref(false)
 const confirmDelete = ref(false)
+const showSettle = ref(false)
+const settleDetail = ref('')
+const settling = ref(false)
 const editDraft = ref({ title: '', detail: '', tier: 2, xpValue: 0 })
 
-const isHabit = computed(() => card.value?.kind === 'habit')
+const isHabit = computed(() => card.value?.kind === 'checkin')
 const isAchievement = computed(() => card.value?.kind === 'achievement')
 const isDone = computed(() => card.value?.status === 'done')
 // 成就卡回成就墙，其他回卡片库
@@ -73,7 +76,7 @@ async function submitEdit() {
       title,
       detail: editDraft.value.detail,
       tier: Number(editDraft.value.tier),
-      xp_value: card.value.kind === 'habit' ? 0 : Number(editDraft.value.xpValue) || 0,
+      xp_value: card.value.kind === 'checkin' ? 0 : Number(editDraft.value.xpValue) || 0,
     })
     showEdit.value = false
     await load()
@@ -106,12 +109,39 @@ async function checkin() {
   busy.value = true
   try {
     const res = await apiCheckin(card.value.id)
-    notice.value = `打卡成功 +${res.xp} XP` + (res.streak > 1 ? ` · 连续 ${res.streak} 天` : '') + (res.awards?.length ? ` · 获得成就「${res.awards.join('、')}」` : '')
+    const extra = res.awards?.length ? ` · 获得成就「${res.awards.join('、')}」` : ''
+    if (res.settled) {
+      notice.value = `打卡成功 · 周期已满，已结算为已完成任务卡（锁定 ${res.settled.card?.lockedXp ?? 0} XP）${extra}`
+    } else {
+      notice.value = `打卡成功 +${res.xp} XP` + (res.streak > 1 ? ` · 连续 ${res.streak} 天` : '') + extra
+    }
     await load()
   } catch (e) {
     error.value = e.message || '打卡失败'
   } finally {
     busy.value = false
+  }
+}
+
+function openSettle() {
+  settleDetail.value = ''
+  error.value = ''
+  showSettle.value = true
+}
+
+async function settle() {
+  if (settling.value) return
+  settling.value = true
+  error.value = ''
+  try {
+    const res = await apiSettleCard(card.value.id, settleDetail.value)
+    showSettle.value = false
+    notice.value = `已结算为已完成任务卡 · 锁定 ${res.lockedXp ?? 0} XP` + (res.awards?.length ? ` · 获得成就「${res.awards.join('、')}」` : '')
+    await load()
+  } catch (e) {
+    error.value = e.message || '结算失败'
+  } finally {
+    settling.value = false
   }
 }
 
@@ -168,7 +198,9 @@ onMounted(load)
           <div class="cell"><span class="label">奖励</span><span class="value mono">+{{ card.xpValue }} XP</span></div>
           <div class="cell"><span class="label">进度</span><span class="value mono">{{ card.progress }}%</span></div>
           <div v-if="card.phase" class="cell"><span class="label">阶段</span><span class="value mono">{{ card.phase }}</span></div>
-          <div v-if="isHabit" class="cell"><span class="label">打卡</span><span class="value mono">连续 {{ card.streak }} 天 · 累计 {{ card.totalDays }} 天</span></div>
+          <div v-if="isHabit || card.totalDays" class="cell"><span class="label">打卡</span><span class="value mono">连续 {{ card.streak }} 天 · 累计 {{ card.totalDays }} 天</span></div>
+          <div v-if="card.lockedXp" class="cell"><span class="label">锁定</span><span class="value mono">{{ card.lockedXp }} XP</span></div>
+          <div v-if="card.settleReason" class="cell"><span class="label">结算</span><span class="value mono">{{ { perfect: '周期全满', filled: '累计补满', manual: '提前结算' }[card.settleReason] || card.settleReason }}</span></div>
 
         </section>
 
@@ -181,7 +213,8 @@ onMounted(load)
           <ul class="rules">
             <li>每日结算一次，不打卡不计；连续中断清零连续天数，累计天数保留。</li>
             <li>每日 XP 随累计天数递减：1.0 → 0.85 → 0.62 → 0.45 → 0.30。</li>
-            <li>累计达标且近期完成率 ≥ 2/3，可进化成任务卡，XP 锁定、重要度 −1。</li>
+            <li>周期内连续打满 N 天（或断过但累计打满 N 天），系统自动结算为已完成任务卡。</li>
+            <li>也可以随时「提前结算」：经验值锁定、卡片转为已完成任务卡，进度不会丢。</li>
           </ul>
         </section>
 
@@ -204,6 +237,14 @@ onMounted(load)
           >{{ todayDone() ? '今天已打卡' : '打卡' }}</button>
 
           <button
+            v-if="isHabit && (card.totalDays || 0) > 0"
+            class="insist-btn"
+            type="button"
+            :disabled="busy"
+            @click="openSettle"
+          >提前结算</button>
+
+          <button
             v-else-if="!isDone && card.kind !== 'achievement'"
             class="insist-btn primary"
             type="button"
@@ -219,6 +260,31 @@ onMounted(load)
           </button>
         </div>
       </template>
+
+      <!-- 提前结算 -->
+      <div v-if="showSettle" class="modal" @click.self="showSettle = false">
+        <div class="dialog">
+          <h3>提前结算</h3>
+          <p class="hint" style="margin-bottom: 0.9rem">
+            结算后这张打卡卡会变成「已完成的任务卡」：已获得的 {{ card.lockedXp || '全部' }} XP 锁定保留，
+            之后不能继续打卡，可在技能详情的关联经验卡里查看。
+          </p>
+
+          <label class="field"><span>详情（选填，留空自动生成「N 天打卡」）</span>
+            <textarea v-model="settleDetail" rows="3" maxlength="500"
+              placeholder="例如：7 天速通，转去学别的方向了" />
+          </label>
+
+          <p v-if="error" class="dialog-err">{{ error }}</p>
+
+          <div class="dialog-actions">
+            <button class="insist-btn" type="button" @click="showSettle = false">取消</button>
+            <button class="insist-btn primary" type="button" :disabled="settling" @click="settle">
+              {{ settling ? '结算中…' : '确认结算' }}
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- 编辑卡片 -->
       <div v-if="showEdit" class="modal" @click.self="showEdit = false">
@@ -241,7 +307,7 @@ onMounted(load)
             </div>
           </div>
 
-          <label v-if="card.kind !== 'habit'" class="field"><span>奖励 XP</span>
+          <label v-if="card.kind !== 'checkin'" class="field"><span>奖励 XP</span>
             <input v-model.number="editDraft.xpValue" type="number" min="0" step="10" />
           </label>
 

@@ -84,7 +84,7 @@ async function submitAdd() {
       detail: draft.value.detail,
       tier: Number(draft.value.tier),
       skill_id: route.params.id,
-      xp_value: draft.value.kind === 'habit' ? 0 : Number(draft.value.xpValue) || 0,
+      xp_value: draft.value.kind === 'checkin' ? 0 : Number(draft.value.xpValue) || 0,
     })
     showAdd.value = false
     await load()
@@ -274,7 +274,7 @@ onMounted(load)
 
           <div class="field"><span>类型</span>
             <div class="chips equal-4">
-              <button v-for="k in [['task','任务'],['project','项目'],['habit','打卡'],['achievement','成就']]" :key="k[0]"
+              <button v-for="k in [['task','任务'],['project','项目'],['checkin','打卡'],['achievement','成就']]" :key="k[0]"
                 type="button" :class="{ on: draft.kind === k[0] }" @click="draft.kind = k[0]">{{ k[1] }}</button>
             </div>
           </div>

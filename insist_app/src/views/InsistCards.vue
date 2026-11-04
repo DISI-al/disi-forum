@@ -17,7 +17,7 @@ const skills = ref(peek('skills') || [])
 
 const tabs = [
   { key: 'task', label: '任务卡' },
-  { key: 'habit', label: '打卡卡' },
+  { key: 'checkin', label: '打卡卡' },
   { key: 'project', label: '项目卡' },
 ]
 const tab = ref('task')
@@ -68,6 +68,10 @@ function openAdd() {
 async function submitAdd() {
   const title = draft.value.title.trim()
   if (!title || saving.value) return
+  if (draft.value.kind === 'checkin' && !(Number(draft.value.cycleDays) > 0)) {
+    error.value = '打卡卡必须填写周期天数'
+    return
+  }
   saving.value = true
   try {
     await apiCreateCard({
@@ -76,8 +80,8 @@ async function submitAdd() {
       detail: draft.value.detail,
       tier: Number(draft.value.tier),
       skill_id: draft.value.skillId || null,
-      xp_value: draft.value.kind === 'habit' ? 0 : Number(draft.value.xpValue) || 0,
-      cycle_days: draft.value.kind === 'habit' ? Number(draft.value.cycleDays) || 30 : null,
+      xp_value: draft.value.kind === 'checkin' ? 0 : Number(draft.value.xpValue) || 0,
+      cycle_days: draft.value.kind === 'checkin' ? Number(draft.value.cycleDays) || 0 : null,
       daily_target: null,
     })
     showAdd.value = false
@@ -254,11 +258,11 @@ onMounted(load)
             </select>
           </label>
 
-          <label v-if="draft.kind !== 'habit'" class="field"><span>完成奖励 XP</span>
+          <label v-if="draft.kind !== 'checkin'" class="field"><span>完成奖励 XP</span>
             <input v-model.number="draft.xpValue" type="number" min="0" step="10" />
           </label>
 
-          <template v-if="draft.kind === 'habit'">
+          <template v-if="draft.kind === 'checkin'">
             <label class="field"><span>周期（天）</span>
               <input v-model.number="draft.cycleDays" type="number" min="1" step="1" />
             </label>

@@ -215,3 +215,26 @@ def apply_xp(skill, amount: float, cfg: dict | None = None) -> dict:
     skill.last_active = now
     skill.updated_at = now
     return result
+
+
+def settle_path(card) -> str | None:
+    """
+    打卡卡是否该自动结算：
+    - 连续满周期 → perfect
+    - 断过但累计满周期 → filled
+    - 都不满足 → None
+    """
+    need = card.cycle_days or 0
+    if need <= 0:
+        return None
+    if (card.streak or 0) >= need:
+        return "perfect"
+    if (card.total_days or 0) >= need:
+        return "filled"
+    return None
+
+
+def settle_detail(card) -> str:
+    """结算后自动生成的详情文案"""
+    need = card.cycle_days or 0
+    return f"{need} 天打卡（连续 {card.streak or 0} 天，累计 {card.total_days or 0} 天）"

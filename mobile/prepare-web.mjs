@@ -56,13 +56,19 @@ const injection = `  <script>
     html {
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --app-bg: ${JSON.stringify(app.background)};
+      background: var(--app-bg);    /* 越界滚动时露出的就是应用底色 */
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
+      overscroll-behavior-y: contain;
     }
     body {
+      background: var(--app-bg);
+      min-height: 100%;
       padding-top: var(--safe-top);
       padding-bottom: var(--safe-bottom);
       touch-action: manipulation;   /* 去掉双击放大 */
+      overscroll-behavior-y: contain;
     }
 
     /* ---- iOS 聚焦输入框会自动放大页面，字号 < 16px 时更明显 ---- */
@@ -141,7 +147,59 @@ const injection = `  <script>
           P.App.addListener('backButton', function () { goBack(P); });
         } catch (e) {}
 
-        // 4) iOS：屏幕左缘往右滑 = 返回
+        // 4) 下拉刷新（列表页顶部下拉 70px 触发）
+        (function () {
+          var startY = 0, pulling = false, ready = false;
+          var bar = document.createElement('div');
+          bar.style.cssText =
+            'position:fixed;left:0;right:0;top:0;height:44px;display:flex;align-items:center;justify-content:center;' +
+            'font-size:12px;color:#8a8a8a;background:transparent;transform:translateY(-44px);' +
+            'transition:transform .18s ease;z-index:9999;pointer-events:none;';
+          bar.textContent = '下拉刷新';
+          document.body.appendChild(bar);
+
+          function reset() {
+            bar.style.transform = 'translateY(-44px)';
+            bar.textContent = '下拉刷新';
+            pulling = false;
+            ready = false;
+          }
+
+          document.addEventListener('touchstart', function (e) {
+            if (e.touches.length !== 1) return;
+            if (window.scrollY > 0) return;
+            startY = e.touches[0].clientY;
+            pulling = true;
+          }, { passive: true });
+
+          document.addEventListener('touchmove', function (e) {
+            if (!pulling) return;
+            var dy = e.touches[0].clientY - startY;
+            if (dy <= 0) { reset(); return; }
+            var shown = Math.min(44, dy * 0.5);
+            bar.style.transform = 'translateY(' + (shown - 44) + 'px)';
+            ready = dy > 70;
+            bar.textContent = ready ? '松开刷新' : '下拉刷新';
+          }, { passive: true });
+
+          document.addEventListener('touchend', function () {
+            if (!pulling) return;
+            if (ready) {
+              bar.textContent = '刷新中…';
+              bar.style.transform = 'translateY(0)';
+              window.dispatchEvent(new Event('disi:refresh'));
+              // 页面没接管就整体重载（SPA 资源有缓存，速度很快）
+              setTimeout(function () {
+                if (!window.__DISI_REFRESH_HANDLED__) location.reload();
+              }, 320);
+            } else {
+              reset();
+            }
+            pulling = false;
+          }, { passive: true });
+        })();
+
+        // 5) iOS：屏幕左缘往右滑 = 返回
         var startX = 0, startY = 0, tracking = false;
         document.addEventListener(
           'touchstart',

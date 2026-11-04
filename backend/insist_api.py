@@ -8,17 +8,20 @@ import io
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from auth import require_user
 from database import get_db
 from insist_ai import review_promotion, review_prompt_payload
-from insist_models import InsistCard, InsistHabitLog, InsistSetting, InsistSkill, InsistXpEvent
+from insist_models import InsistCard, InsistCheckinLog, InsistSetting, InsistSkill, InsistXpEvent
 from insist_rules import (
     DAILY_XP, DEFAULT_CONFIG, IMPORTANCE, LEVELS, LEVEL_MIN, STREAK_BONUS, TIERS,
     apply_xp, checklist_done, checklist_for_level, daily_xp, day_decay, forget_percent,
-    merge_config, promotion_checklist, segment_max, segment_start, streak_bonus,
+    merge_config, promotion_checklist, segment_max, segment_start, settle_detail, settle_path,
+    streak_bonus,
 )
+import insist_achievements as ach
 from insist_schemas import AiReviewRequest, CardCreate, CardUpdate, SettingsUpdate, SkillCreate, SkillUpdate
 from models import User
 
@@ -71,6 +74,9 @@ def card_payload(card: InsistCard) -> dict:
         "totalDays": card.total_days or 0,
         "lastCheckin": card.last_checkin.isoformat() if card.last_checkin else None,
         "phase": card.phase,
+        "settleReason": card.settle_reason,
+        "settledAt": card.settled_at.isoformat() if card.settled_at else None,
+        "lockedXp": round(card.locked_xp, 2) if card.locked_xp else None,
     }
 
 
@@ -270,7 +276,7 @@ def delete_card(card_id: str, current_user: User = Depends(require_user), db: Se
 @router.post("/cards/{card_id}/checkin")
 def checkin(card_id: str, current_user: User = Depends(require_user), db: Session = Depends(get_db)):
     card = _card_or_404(db, current_user, card_id)
-    if card.kind != "habit":
+    if card.kind != "checkin":
         raise HTTPException(status_code=400, detail="只有打卡卡可以打卡")
     today = date.today()
     if card.last_checkin == today:
@@ -303,19 +309,30 @@ def checkin(card_id: str, current_user: User = Depends(require_user), db: Sessio
         if got:
             awards.append(got)
 
-    log = InsistHabitLog(
+    log = InsistCheckinLog(
         card_id=card.id, user_id=current_user.id, day=today,
         base_xp=base, multiplier=multiplier, xp=total,
     )
     db.add(log)
+
+    # 成就：连续 / 累计 / 凌晨打卡
+    awards += ach.on_checkin(db, current_user, card)
+    awards += ach.on_midnight_checkin(db, current_user, datetime.now().hour)
 
     applied = {"progress": 0.0, "overflow": 0.0, "saturated": False}
     skill_payload_out = None
     if card.skill_id:
         skill = _skill_or_404(db, current_user, card.skill_id)
         applied = apply_xp(skill, total, cfg)
-        _event(db, current_user, skill.id, total, "habit", f"打卡《{card.title}》", card.id)
+        _event(db, current_user, skill.id, total, "checkin", f"打卡《{card.title}》", card.id)
         skill_payload_out = skill_payload(skill, db, cfg)
+
+    # 自动结算：连续满 / 累计满周期 → 转成已完成任务卡
+    settled = None
+    path = settle_path(card)
+    if path:
+        awards += _settle_card(db, current_user, card, path)
+        settled = {"path": path, "card": card_payload(card)}
 
     db.commit()
     db.refresh(card)
@@ -330,6 +347,62 @@ def checkin(card_id: str, current_user: User = Depends(require_user), db: Sessio
         "card": card_payload(card),
         "skill": skill_payload_out,
         "awards": awards,
+        "settled": settled,
+    }
+
+
+def _settle_card(db: Session, user: User, card: InsistCard, path: str, detail: str | None = None) -> list[str]:
+    """
+    把打卡卡结算成一张已完成的任务卡（原地转换）：
+    - 锁定已产出的 XP
+    - kind: checkin → task，status → done
+    - detail 用户自填优先，否则自动生成「N 天打卡（连续 x 天，累计 y 天）」
+    """
+    locked = db.query(func.sum(InsistCheckinLog.xp)).filter(
+        InsistCheckinLog.card_id == card.id
+    ).scalar() or 0
+
+    card.kind = "task"
+    card.status = "done"
+    card.progress = 100
+    card.done_at = datetime.now(timezone.utc)
+    card.settle_reason = path
+    card.settled_at = card.done_at
+    card.locked_xp = round(float(locked), 3)
+    if not card.xp_value:
+        card.xp_value = card.locked_xp
+    if detail and detail.strip():
+        card.detail = detail.strip()
+    elif not (card.detail or "").strip():
+        card.detail = settle_detail(card)
+
+    awards = ach.on_settle(db, user, card, path)
+    if card.skill_id:
+        _event(db, user, card.skill_id, 0, "settle",
+               f"结算《{card.title}》锁定 {card.locked_xp} XP（{path}）", card.id)
+    db.flush()
+    return awards
+
+
+@router.post("/cards/{card_id}/settle")
+def settle_card(card_id: str, payload: dict | None = None, current_user: User = Depends(require_user), db: Session = Depends(get_db)):
+    """手动提前结算打卡卡：经验值锁定，卡片转成已完成任务卡"""
+    card = _card_or_404(db, current_user, card_id)
+    if card.kind != "checkin":
+        raise HTTPException(status_code=400, detail="只有打卡卡可以结算")
+    if card.status != "active":
+        raise HTTPException(status_code=400, detail="这张卡已经结算过了")
+    if not (card.total_days or 0):
+        raise HTTPException(status_code=400, detail="还没有打卡记录，无法结算")
+
+    detail = (payload or {}).get("detail")
+    awards = _settle_card(db, current_user, card, "manual", detail)
+    db.commit()
+    db.refresh(card)
+    return {
+        "card": card_payload(card),
+        "lockedXp": card.locked_xp,
+        "awards": awards,
     }
 
 
@@ -337,7 +410,7 @@ def checkin(card_id: str, current_user: User = Depends(require_user), db: Sessio
 @router.post("/cards/{card_id}/complete")
 def complete_card(card_id: str, current_user: User = Depends(require_user), db: Session = Depends(get_db)):
     card = _card_or_404(db, current_user, card_id)
-    if card.kind == "habit":
+    if card.kind == "checkin":
         raise HTTPException(status_code=400, detail="打卡卡用打卡接口结算")
     if card.status == "done":
         raise HTTPException(status_code=400, detail="这张卡已经结算过了")
@@ -356,15 +429,7 @@ def complete_card(card_id: str, current_user: User = Depends(require_user), db: 
         skill_out = skill_payload(skill, db, cfg)
 
     db.flush()
-    done_count = db.query(InsistCard).filter(
-        InsistCard.user_id == current_user.id, InsistCard.status == "done", InsistCard.kind != "achievement"
-    ).count()
-    awards = []
-    if done_count in (10, 30, 100):
-        tier = 4 if done_count >= 100 else (3 if done_count >= 30 else 2)
-        got = _award(db, current_user, f"完成 {done_count} 张经验卡", tier, f"累计完成 {done_count} 张经验卡")
-        if got:
-            awards.append(got)
+    awards = ach.on_card_done(db, current_user, card)
 
     db.commit()
     db.refresh(card)
@@ -395,6 +460,7 @@ def promotion_status(skill_id: str, current_user: User = Depends(require_user), 
 @router.post("/skills/{skill_id}/promote")
 def promote(skill_id: str, current_user: User = Depends(require_user), db: Session = Depends(get_db)):
     skill = _skill_or_404(db, current_user, skill_id)
+    cfg = _user_config(db, current_user)
     if skill.level >= 4:
         raise HTTPException(status_code=400, detail="已经是最高段位")
 
@@ -418,9 +484,14 @@ def promote(skill_id: str, current_user: User = Depends(require_user), db: Sessi
     skill.last_active = datetime.now(timezone.utc)
 
     _event(db, current_user, skill.id, transferred, "promotion", f"晋升到{LEVELS[skill.level]}，转入溢出 {transferred}")
+    awards = ach.on_promote(db, current_user, skill)
     db.commit()
     db.refresh(skill)
-    return {"skill": skill_payload(skill, db, cfg), "transferred": transferred, "awards": [promoted_award] if promoted_award else []}
+    return {
+        "skill": skill_payload(skill, db, cfg),
+        "transferred": transferred,
+        "awards": awards,
+    }
 
 
 # ====================== 统计 ======================
@@ -431,10 +502,10 @@ def stats_checkins(days: int = 14, current_user: User = Depends(require_user), d
     start = today - timedelta(days=days - 1)
 
     habits = db.query(InsistCard).filter(
-        InsistCard.user_id == current_user.id, InsistCard.kind == "habit"
+        InsistCard.user_id == current_user.id, InsistCard.kind == "checkin"
     ).all()
-    logs = db.query(InsistHabitLog).filter(
-        InsistHabitLog.user_id == current_user.id, InsistHabitLog.day >= start
+    logs = db.query(InsistCheckinLog).filter(
+        InsistCheckinLog.user_id == current_user.id, InsistCheckinLog.day >= start
     ).all()
     done_map = {(l.card_id, l.day) for l in logs}
 
@@ -485,6 +556,13 @@ def overview(current_user: User = Depends(require_user), db: Session = Depends(g
         "todayCheckins": sum(1 for c in cards if c.kind == "habit" and c.last_checkin == today),
         "dailyXp": [round(v, 1) for v in daily.values()],
     }
+
+
+# ====================== 成就 ======================
+@router.get("/achievements/wall")
+def achievements_wall(current_user: User = Depends(require_user), db: Session = Depends(get_db)):
+    """成就墙：按分类分组，含是否获得与进度"""
+    return ach.wall(db, current_user)
 
 
 # ====================== AI 审核（预留） ======================
@@ -544,7 +622,7 @@ def export_data(format: str = "json", current_user: User = Depends(require_user)
     """
     skills = db.query(InsistSkill).filter(InsistSkill.user_id == current_user.id).all()
     cards = db.query(InsistCard).filter(InsistCard.user_id == current_user.id).all()
-    logs = db.query(InsistHabitLog).filter(InsistHabitLog.user_id == current_user.id).all()
+    logs = db.query(InsistCheckinLog).filter(InsistCheckinLog.user_id == current_user.id).all()
     events = db.query(InsistXpEvent).filter(InsistXpEvent.user_id == current_user.id).all()
 
     if format in ("csv", "csv-cards"):

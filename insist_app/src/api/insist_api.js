@@ -64,6 +64,9 @@ export const apiDeleteCard = (id) => request(`/cards/${id}`, { method: 'DELETE' 
 // 打卡 / 结算
 export const apiCheckin = (id) => request(`/cards/${id}/checkin`, { method: 'POST' })
 export const apiCompleteCard = (id) => request(`/cards/${id}/complete`, { method: 'POST' })
+export const apiSettleCard = (id, detail = '') =>
+  request(`/cards/${id}/settle`, { method: 'POST', body: JSON.stringify({ detail }) })
+export const apiAchievementWall = () => request('/achievements/wall')
 
 // 晋升
 export const apiPromotion = (id) => request(`/skills/${id}/promotion`)

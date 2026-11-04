@@ -5,7 +5,7 @@
  */
 import { ref, computed, onMounted } from 'vue'
 import InsistNav from '../components/InsistNav.vue'
-import { apiCards, apiSkills, apiCreateCard, apiDeleteCard } from '../api/insist_api.js'
+import { apiCards, apiSkills, apiCreateCard, apiDeleteCard, apiAchievementWall } from '../api/insist_api.js'
 import { cached, peek, invalidate } from '../insist/cache.js'
 import { TIERS, tierName } from '../insist/constants.js'
 
@@ -14,6 +14,19 @@ const error = ref('')
 const notice = ref('')
 const cards = ref(peek('ach') || [])
 const skills = ref(peek('skills') || [])
+const wall = ref(null)
+const wallLoading = ref(false)
+
+async function loadWall() {
+  wallLoading.value = true
+  try {
+    wall.value = await apiAchievementWall()
+  } catch (e) {
+    /* 成就墙加载失败不影响手动录入 */
+  } finally {
+    wallLoading.value = false
+  }
+}
 
 const showAdd = ref(false)
 const saving = ref(false)
@@ -34,6 +47,7 @@ async function load() {
     ])
     cards.value = cs
     skills.value = sk
+    loadWall()
   } catch (e) {
     error.value = e.message || '加载失败'
   } finally {
@@ -213,4 +227,16 @@ onMounted(load)
 .chips button.on { border-color: #6a6a6a; color: #ededed; background: #111; }
 .dialog-err { color: #f85149; font-size: 0.74rem; }
 .dialog-foot { display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.4rem; }
+
+.ach-group { margin-top: 1rem; }
+.ach-group-title { font-size: 0.66rem; color: #6a6a6a; letter-spacing: 0.14em; margin-bottom: 0.35rem; }
+.ach-defs { list-style: none; margin: 0; padding: 0; }
+.ach-defs li { display: flex; align-items: center; gap: 0.6rem; padding: 0.42rem 0; border-bottom: 1px solid #101010; opacity: 0.55; }
+.ach-defs li.got { opacity: 1; }
+.ach-tier { font-size: 0.6rem; color: #5f5f5f; border: 1px solid #1e1e1e; border-radius: 3px; padding: 0 0.25rem; }
+.ach-defs li.got .ach-tier { color: #d29922; border-color: #2a2415; }
+.ach-name { font-size: 0.82rem; color: #e8e8e8; white-space: nowrap; }
+.ach-desc { font-size: 0.64rem; color: #5f5f5f; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ach-prog { font-size: 0.64rem; color: #6a6a6a; }
+.ach-done { font-size: 0.64rem; color: #d29922; }
 </style>

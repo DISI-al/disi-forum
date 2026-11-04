@@ -48,7 +48,7 @@ def _ensure_insist_columns():
 def _clean_insist_orphans():
     """启动时清掉已删除用户留下的 INSIST 数据"""
     from sqlalchemy import text
-    tables = ["insist_habit_logs", "insist_xp_events", "insist_cards", "insist_skills", "insist_settings"]
+    tables = ["insist_checkin_logs", "insist_xp_events", "insist_cards", "insist_skills", "insist_settings"]
     try:
         with engine.connect() as conn:
             for table in tables:

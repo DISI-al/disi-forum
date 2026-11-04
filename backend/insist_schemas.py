@@ -1,7 +1,7 @@
 """INSIST 请求 / 响应模型"""
 from typing import Optional, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class SkillCreate(BaseModel):
@@ -24,7 +24,7 @@ class SkillUpdate(BaseModel):
 
 
 class CardCreate(BaseModel):
-    kind: Literal["habit", "task", "project", "achievement"] = "task"
+    kind: Literal["habit", "checkin", "task", "project", "achievement"] = "task"
     title: str = Field(..., min_length=1, max_length=120)
     detail: str = ""
     tier: int = Field(2, ge=1, le=4)
@@ -32,6 +32,16 @@ class CardCreate(BaseModel):
     xp_value: float = Field(0, ge=0)
     cycle_days: Optional[int] = Field(None, ge=1)
     daily_target: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _normalize(self):
+        # 兼容旧客户端：habit 统一登记为 checkin
+        if self.kind == "habit":
+            self.kind = "checkin"
+        # 打卡卡必须填周期
+        if self.kind == "checkin" and not self.cycle_days:
+            raise ValueError("打卡卡必须填写周期天数")
+        return self
 
 
 class CardUpdate(BaseModel):

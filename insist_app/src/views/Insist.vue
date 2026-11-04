@@ -22,8 +22,8 @@ const busyId = ref('')
 const notice = ref('')
 
 const focus = computed(() => skills.value.find((s) => s.isFocus) || skills.value[0] || null)
-const habits = computed(() => cards.value.filter((c) => c.kind === 'habit' && c.status === 'active'))
-const activeCards = computed(() => cards.value.filter((c) => c.status === 'active' && c.kind !== 'habit').slice(0, 3))
+const checkins = computed(() => cards.value.filter((c) => c.kind === 'checkin' && c.status === 'active'))
+const activeCards = computed(() => cards.value.filter((c) => c.status === 'active' && c.kind !== 'checkin').slice(0, 3))
 const achievements = computed(() => cards.value.filter((c) => c.kind === 'achievement'))
 
 const dailyXp = computed(() => overview.value.dailyXp || [])
@@ -116,7 +116,7 @@ async function publish() {
       }
       lines.push('')
     }
-    const today = habits.value
+    const today = checkins.value
     if (today.length) {
       lines.push('### 今日打卡')
       for (const h of today) {
@@ -124,7 +124,7 @@ async function publish() {
       }
       lines.push('')
     }
-    const pending = cards.value.filter((c) => c.status === 'active' && c.kind !== 'habit')
+    const pending = cards.value.filter((c) => c.status === 'active' && c.kind !== 'checkin')
     if (pending.length) {
       lines.push('### 进行中')
       for (const c of pending) {
@@ -236,13 +236,13 @@ onMounted(load)
         <section class="insist-block">
           <div class="insist-block-head">
             <h2>今日打卡</h2>
-            <span class="insist-block-sub">{{ overview.todayCheckins }} / {{ habits.length }} 已完成</span>
+            <span class="insist-block-sub">{{ overview.todayCheckins }} / {{ checkins.length }} 已完成</span>
           </div>
 
-          <p v-if="habits.length === 0" class="state small">还没有打卡卡，去卡片页新建一个。</p>
+          <p v-if="checkins.length === 0" class="state small">还没有打卡卡，去卡片页新建一个。</p>
 
           <ul v-else class="habit-list">
-            <li v-for="h in habits" :key="h.id" class="habit" :class="{ done: isToday(h) }">
+            <li v-for="h in checkins" :key="h.id" class="checkin" :class="{ done: isToday(h) }">
               <router-link class="habit-main" :to="'/card/' + h.id">
                 <span class="habit-name">{{ h.title }}</span>
                 <span class="habit-tier">{{ tierName(h.tier) }}</span>
