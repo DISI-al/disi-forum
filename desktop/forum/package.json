@@ -1,6 +1,6 @@
 {
   "name": "forum-desktop",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "description": "DISI_FORUM · Windows 客户端",
   "main": "main.js",
