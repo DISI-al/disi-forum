@@ -241,21 +241,25 @@ onMounted(load)
 
           <p v-if="checkins.length === 0" class="state small">还没有打卡卡，去卡片页新建一个。</p>
 
-          <ul v-else class="habit-list">
-            <li v-for="h in checkins" :key="h.id" class="checkin" :class="{ done: isToday(h) }">
-              <router-link class="habit-main" :to="'/card/' + h.id">
-                <span class="habit-name">{{ h.title }}</span>
-                <span class="habit-tier">{{ tierName(h.tier) }}</span>
+          <ul v-else class="checkin-list">
+            <li v-for="h in checkins" :key="h.id" class="checkin-row" :class="{ done: isToday(h) }">
+              <router-link class="checkin-main" :to="'/card/' + h.id">
+                <span class="checkin-title">{{ h.title }}</span>
+                <span class="checkin-tier">{{ tierName(h.tier) }}</span>
+                <span class="checkin-meta">
+                  连续 {{ h.streak }} 天 · 累计 {{ h.totalDays }} 天
+                  <template v-if="h.cycleDays"> · 周期 {{ h.cycleDays }} 天</template>
+                </span>
               </router-link>
-              <div class="habit-sub">
-                <span>连续 {{ h.streak }} 天 · 累计 {{ h.totalDays }} 天</span>
-              </div>
+
+              <span v-if="isToday(h)" class="checkin-flag">✓ 今日已完成</span>
               <button
-                class="insist-btn"
+                v-else
+                class="insist-btn checkin-btn"
                 type="button"
-                :disabled="isToday(h) || busyId === h.id"
+                :disabled="busyId === h.id"
                 @click="checkIn(h)"
-              >{{ isToday(h) ? '已打卡' : '打卡' }}</button>
+              >{{ busyId === h.id ? '打卡中…' : '打卡' }}</button>
             </li>
           </ul>
         </section>
@@ -434,22 +438,57 @@ onMounted(load)
 }
 .alert-btn:hover { background: rgba(248, 81, 73, 0.12); }
 
-/* 打卡 */
-.habit-list { list-style: none; margin-top: 0.4rem; }
-.habit { display: flex; align-items: center; gap: 0.9rem; padding: 0.7rem 0.1rem; border-bottom: 1px solid #101010; }
-.habit.done { opacity: 0.55; }
-.habit-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.5rem; color: inherit; text-decoration: none; }
-.habit-main:hover .habit-name { color: #fff; }
-.habit-name { font-size: 0.88rem; }
-.habit-tier { font-size: 0.62rem; color: #5f5f5f; border: 1px solid #1e1e1e; border-radius: 3px; padding: 0.02rem 0.28rem; }
-.habit-sub { display: flex; gap: 0.8rem; font-size: 0.64rem; color: #5f5f5f; }
+/* 今日打卡 */
+.checkin-list { list-style: none; margin: 0.55rem 0 0; padding: 0; }
+.checkin-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 56px;
+  padding: 0.72rem 0.1rem;
+  border-bottom: 1px solid #101010;
+}
+.checkin-row:last-child { border-bottom: 0; }
+.checkin-row.done { opacity: 0.55; }
+
+.checkin-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.5rem;
+  color: inherit;
+  text-decoration: none;
+}
+.checkin-main:hover .checkin-title { color: #fff; }
+.checkin-title { font-size: 0.9rem; color: #e8e8e8; line-height: 1.35; }
+.checkin-tier {
+  font-size: 0.6rem;
+  color: #6a6a6a;
+  border: 1px solid #1f1f1f;
+  border-radius: 3px;
+  padding: 0.02rem 0.3rem;
+  line-height: 1.5;
+}
+.checkin-meta { width: 100%; font-size: 0.64rem; color: #5f5f5f; line-height: 1.5; }
+
+.checkin-btn { min-width: 84px; height: 32px; padding: 0 1rem; flex: 0 0 auto; }
+.checkin-flag {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  color: #4a4a4a;
+  padding: 0.28rem 0;
+  white-space: nowrap;
+}
 
 @media (max-width: 820px) {
   .hero-row { grid-template-columns: 1fr; }
-  .habit { flex-wrap: wrap; row-gap: 0.35rem; }
-  .habit-sub { width: 100%; }
-  .habit .insist-btn { margin-left: auto; }
+  .checkin-row { gap: 0.6rem; min-height: 0; }
+  .checkin-btn { min-width: 72px; height: 34px; padding: 0 0.8rem; }
+  .checkin-main { gap: 0.1rem 0.4rem; }
 }
+
 @media (prefers-reduced-motion: reduce) {
   .marquee-track { animation: none; }
 }
