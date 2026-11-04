@@ -13,7 +13,7 @@ const apps = {
     out: 'mobile/forum/www',
     api: 'https://forum.disi-al.com',
     statusBar: '#0d1117',
-    background: '#010409',
+    background: '#0d1117',
   },
   insist: {
     src: 'insist_app/dist',
@@ -77,6 +77,19 @@ const injection = `  <script>
     select,
     [contenteditable="true"] {
       font-size: 16px !important;
+    }
+
+    /* ---- 兜底：越界滚动区域也铺满应用底色 ---- */
+    body::before {
+      content: '';
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: -60vh;
+      bottom: -60vh;
+      background: var(--app-bg);
+      z-index: -2;
+      pointer-events: none;
     }
 
     /* ---- 移动端不显示滚动条 ---- */

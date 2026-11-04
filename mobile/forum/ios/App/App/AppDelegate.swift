@@ -26,6 +26,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
+        // 原生底色：防止滚动越界（橡皮筋）时露出白色
+        if let vc = self.window?.rootViewController as? CAPBridgeViewController,
+           let web = vc.webView {
+            let c = UIColor(red: 13/255.0, green: 17/255.0, blue: 23/255.0, alpha: 1)
+            web.backgroundColor = c
+            web.isOpaque = false
+            web.scrollView.backgroundColor = c
+        }
+
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
     }
 
