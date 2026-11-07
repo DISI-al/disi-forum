@@ -10,6 +10,8 @@
     </style>
 
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <!-- Android 15 起边到边强制生效，这里退出，避免状态栏盖住导航 -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@color/app_background</item>

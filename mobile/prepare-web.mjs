@@ -65,8 +65,8 @@ const injection = `  <style id="disi-preboot-bg">html,body{margin:0;background:$
     body {
       background: var(--app-bg);
       min-height: 100%;
-      padding-top: var(--safe-top);
-      padding-bottom: var(--safe-bottom);
+      padding-top: calc(var(--safe-top) + 2px);
+      padding-bottom: calc(var(--safe-bottom) + 2px);
       touch-action: manipulation;   /* 去掉双击放大 */
       overscroll-behavior-y: contain;
     }
@@ -145,7 +145,12 @@ const injection = `  <style id="disi-preboot-bg">html,body{margin:0;background:$
         if (!P || !P.App) return false;
         attached = true;
 
-        // 1) 状态栏
+        // 1) 状态栏：先关掉"覆盖网页"，让内容从状态栏下方开始
+        try {
+          if (P.StatusBar && P.StatusBar.setOverlaysWebView) {
+            P.StatusBar.setOverlaysWebView({ overlay: false });
+          }
+        } catch (e) {}
         try {
           if (P.StatusBar) {
             P.StatusBar.setStyle({ style: 'DARK' });
