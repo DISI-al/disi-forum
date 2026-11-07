@@ -6,7 +6,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import InsistNav from '../components/InsistNav.vue'
 import { apiCard, apiSkills, apiCheckin, apiCompleteCard, apiSettleCard, apiPatchCard, apiDeleteCard } from '../api/insist_api.js'
-import { tierName, kindLabel, statusLabel } from '../insist/constants.js'
+import { tierName, kindLabel, statusLabel, isCurrentSettleDay, fmtXp } from '../insist/constants.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,10 +32,7 @@ const backPath = computed(() => (isAchievement.value ? '/achievements' : '/cards
 const backLabel = computed(() => (isAchievement.value ? '成就墙' : '卡片库'))
 
 function todayDone() {
-  if (!card.value?.lastCheckin) return false
-  const d = new Date(card.value.lastCheckin)
-  const now = new Date()
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+  return isCurrentSettleDay(card.value?.lastCheckin)
 }
 
 async function load() {
@@ -234,7 +231,7 @@ onMounted(load)
             type="button"
             :disabled="todayDone() || busy"
             @click="checkin"
-          >{{ todayDone() ? '今天已打卡' : '打卡' }}</button>
+          >{{ todayDone() ? '本结算日已打卡' : '打卡' }}</button>
 
           <button
             v-if="isHabit && (card.totalDays || 0) > 0"

@@ -26,7 +26,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // 原生底色：防止滚动越界（橡皮筋）时露出白色
+        // 原生底色：窗口 + 根视图 + WebView 全部铺满，弱网首帧也不露白
+        let appBg = UIColor(red: 5/255.0, green: 5/255.0, blue: 5/255.0, alpha: 1)
+        self.window?.backgroundColor = appBg
+        self.window?.rootViewController?.view.backgroundColor = appBg
+
         if let vc = self.window?.rootViewController as? CAPBridgeViewController,
            let web = vc.webView {
             let c = UIColor(red: 5/255.0, green: 5/255.0, blue: 5/255.0, alpha: 1)

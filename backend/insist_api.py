@@ -18,8 +18,8 @@ from insist_models import InsistCard, InsistCheckinLog, InsistSetting, InsistSki
 from insist_rules import (
     DAILY_XP, DEFAULT_CONFIG, IMPORTANCE, LEVELS, LEVEL_MIN, STREAK_BONUS, TIERS,
     apply_xp, checklist_done, checklist_for_level, daily_xp, day_decay, forget_percent,
-    merge_config, promotion_checklist, segment_max, segment_start, settle_detail, settle_path,
-    streak_bonus,
+    logical_today, merge_config, promotion_checklist, round_xp, segment_max, segment_start,
+    settle_detail, settle_path, streak_bonus,
 )
 import insist_achievements as ach
 from insist_schemas import AiReviewRequest, CardCreate, CardUpdate, SettingsUpdate, SkillCreate, SkillUpdate
@@ -45,13 +45,13 @@ def skill_payload(skill: InsistSkill, db: Session, cfg: dict | None = None) -> d
         "importance": skill.importance,
         "level": skill.level,
         "levelName": LEVELS[skill.level],
-        "xp": round(skill.xp, 2),
-        "overflow": round(skill.overflow or 0, 2),
+        "xp": round_xp(skill.xp),
+        "overflow": round_xp(skill.overflow),
         "saturated": bool(cap is not None and skill.xp >= cap),
         "forget": forget_percent(skill, cfg=cfg),
         "progress": round(progress, 1),
-        "nextNeed": round(max(0, cap - skill.xp), 1) if cap else 0,
-        "daysAgo": (date.today() - last).days if last else 0,
+        "nextNeed": round_xp(max(0, cap - skill.xp)) if cap else 0,
+        "daysAgo": (logical_today() - last).days if last else 0,
         "records": db.query(InsistXpEvent).filter(InsistXpEvent.skill_id == skill.id).count(),
         "isFocus": bool(skill.is_focus),
     }
@@ -66,7 +66,7 @@ def card_payload(card: InsistCard) -> dict:
         "tier": card.tier,
         "status": card.status,
         "progress": round(card.progress or 0, 1),
-        "xpValue": round(card.xp_value or 0, 1),
+        "xpValue": round_xp(card.xp_value),
         "skillId": card.skill_id,
         "cycleDays": card.cycle_days,
         "dailyTarget": card.daily_target,
@@ -76,7 +76,7 @@ def card_payload(card: InsistCard) -> dict:
         "phase": card.phase,
         "settleReason": card.settle_reason,
         "settledAt": card.settled_at.isoformat() if card.settled_at else None,
-        "lockedXp": round(card.locked_xp, 2) if card.locked_xp else None,
+        "lockedXp": round_xp(card.locked_xp) if card.locked_xp else None,
     }
 
 
@@ -117,7 +117,7 @@ def _award(db: Session, user: User, title: str, tier: int, detail: str = ""):
 def _event(db: Session, user: User, skill_id: str, xp: float, source: str, note: str, card_id=None):
     db.add(InsistXpEvent(
         user_id=user.id, skill_id=skill_id, card_id=card_id,
-        source=source, xp=xp, note=note, occurred_on=date.today(),
+        source=source, xp=round_xp(xp), note=note, occurred_on=logical_today(),
     ))
 
 
@@ -278,14 +278,13 @@ def checkin(card_id: str, current_user: User = Depends(require_user), db: Sessio
     card = _card_or_404(db, current_user, card_id)
     if card.kind != "checkin":
         raise HTTPException(status_code=400, detail="只有打卡卡可以打卡")
-    today = date.today()
+    today = logical_today(cfg) if (cfg := _user_config(db, current_user)) else date.today()
     if card.last_checkin == today:
-        raise HTTPException(status_code=400, detail="今天已经打过卡了")
+        raise HTTPException(status_code=400, detail="本结算日已经打过卡了（每天 06:00 换日）")
 
-    cfg = _user_config(db, current_user)
     base = daily_xp(card.tier, cfg)
     multiplier = day_decay(card.total_days or 0, cfg)
-    gained = round(base * multiplier, 3)
+    gained = round_xp(base * multiplier)
 
     if card.last_checkin and (today - card.last_checkin).days == 1:
         card.streak = (card.streak or 0) + 1
@@ -294,8 +293,8 @@ def checkin(card_id: str, current_user: User = Depends(require_user), db: Sessio
     card.total_days = (card.total_days or 0) + 1
     card.last_checkin = today
 
-    bonus = streak_bonus(card.streak, cfg)
-    total = round(gained + bonus, 3)
+    bonus = round_xp(streak_bonus(card.streak, cfg))
+    total = round_xp(gained + bonus)
 
     awards = []
     streak_tier = {7: 2, 30: 3, 100: 4}.get(card.streak)
@@ -368,7 +367,7 @@ def _settle_card(db: Session, user: User, card: InsistCard, path: str, detail: s
     card.done_at = datetime.now(timezone.utc)
     card.settle_reason = path
     card.settled_at = card.done_at
-    card.locked_xp = round(float(locked), 3)
+    card.locked_xp = round_xp(locked)
     if not card.xp_value:
         card.xp_value = card.locked_xp
     if detail and detail.strip():
@@ -472,11 +471,11 @@ def promote(skill_id: str, current_user: User = Depends(require_user), db: Sessi
     if checklist and not checklist_done(checklist):
         raise HTTPException(status_code=400, detail="晋升凭证还不够")
 
-    transferred = round(skill.overflow or 0, 3)
+    transferred = round_xp(skill.overflow)
     skill.level += 1
     new_start = segment_start(skill.level)
     new_cap = segment_max(skill.level)
-    skill.xp = round(new_start + transferred, 3)
+    skill.xp = round_xp(new_start + transferred)
     if new_cap is not None:
         skill.xp = min(skill.xp, new_cap)
     skill.overflow = 0
@@ -498,7 +497,7 @@ def promote(skill_id: str, current_user: User = Depends(require_user), db: Sessi
 @router.get("/stats/checkins")
 def stats_checkins(days: int = 14, current_user: User = Depends(require_user), db: Session = Depends(get_db)):
     days = max(1, min(60, days))
-    today = date.today()
+    today = logical_today(_user_config(db, current_user))
     start = today - timedelta(days=days - 1)
 
     habits = db.query(InsistCard).filter(
@@ -534,7 +533,7 @@ def stats_checkins(days: int = 14, current_user: User = Depends(require_user), d
 def overview(current_user: User = Depends(require_user), db: Session = Depends(get_db)):
     skills = db.query(InsistSkill).filter(InsistSkill.user_id == current_user.id).all()
     cards = db.query(InsistCard).filter(InsistCard.user_id == current_user.id).all()
-    today = date.today()
+    today = logical_today(_user_config(db, current_user))
     start = today - timedelta(days=13)
     events = db.query(InsistXpEvent).filter(
         InsistXpEvent.user_id == current_user.id, InsistXpEvent.occurred_on >= start
@@ -553,7 +552,7 @@ def overview(current_user: User = Depends(require_user), db: Session = Depends(g
         "totalXp": round(sum(s.xp or 0 for s in skills), 1),
         "saturatedCount": sum(1 for s in skills if segment_max(s.level, _user_config(db, current_user)) is not None and s.xp >= segment_max(s.level, _user_config(db, current_user))),
         "achievementCount": sum(1 for c in cards if c.kind == "achievement" and c.status == "done"),
-        "todayCheckins": sum(1 for c in cards if c.kind == "habit" and c.last_checkin == today),
+        "todayCheckins": sum(1 for c in cards if c.kind == "checkin" and c.last_checkin == today),
         "dailyXp": [round(v, 1) for v in daily.values()],
     }
 
@@ -634,7 +633,7 @@ def export_data(format: str = "json", current_user: User = Depends(require_user)
                 last = s.last_active.strftime("%Y-%m-%d") if s.last_active else ""
                 writer.writerow([
                     s.name, s.category, TIERS[s.tier - 1], IMPORTANCE[s.importance - 1],
-                    LEVELS[s.level], round(s.xp or 0, 2), round(s.overflow or 0, 2),
+                    LEVELS[s.level], round_xp(s.xp), round_xp(s.overflow),
                     forget_percent(s, cfg=_user_config(db, current_user)), sum(1 for e in events if e.skill_id == s.id), last,
                 ])
             filename = "insist-skills.csv"
@@ -659,13 +658,13 @@ def export_data(format: str = "json", current_user: User = Depends(require_user)
         "user": current_user.username,
         "skills": [skill_payload(s, db, _user_config(db, current_user)) for s in skills],
         "cards": [card_payload(c) for c in cards],
-        "habitLogs": [
-            {"cardId": l.card_id, "day": l.day.isoformat(), "xp": round(l.xp or 0, 3)}
+        "checkinLogs": [
+            {"cardId": l.card_id, "day": l.day.isoformat(), "xp": round_xp(l.xp)}
             for l in logs
         ],
         "xpEvents": [
             {"skillId": e.skill_id, "cardId": e.card_id, "source": e.source,
-             "xp": round(e.xp or 0, 3), "note": e.note, "day": e.occurred_on.isoformat()}
+             "xp": round_xp(e.xp), "note": e.note, "day": e.occurred_on.isoformat()}
             for e in events
         ],
     }

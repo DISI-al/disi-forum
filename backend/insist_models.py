@@ -47,7 +47,7 @@ class InsistCard(Base):
     id = Column(String(12), primary_key=True, default=gen_id)
     user_id = Column(String(12), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     skill_id = Column(String(12), ForeignKey("insist_skills.id", ondelete="CASCADE"), nullable=True)
-    kind = Column(String(12), default="task")  # habit | task | project | achievement
+    kind = Column(String(12), default="task")  # checkin | task | project | achievement
     title = Column(String(120), nullable=False)
     detail = Column(Text, default="")
     tier = Column(Integer, default=2)          # 卡等级 1-4
@@ -73,7 +73,7 @@ class InsistCard(Base):
 
 class InsistCheckinLog(Base):
     __tablename__ = "insist_checkin_logs"
-    __table_args__ = (UniqueConstraint("card_id", "day", name="uq_habit_card_day"),)
+    __table_args__ = (UniqueConstraint("card_id", "day", name="uq_checkin_card_day"),)
 
     id = Column(String(12), primary_key=True, default=gen_id)
     card_id = Column(String(12), ForeignKey("insist_cards.id", ondelete="CASCADE"), nullable=False, index=True)

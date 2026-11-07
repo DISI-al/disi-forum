@@ -8,7 +8,7 @@ import InsistNav from '../components/InsistNav.vue'
 import { apiOverview, apiSkills, apiCards, apiCheckin } from '../api/insist_api.js'
 import { cached, peek } from '../insist/cache.js'
 import { apiCreatePost, apiUpdatePost } from '../api/index_api.js'
-import { levelName, tierName, stars, forgetClass, kindLabel } from '../insist/constants.js'
+import { levelName, tierName, stars, forgetClass, kindLabel, isCurrentSettleDay, fmtXp } from '../insist/constants.js'
 
 const router = useRouter()
 
@@ -51,10 +51,7 @@ const chart = computed(() => {
 const saturated = computed(() => skills.value.filter((s) => s.saturated))
 
 function isToday(card) {
-  if (!card.lastCheckin) return false
-  const d = new Date(card.lastCheckin)
-  const now = new Date()
-  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+  return isCurrentSettleDay(card.lastCheckin)
 }
 
 async function load() {
@@ -82,7 +79,7 @@ async function checkIn(card) {
   notice.value = ''
   try {
     const res = await apiCheckin(card.id)
-    notice.value = `打卡成功 +${res.xp} XP` + (res.streak > 1 ? ` · 连续 ${res.streak} 天` : '') + (res.awards?.length ? ` · 获得成就「${res.awards.join('、')}」` : '')
+    notice.value = `打卡成功 +${fmtXp(res.xp)} XP` + (res.streak > 1 ? ` · 连续 ${res.streak} 天` : '') + (res.awards?.length ? ` · 获得成就「${res.awards.join('、')}」` : '')
     await load()
   } catch (e) {
     notice.value = e.message || '打卡失败'

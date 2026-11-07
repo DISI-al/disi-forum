@@ -20,7 +20,7 @@ const apps = {
     out: 'mobile/insist/www',
     api: 'https://forum.disi-al.com',
     statusBar: '#050505',
-    background: '#000000',
+    background: '#050505',
   },
 }
 
@@ -46,7 +46,7 @@ fs.cpSync(from, to, { recursive: true })
 const indexPath = path.join(to, 'index.html')
 let html = fs.readFileSync(indexPath, 'utf8')
 
-const injection = `  <script>
+const injection = `  <style id="disi-preboot-bg">html,body{margin:0;background:${app.background}}</style>\n  <script>
     // 移动端（Capacitor）运行时配置
     window.__DISI_API_BASE__ = ${JSON.stringify(app.api)};
     window.__DISI_MOBILE__ = true;
@@ -85,8 +85,8 @@ const injection = `  <script>
       position: fixed;
       left: 0;
       right: 0;
-      top: -60vh;
-      bottom: -60vh;
+      top: -100vh;
+      bottom: -100vh;
       background: var(--app-bg);
       z-index: -2;
       pointer-events: none;
@@ -98,6 +98,13 @@ const injection = `  <script>
 
     /* ---- 防止固定定位元素在键盘弹出时被顶起后再也回不来 ---- */
     .fixed-bottom { transform: translateZ(0); }
+  </style>
+  <style id="disi-critical-bg">
+    /* 本地资源模版：HTML 一解析就铺满深色，弱网也不会露出白边 */
+    html, body { margin: 0; padding: 0; background-color: __APP_BG__ !important; }
+    html { min-height: 100%; }
+    body { min-height: 100vh; }
+    #app { min-height: 100vh; background-color: __APP_BG__; }
   </style>
   <script>
     // 原生能力：状态栏配色、启动图收起、返回键 / 左缘滑动返回
@@ -260,6 +267,9 @@ if (!html.includes('__DISI_API_BASE__')) {
   html = html.replace(/window\.__DISI_API_BASE__ = "[^"]*"/, `window.__DISI_API_BASE__ = ${JSON.stringify(app.api)}`)
 }
 
+// <html> 标签直接带底色，避免外部 CSS 还没加载时的白屏
+html = html.replace(/<html([^>]*)>/, `<html$1 style="background-color: ${app.background}">`)
+
 // viewport：原生环境锁定缩放（浏览器里不动，保留无障碍缩放）
 const nativeViewport = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
 if (html.includes('name="viewport"')) {
@@ -267,6 +277,9 @@ if (html.includes('name="viewport"')) {
 } else {
   html = html.replace('</head>', `  <meta name="viewport" content="${nativeViewport}">\n</head>`)
 }
+
+// 关键背景样式落地（弱网/首帧也保持深色）
+html = html.replace(/__APP_BG__/g, app.background)
 
 fs.writeFileSync(indexPath, html)
 console.log(`已准备 ${which}: ${app.src} -> ${app.out}（API: ${app.api}）`)

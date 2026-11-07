@@ -1,11 +1,39 @@
 """
-INSIST 规则：段位、XP、递减、溢出、晋升清单、遗忘度
+INSIST 规则：段位、XP、递减、溢出、晋升清单、遗忘度、结算日
 所有计算集中在这里，接口层只负责读写。
 规则数值支持每用户配置（见 DEFAULT_CONFIG / merge_config）。
 """
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timedelta, timezone
+
+# ====================== 结算日（每天 06:00 换日）======================
+
+SETTLE_HOUR = 6
+
+
+def logical_today(cfg: dict | None = None) -> date:
+    """
+    结算日：每天 06:00 才算新的一天。
+    00:00–05:59 的打卡算作前一天，避免熬夜被切断连续天数。
+    """
+    hour = SETTLE_HOUR
+    if cfg and isinstance(cfg.get("settleHour"), int):
+        hour = cfg["settleHour"]
+    now = datetime.now()
+    day = now.date()
+    if now.hour < hour:
+        day = day - timedelta(days=1)
+    return day
+
+
+def round_xp(value) -> float:
+    """XP 统一保留一位小数"""
+    if value is None:
+        return 0.0
+    return round(float(value), 1)
+
 
 DEFAULT_CONFIG = {
+    "settleHour": SETTLE_HOUR,
     "levelMin": [0, 100, 300, 700, 1300],
     "dailyXp": {"1": 1.5, "2": 3.5, "3": 12.0, "4": 24.0},
     "decay": [
@@ -51,7 +79,7 @@ def merge_config(custom: dict | None) -> dict:
             continue
         if isinstance(cfg[key], dict) and isinstance(value, dict):
             cfg[key].update(value)
-        elif isinstance(cfg[key], list) and isinstance(value, list) and len(value) == len(cfg[key]):
+        elif isinstance(cfg[key], list) and isinstance(value, list) and len(cfg[key]) == len(value):
             cfg[key] = value
         elif not isinstance(cfg[key], (dict, list)):
             cfg[key] = value
@@ -107,7 +135,7 @@ def forget_percent(skill, today: date | None = None, cfg: dict | None = None) ->
         return int(skill.forget_manual)
     if not skill.last_active:
         return 0
-    today = today or date.today()
+    today = today or logical_today(cfg)
     last = skill.last_active.date() if isinstance(skill.last_active, datetime) else skill.last_active
     days = max(0, (today - last).days)
     review = get_cfg(cfg)["reviewDays"]
@@ -127,7 +155,6 @@ def promotion_checklist(cards) -> dict:
     熟练 → 精通：
       - 高阶及以上任务卡 ≥ 2 张
       - 高阶及以上项目卡 ≥ 1 张
-      （初阶卡不计入要求）
 
     精通 → 专家：
       - 臻阶任务卡 ≥ 3 张
@@ -141,7 +168,6 @@ def promotion_checklist(cards) -> dict:
     def raw_count(kind: str, min_tier: int) -> int:
         return sum(1 for c in done if c.kind == kind and (c.tier or 1) >= min_tier)
 
-    # 每个阶段独立评估成就替代（互不占用）
     base_ach = sorted(((c.tier or 1) for c in done if c.kind == "achievement"), reverse=True)
 
     def take_ach(pool, min_tier: int) -> bool:
@@ -151,7 +177,6 @@ def promotion_checklist(cards) -> dict:
                 return True
         return False
 
-    # 需求定义：(标签, kind, 最低等级, 需要数量)
     reqs = {
         "to_master": [
             ("高阶及以上任务卡", "task", 3, 2),
@@ -166,7 +191,6 @@ def promotion_checklist(cards) -> dict:
     result = {}
     for stage, items in reqs.items():
         ach_pool = list(base_ach)
-        # 先按等级从高到低满足，成就优先给高等级需求
         items_sorted = sorted(items, key=lambda x: (-x[2], -x[3]))
         computed = {}
         for label, kind, min_tier, need in items_sorted:
@@ -176,7 +200,6 @@ def promotion_checklist(cards) -> dict:
                 got += 1
                 subs += 1
             computed[label] = {"label": label, "need": need, "got": got, "subs": subs}
-        # 按原始顺序输出，界面稳定
         result[stage] = [computed[label] for label, kind, min_tier, need in items]
 
     return result
@@ -192,60 +215,6 @@ def checklist_for_level(checklist: dict, level: int):
 
 def checklist_done(items) -> bool:
     return all(i["got"] >= i["need"] for i in items)
-
-
-def apply_xp(skill, amount: float, cfg: dict | None = None) -> dict:
-    """
-    把一笔 XP 写进技能：
-    - 未满：加到段内，超出部分按溢出倍率
-    - 已满：全部按溢出倍率
-    返回实际入账明细。
-    """
-    now = datetime.now(timezone.utc)
-    cap = segment_max(skill.level, cfg)
-    result = {"progress": 0.0, "overflow": 0.0, "saturated": False}
-
-    if cap is not None and skill.xp >= cap:
-        # 已爆满
-        if not skill.overflow_since:
-            skill.overflow_since = now
-        days = max(0, (now.date() - skill.overflow_since.date()).days)
-        rate = overflow_rate(days, cfg)
-        gained = round(amount * rate, 3)
-        skill.overflow = round((skill.overflow or 0) + gained, 3)
-        result.update(overflow=gained, saturated=True)
-    else:
-        room = amount
-        if cap is not None:
-            room = cap - skill.xp
-        if amount <= room:
-            skill.xp = round(skill.xp + amount, 3)
-            result["progress"] = amount
-        else:
-            skill.xp = cap if cap is not None else skill.xp + amount
-            result["progress"] = room if cap is not None else amount
-            rest = amount - (room if cap is not None else amount)
-            if rest > 0:
-                skill.overflow_since = now
-                skill.overflow = round((skill.overflow or 0) + rest, 3)
-                result["overflow"] = round(rest, 3)
-                result["saturated"] = True
-
-    # 低段位（初识 → 入门 → 熟练）可以靠打卡直接晋升，不等考核
-    while skill.level < 2:
-        cap_now = segment_max(skill.level, cfg)
-        if cap_now is None or skill.xp < cap_now:
-            break
-        transferred = skill.overflow or 0
-        skill.level += 1
-        skill.xp = round(segment_start(skill.level, cfg) + transferred, 3)
-        skill.overflow = 0
-        skill.overflow_since = None
-        result["autoPromoted"] = True
-
-    skill.last_active = now
-    skill.updated_at = now
-    return result
 
 
 def settle_path(card) -> str | None:
@@ -269,3 +238,53 @@ def settle_detail(card) -> str:
     """结算后自动生成的详情文案"""
     need = card.cycle_days or 0
     return f"{need} 天打卡（连续 {card.streak or 0} 天，累计 {card.total_days or 0} 天）"
+
+
+def apply_xp(skill, amount: float, cfg: dict | None = None) -> dict:
+    """
+    把一笔 XP 写进技能：
+    - 未满：加到段内，超出部分按溢出倍率
+    - 已满：全部按溢出倍率
+    返回实际入账明细（统一一位小数）
+    """
+    now = datetime.now(timezone.utc)
+    cap = segment_max(skill.level, cfg)
+    result = {"progress": 0.0, "overflow": 0.0, "saturated": False}
+
+    if cap is not None and skill.xp >= cap:
+        if not skill.overflow_since:
+            skill.overflow_since = now
+        days = max(0, (now.date() - skill.overflow_since.date()).days)
+        rate = overflow_rate(days, cfg)
+        gained = round_xp(amount * rate)
+        skill.overflow = round_xp((skill.overflow or 0) + gained)
+        result.update(overflow=gained, saturated=True)
+    else:
+        room = amount
+        if cap is not None:
+            room = cap - skill.xp
+        if amount <= room:
+            skill.xp = round_xp(skill.xp + amount)
+            result["progress"] = round_xp(amount)
+        else:
+            skill.xp = cap if cap is not None else round_xp(skill.xp + amount)
+            result["progress"] = round_xp(room if cap is not None else amount)
+            rest = amount - (room if cap is not None else amount)
+            if rest > 0:
+                skill.overflow_since = now
+                skill.overflow = round_xp((skill.overflow or 0) + rest)
+                result["overflow"] = round_xp(rest)
+                result["saturated"] = True
+
+    # 低段位（初识 → 入门 → 熟练）可以靠打卡直接晋升，不等考核
+    while skill.level < 2:
+        cap_now = segment_max(skill.level, cfg)
+        if cap_now is None or skill.xp < cap_now:
+            break
+        transferred = skill.overflow or 0
+        skill.level += 1
+        skill.xp = round_xp(segment_start(skill.level, cfg) + transferred)
+        skill.overflow = 0
+        skill.overflow_since = None
+
+    return result
